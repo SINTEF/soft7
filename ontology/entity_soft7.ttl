@@ -1,0 +1,320 @@
+@prefix : <http://www.quaat.com/ontologies#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.quaat.com/ontologies> .
+
+<http://www.quaat.com/ontologies> rdf:type owl:Ontology .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.quaat.com/ontologies#hasDimension
+:hasDimension rdf:type owl:ObjectProperty ;
+              rdfs:domain :Entity ;
+              rdfs:range :Dimension ;
+              rdfs:label "hasDimension"@en .
+
+
+###  http://www.quaat.com/ontologies#hasDimensionExpression
+:hasDimensionExpression rdf:type owl:ObjectProperty ;
+                        rdfs:domain :Shape ;
+                        rdfs:range :DimensionExpression ;
+                        rdfs:label "hasDimensionExpression"@en .
+
+
+###  http://www.quaat.com/ontologies#hasNextShape
+:hasNextShape rdf:type owl:ObjectProperty ,
+                       owl:FunctionalProperty ,
+                       owl:InverseFunctionalProperty ,
+                       owl:AsymmetricProperty ,
+                       owl:IrreflexiveProperty ;
+              rdfs:domain :Shape ;
+              rdfs:range :Shape ;
+              rdfs:label "hasNextShape"@en .
+
+
+###  http://www.quaat.com/ontologies#hasProperty
+:hasProperty rdf:type owl:ObjectProperty ;
+             rdfs:domain :Entity ;
+             rdfs:range :Property ;
+             rdfs:label "hasProperty"@en .
+
+
+###  http://www.quaat.com/ontologies#hasShape
+:hasShape rdf:type owl:ObjectProperty ,
+                   owl:FunctionalProperty ;
+          rdfs:domain :Property ;
+          rdfs:range :Shape ;
+          rdfs:label "hasShape"@en .
+
+
+###  http://www.quaat.com/ontologies#hasType
+:hasType rdf:type owl:ObjectProperty ,
+                  owl:FunctionalProperty ;
+         rdfs:domain :Property ;
+         rdfs:range :Type ;
+         rdfs:label "hasType"@en .
+
+
+###  http://www.quaat.com/ontologies#hasUnit
+:hasUnit rdf:type owl:ObjectProperty ,
+                  owl:FunctionalProperty ;
+         rdfs:domain :Property ;
+         rdfs:range :Unit ;
+         rdfs:label "hasUnit"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.quaat.com/ontologies#hasDescription
+:hasDescription rdf:type owl:DatatypeProperty ,
+                         owl:FunctionalProperty ;
+                rdfs:domain [ rdf:type owl:Class ;
+                              owl:unionOf ( :Dimension
+                                            :Entity
+                                            :Property
+                                          )
+                            ] ;
+                rdfs:range xsd:string ;
+                rdfs:comment "An human readable description."@en ;
+                rdfs:label "hasDescription"@en .
+
+
+###  http://www.quaat.com/ontologies#hasDimensionRef
+:hasDimensionRef rdf:type owl:DatatypeProperty ;
+                 rdfs:domain :DimensionExpression ;
+                 rdfs:range xsd:string ;
+                 rdfs:comment "Refers to a label of a dimension belonging to the same entity."@en ;
+                 rdfs:label "hasDimensionRef"@en .
+
+
+###  http://www.quaat.com/ontologies#hasExpressionString
+:hasExpressionString rdf:type owl:DatatypeProperty ;
+                     rdfs:domain :Shape ;
+                     rdfs:range xsd:string ;
+                     rdfs:label "hasExpressionString"@en .
+
+
+###  http://www.quaat.com/ontologies#hasLabel
+:hasLabel rdf:type owl:DatatypeProperty ,
+                   owl:FunctionalProperty ;
+          rdfs:domain [ rdf:type owl:Class ;
+                        owl:unionOf ( :Dimension
+                                      :Property
+                                    )
+                      ] ;
+          rdfs:range xsd:string ;
+          rdfs:comment "Range is defined as xsd:string, even though xsd:NCName would have been more precise, but that is not supported by the FaCT++ reasoner."@en ,
+                       "Refer to a unique and valid C identifier."@en ;
+          rdfs:label "hasLabel"@en .
+
+
+###  http://www.quaat.com/ontologies#hasURI
+:hasURI rdf:type owl:DatatypeProperty ,
+                 owl:FunctionalProperty ;
+        rdfs:domain :Entity ;
+        rdfs:range xsd:anyURI ;
+        rdfs:label "hasURI"@en .
+
+
+###  http://www.quaat.com/ontologies#hasUnitSymbol
+:hasUnitSymbol rdf:type owl:DatatypeProperty ,
+                        owl:FunctionalProperty ;
+               rdfs:domain :Unit ;
+               rdfs:range xsd:string ;
+               rdfs:comment """Examples: 
+m
+m/s"""@en ,
+                            "Refer to a valid unit symbol."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.quaat.com/ontologies#Blob
+:Blob rdf:type owl:Class ;
+      rdfs:subClassOf :Type ;
+      rdfs:label "Blob"@en .
+
+
+###  http://www.quaat.com/ontologies#Bool
+:Bool rdf:type owl:Class ;
+      rdfs:subClassOf :Type ;
+      rdfs:label "Bool"@en .
+
+
+###  http://www.quaat.com/ontologies#Dimension
+:Dimension rdf:type owl:Class ;
+           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasLabel ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onDataRange xsd:string
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasDescription ;
+                             owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onDataRange xsd:string
+                           ] ;
+           rdfs:label "Dimension"@en .
+
+
+###  http://www.quaat.com/ontologies#DimensionExpression
+:DimensionExpression rdf:type owl:Class ;
+                     rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                       owl:onProperty :hasDimensionRef ;
+                                       owl:someValuesFrom xsd:string
+                                     ] ,
+                                     [ rdf:type owl:Restriction ;
+                                       owl:onProperty :hasExpressionString ;
+                                       owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                       owl:onDataRange xsd:string
+                                     ] ;
+                     rdfs:comment """A mathematical expression that has dimension references as variables. The name of these variables should equal an existing dimension label of the current Entity.
+
+The `hasExpressionString` restriction relates to the expression itself as a string.
+
+The `hasDimensionRef` restrictions relates to the dimension reference variables."""@en ,
+                                  "Valid examples include \"N\", \"N+1\" and \"N*M\" given that `N` and `M` are dimension labels of the current Entity."@en ;
+                     rdfs:label "DimensionExpression"@en .
+
+
+###  http://www.quaat.com/ontologies#Entity
+:Entity rdf:type owl:Class ;
+        rdfs:subClassOf [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasDimension ;
+                          owl:someValuesFrom :Dimension
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasProperty ;
+                          owl:someValuesFrom :Property
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasURI ;
+                          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                          owl:onDataRange xsd:anyURI
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasDescription ;
+                          owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                          owl:onDataRange xsd:string
+                        ] ;
+        rdfs:label "Entity"@en .
+
+
+###  http://www.quaat.com/ontologies#Float
+:Float rdf:type owl:Class ;
+       rdfs:subClassOf :Type ;
+       rdfs:label "Float"@en .
+
+
+###  http://www.quaat.com/ontologies#Integer
+:Integer rdf:type owl:Class ;
+         rdfs:subClassOf :Type ;
+         rdfs:label "Integer"@en .
+
+
+###  http://www.quaat.com/ontologies#Property
+:Property rdf:type owl:Class ;
+          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasType ;
+                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onClass :Type
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasUnit ;
+                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onClass :Unit
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasShape ;
+                            owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onClass :Shape
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasLabel ;
+                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onDataRange xsd:string
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasDescription ;
+                            owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onDataRange xsd:string
+                          ] ;
+          rdfs:label "Property"@en .
+
+
+###  http://www.quaat.com/ontologies#Relation
+:Relation rdf:type owl:Class ;
+          rdfs:subClassOf :Type ;
+          rdfs:label "Relation"@en .
+
+
+###  http://www.quaat.com/ontologies#Shape
+:Shape rdf:type owl:Class ;
+       rdfs:subClassOf [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDimensionExpression ;
+                         owl:someValuesFrom :DimensionExpression
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasNextShape ;
+                         owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                         owl:onClass :Shape
+                       ] ;
+       rdfs:label "Shape"@en .
+
+
+###  http://www.quaat.com/ontologies#String
+:String rdf:type owl:Class ;
+        rdfs:subClassOf :Type ;
+        rdfs:label "String"@en .
+
+
+###  http://www.quaat.com/ontologies#Type
+:Type rdf:type owl:Class ;
+      rdfs:label "Type"@en .
+
+
+###  http://www.quaat.com/ontologies#Unit
+:Unit rdf:type owl:Class ;
+      rdfs:subClassOf [ rdf:type owl:Restriction ;
+                        owl:onProperty :hasUnitSymbol ;
+                        owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                        owl:onDataRange xsd:string
+                      ] ;
+      rdfs:label "Unit"@en .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( :Blob
+                :Bool
+                :Float
+                :Integer
+                :Relation
+                :String
+              )
+] .
+
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( :Dimension
+                :Entity
+                :Property
+                :Shape
+                :Type
+                :Unit
+              )
+] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi
