@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - 'main'
-      - 'push-action/**'  # Allow pushing to protected branches (using CasperWA/push-protected)
 
 jobs:
 
@@ -54,7 +53,5 @@ jobs:
     - name: Run pylint
       run: pylint --rcfile=pyproject.toml --extension-pkg-whitelist='pydantic' -- soft
 
-    # Ignore ID 44715 for now.
-    # See this NumPy issue for more information: https://github.com/numpy/numpy/issues/19038
     - name: Run safety
-      run: pip freeze | safety check --stdin  #--ignore 44715
+      run: pip freeze | safety check --stdin
