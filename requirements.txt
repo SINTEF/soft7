@@ -1,8 +1,0 @@
-graphviz
-Jinja2
-oteapi-core
-otelib
-pydantic
-pymongo
-pyyaml
-rdflib
