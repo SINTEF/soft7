@@ -1,4 +1,3 @@
-cirpy  # temporary (soft.temporary.known_functions)
 graphviz
 oteapi-core
 pydantic
