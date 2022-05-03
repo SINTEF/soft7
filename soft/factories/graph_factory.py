@@ -8,7 +8,7 @@
 from enum import Enum
 from pathlib import Path
 from types import FunctionType
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Type, Union
 
 import yaml
 
@@ -87,8 +87,9 @@ class SOFT7EntityPropertyType(str, Enum):
 
 def _get_inputs(
     name: str, graph: Graph
-) -> list[tuple[str, Optional[FunctionType], Optional[tuple[str, str]]]]:
-    """Retrieve all inputs/parameters for a function ONLY if it comes from internal entity."""
+) -> list[tuple[str, Optional[FunctionType], Optional[tuple[str, ...]]]]:
+    """Retrieve all inputs/parameters for a function ONLY if it comes from internal
+    entity."""
     expects = [expect for _, _, expect in graph.match(name, "expects", None)]
     # print(expects)
 
@@ -97,7 +98,8 @@ def _get_inputs(
         mapped_input = [input_ for input_, _, _ in graph.match(None, "mapsTo", expect)]
         if len(mapped_input) > 1:
             raise RuntimeError(
-                f"Expected exactly 1 mapping to {expect}, instead found {len(mapped_input)} !"
+                f"Expected exactly 1 mapping to {expect}, instead found "
+                f"{len(mapped_input)} !"
             )
         inputs.extend(mapped_input)
     # print(inputs)
@@ -111,7 +113,8 @@ def _get_inputs(
         ]
         if len(mapped_getter) > 1:
             raise RuntimeError(
-                f"Expected exactly 1 getter function for {input_!r}, instead found {len(mapped_getter)} !"
+                f"Expected exactly 1 getter function for {input_!r}, instead found "
+                f"{len(mapped_getter)} !"
             )
         input_getters.append(mapped_getter[0])
 
@@ -199,7 +202,7 @@ def create_outer_entity(
     data_model: Union[SOFT7Entity, Path, str, dict[str, Any]],
     inner_entities: dict[str, SOFT7DataEntity],
     mapping: Union[Graph, Iterable[tuple[str, str, str]]],
-) -> SOFT7DataEntity:
+) -> Type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
@@ -217,7 +220,7 @@ def create_outer_entity(
             raise FileNotFoundError(
                 f"Could not find a data model YAML file at {data_model!r}"
             )
-        data_model: dict[str, Any] = yaml.safe_load(
+        data_model: dict[str, Any] = yaml.safe_load(  # type: ignore[no-redef]
             Path(data_model).resolve().read_text(encoding="utf8")
         )
     if isinstance(data_model, dict):
@@ -255,10 +258,12 @@ def create_outer_entity(
 
     for s, p, o in mapping.triples:
         local_graph.append((s, p, o))
+        if not isinstance(s, str):
+            continue
         split_subject = s.split(".")
         for triple in [
             (split_subject[0], "hasProperty", s),
-            (s, "get", lambda entity, property_name: getattr(entity, property_name)),
+            (s, "get", getattr),
         ]:
             local_graph.append(triple)
 
@@ -287,6 +292,10 @@ def create_outer_entity(
 
     return create_model(
         "OuterEntity",
+        __config__=None,
+        __base__=SOFT7DataEntity,
+        __module__=__name__,
+        __validators__=None,
         **{
             property_name: (
                 property_value.type_.py_cls,
@@ -307,6 +316,4 @@ def create_outer_entity(
             )
             for property_name, property_value in data_model.properties.items()
         },
-        __module__=__name__,
-        __base__=SOFT7DataEntity,
     )

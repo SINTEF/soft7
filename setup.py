@@ -1,10 +1,11 @@
+"""Installation information/metadata."""
 import os
 import subprocess
 
 import setuptools
 
 soft7_version = (
-    subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE)
+    subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE, check=True)
     .stdout.decode("utf-8")
     .strip()
 )

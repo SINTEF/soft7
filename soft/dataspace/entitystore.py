@@ -1,3 +1,4 @@
+"""Entity store."""
 import os
 from urllib.parse import quote_plus
 
@@ -12,12 +13,13 @@ class MongoStore:
 
     def __init__(self, client=None):
         if not client:
-            MONGODB_HOST = os.environ.get("MONGODB_HOST")
-            MONGODB_PORT = int(os.environ.get("MONGODB_PORT", "27017"))
-            MONGODB_USER = os.environ.get("MONGODB_USER")
-            MONGODB_PASSWORD = os.environ.get("MONGODB_PASSWORD")
-
-            uri = f"mongodb://{quote_plus(MONGODB_USER)}:{quote_plus(MONGODB_PASSWORD)}@{quote_plus(MONGODB_HOST)}:{MONGODB_PORT}"
+            uri = (
+                "mongodb://"
+                f"{quote_plus(os.getenv('MONGODB_USER'))}:"
+                f"{quote_plus(os.getenv('MONGODB_PASSWORD'))}@"
+                f"{quote_plus(os.getenv('MONGODB_HOST'))}:"
+                f"{int(os.getenv('MONGODB_PORT', '27017'))}"
+            )
             client = MongoClient(uri)
         try:
             client.admin.command("ismaster")
@@ -32,6 +34,7 @@ class MongoStore:
         self._client.close()
 
     def read(self, uriref=None):
+        """Get an entity."""
         if not uriref:
             return [e["uri"] for e in self._coll.find({})]
 
@@ -39,7 +42,9 @@ class MongoStore:
         return entity
 
     def create(self, entity):
-        assert "uri" in entity
+        """Insert an entity."""
+        if "uri" not in entity:
+            raise ValueError("entity does not contain a uri")
         uriref = entity["uri"]
         if self._coll.find_one({"uri": uriref}) is not None:
             raise Exception(
@@ -48,12 +53,16 @@ class MongoStore:
         self._coll.insert_one(entity)
 
     def update(self, entity):
-        assert "uri" in entity
+        """Replace an entity."""
+        if "uri" not in entity:
+            raise ValueError("entity does not contain a uri")
         uriref = entity["uri"]
         self._coll.replace_one({"uri": uriref}, entity)
 
 
 class EntityStore:
+    """Entity Store."""
+
     def __init__(self, client=None):
         self.store = MongoStore(client)
 

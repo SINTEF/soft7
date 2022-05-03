@@ -1,0 +1,31 @@
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+scripts_are_modules = true
+warn_unused_configs = true
+show_error_codes = true
+allow_redefinition = true
+plugins = ["pydantic.mypy"]
+
+[tool.pylint.messages_control]
+max-line-length = 90
+disable = [
+    "duplicate-code",
+    "no-name-in-module",
+    "too-few-public-methods",
+    "fixme",
+    "no-self-argument",
+    "no-self-use",
+]
+good-names = ["i", "j", "k", "ex", "Run", "_", "s", "p", "o"]
+max-bool-expr = 6
+max-args = 10
+max-branches = 15
+
+# [tool.pytest.ini_options]
+# minversion = "6.0"
+# addopts = "-rs --cov=soft --cov-report=term --durations=10"
+# filterwarnings = [
+#     "ignore:.*imp module.*:DeprecationWarning",
+#     "ignore:.*_yaml extension module.*:DeprecationWarning"
+# ]

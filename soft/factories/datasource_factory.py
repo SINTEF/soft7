@@ -10,56 +10,63 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
+import json
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Type, Union
 
 import yaml
 from oteapi.models import ResourceConfig
+from otelib import OTEClient
+from pydantic import Field, create_model
 
-# from otelib import OTEClient
-from pydantic import BaseModel, Field, create_model
-
-from soft.models.oteapi import HashableResourceConfig
-from soft.models.soft7 import SOFT7DataEntity, SOFT7Entity
-
-# def _get_property(name: str, config: HashableResourceConfig, url: Optional[str] = None) -> Any:
-#     """Get a property."""
-#     client = OTEClient(url or "http://localhost:8080")
-#     data_resource = client.create_dataresource(**config.dict())
-#     result: dict[str, Any] = json.loads(data_resource.get())
-#     if name in result:
-#         return result[name]
-#     raise AttributeError(f"{name!r} could not be determined")
+from soft.pydantic_models.oteapi import HashableResourceConfig
+from soft.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
 
-def _get_property_local(
-    config: HashableResourceConfig,
-) -> Any:
-    """TEMPORARY - Get a property - local."""
-    from soft.temporary.xlsparser import XLSParser
+def _get_property(config: HashableResourceConfig, url: Optional[str] = None) -> Any:
+    """Get a property."""
+    client = OTEClient(url or "http://localhost:8080")
+    data_resource = client.create_dataresource(**config.dict())
+    result: dict[str, Any] = json.loads(data_resource.get())
 
-    parser = XLSParser(config.configuration).get()
+    def __get_property(name: str) -> Any:
+        if name in result:
+            return result[name]
 
-    def __get_property_local(name: str) -> Any:
-        if name in parser:
-            return parser[name]
+        raise AttributeError(f"{name!r} could not be determined")
 
-        raise ValueError(f"Could find no data for {name!r}")
+    return __get_property
 
-    return __get_property_local
+
+# def _get_property_local(
+#     config: HashableResourceConfig,
+# ) -> Any:
+#     """TEMPORARY - Get a property - local."""
+#     from soft.temporary.xlsparser import XLSParser
+
+#     parser = XLSParser(config.configuration).get()
+
+#     def __get_property_local(name: str) -> Any:
+#         if name in parser:
+#             return parser[name]
+
+#         raise ValueError(f"Could find no data for {name!r}")
+
+#     return __get_property_local
 
 
 def create_entity(
     data_model: Union[SOFT7Entity, Path, str, dict[str, Any]],
-    resource_config: Union[ResourceConfig, dict[str, Any]],
-) -> BaseModel:
+    resource_config: Union[HashableResourceConfig, ResourceConfig, dict[str, Any]],
+) -> Type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
         data_model: A SOFT7 data model entity or a string/path to a YAML file of the
             data model.
         resource_config: A
-            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/all_models/#oteapi.models.ResourceConfig)
+            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/
+            all_models/#oteapi.models.ResourceConfig)
             or a valid dictionary that can be used to instantiate it.
 
     Returns:
@@ -71,7 +78,7 @@ def create_entity(
             raise FileNotFoundError(
                 f"Could not find a data model YAML file at {data_model!r}"
             )
-        data_model: dict[str, Any] = yaml.safe_load(
+        data_model: dict[str, Any] = yaml.safe_load(  # type: ignore[no-redef]
             Path(data_model).resolve().read_text(encoding="utf8")
         )
     if isinstance(data_model, dict):
@@ -81,8 +88,15 @@ def create_entity(
 
     if isinstance(resource_config, dict):
         resource_config = HashableResourceConfig(**resource_config)
+    if isinstance(resource_config, ResourceConfig) and not isinstance(
+        resource_config, HashableResourceConfig
+    ):
+        resource_config = HashableResourceConfig(
+            **resource_config.dict(exclude_defaults=True)
+        )
     if not isinstance(resource_config, HashableResourceConfig):
         raise TypeError("resource_config must be a 'ResourceConfig' (from oteapi-core)")
+    resource_config: HashableResourceConfig  # type: ignore[no-redef]  # Satisfy mypy
 
     if any(property_name.startswith("_") for property_name in data_model.properties):
         raise ValueError(
@@ -91,11 +105,15 @@ def create_entity(
 
     return create_model(
         "DataSourceEntity",
+        __config__=None,
+        __base__=SOFT7DataEntity,
+        __module__=__name__,
+        __validators__=None,
         **{
             property_name: (
                 property_value.type_.py_cls,
                 Field(
-                    default_factory=lambda: _get_property_local(resource_config),
+                    default_factory=lambda: _get_property(resource_config),
                     description=property_value.description or "",
                     title=property_name.replace(" ", "_"),
                     type=property_value.type_.py_cls,
@@ -109,6 +127,4 @@ def create_entity(
             )
             for property_name, property_value in data_model.properties.items()
         },
-        __module__=__name__,
-        __base__=SOFT7DataEntity,
     )

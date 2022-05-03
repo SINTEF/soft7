@@ -1,3 +1,4 @@
+"""Create Turtle files."""
 import uuid
 
 from jinja2 import Template
@@ -88,21 +89,20 @@ class Turtle:
     """
 
     @staticmethod
-    def dumps(dict):
-        """ """
+    def dumps(dict_):
+        """Serialize dict to Turtle string."""
         template = Template(__ttl_template__)
         output = template.render(
             base="http://example.com/entity",
             name="Entity",
             len=len,
             enumerate=enumerate,
-            dict=dict,
+            dict=dict_,
             uuid=lambda: str(uuid.uuid4()).replace("-", "_"),
         )
         return output
 
-    @staticmethod
-    def dump(dict, file):
-        """ """
-        with open(file, "w") as ttl:
-            ttl.write(dumps(dict))
+    def dump(self, dict_, file):
+        """Serialize dict to Turtle string and dump as file."""
+        with open(file, "w", encoding="utf8") as ttl:
+            ttl.write(self.dumps(dict_))

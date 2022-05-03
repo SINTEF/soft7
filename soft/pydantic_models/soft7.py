@@ -101,7 +101,7 @@ class SOFT7Entity(BaseModel):
 
     @validator("properties")
     def shapes_and_dimensions(
-        value: dict[str, SOFT7EntityProperty], values: dict[str, Any]
+        cls, value: dict[str, SOFT7EntityProperty], values: dict[str, Any]
     ) -> dict[str, SOFT7EntityProperty]:
         """Ensure the shape values are dimensions keys."""
         errors: list[tuple[str, str]] = []

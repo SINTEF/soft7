@@ -1,25 +1,30 @@
 """
 Soft7 dataspace
 """
-import uuid
-
 from soft.dataspace.database import Database
-from soft.storagestrategy import Context, Strategy
+
+# from soft.storagestrategy import Context, Strategy
 
 
 class Dataspace:
-    def __init__(self, strategy: Strategy):
+    """Data space."""
+
+    def __init__(self, strategy):
         self._databases = {}
-        self._context = Context(strategy)
+        self._context = strategy
 
     def create_db(self, database):
-        assert database not in self._databases
-        db = Database(database)
-        self._databases[database] = db
-        return db
+        """Create/Add a new database."""
+        if database in self._databases:
+            raise ValueError(f"{database} already in known databases.")
+        new_database = Database(database)
+        self._databases[database] = new_database
+        return new_database
 
     def database(self, database):
-        assert database in self._databases
+        """Return a database."""
+        if database not in self._databases:
+            raise ValueError(f"{database} not found in known databases.")
         return self._databases[database]
 
     def push(self):
@@ -35,9 +40,10 @@ class Dataspace:
         self._databases = {}
         self._context.read(self._databases)
 
-    def set_strategy(self, strategy: Strategy):
-        self._context = Context(strategy)
+    # def set_strategy(self, strategy: Strategy):
+    #     self._context = Context(strategy)
 
     @property
     def databases(self):
-        return [key for key in self._databases]
+        """Get all databases."""
+        return list(self._databases)

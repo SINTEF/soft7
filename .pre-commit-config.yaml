@@ -42,13 +42,14 @@ repos:
     - id: mypy
       additional_dependencies:
         - pydantic
+        - types-PyYAML
 
   - repo: local
     hooks:
     - id: pylint
       name: pylint
       entry: pylint
-      args: ["--extension-pkg-whitelist='pydantic'"]
+      args: ["--rcfile=pyproject.toml", "--extension-pkg-whitelist='pydantic'"]
       language: python
       types: [python]
       require_serial: true
