@@ -52,7 +52,7 @@ jobs:
         pip install safety
 
     - name: Run pylint
-      run: pylint --rcfile=pyproject.toml --extension-pkg-whitelist='pydantic' -- *.py soft
+      run: pylint --rcfile=pyproject.toml --extension-pkg-whitelist='pydantic' -- soft
 
     # Ignore ID 44715 for now.
     # See this NumPy issue for more information: https://github.com/numpy/numpy/issues/19038
