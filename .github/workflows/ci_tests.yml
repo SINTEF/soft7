@@ -24,15 +24,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -U setuptools wheel
-
-        while IFS="" read -r line || [ -n "${line}" ]; do
-          if [[ "${line}" =~ ^pre-commit.*$ ]]; then
-            pre_commit="${line}"
-          fi
-        done < requirements_dev.txt
-
-        pip install ${pre_commit}
+        pip install -U setuptools wheel flit
+        pip install .[dev]
 
     - name: Test with pre-commit
       run: SKIP=pylint pre-commit run --all-files
@@ -54,9 +47,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install -U pip
-        pip install -U setuptools wheel
-        pip install -U -r requirements.txt -r requirements_dev.txt
-        pip install -e .
+        pip install -U setuptools wheel flit
+        pip install -e .[dev]
         pip install safety
 
     - name: Run pylint
