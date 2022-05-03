@@ -1,8 +1,13 @@
-import setuptools
-import subprocess
 import os
+import subprocess
 
-soft7_version = subprocess.run(['git', 'describe', '--tags'], stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
+import setuptools
+
+soft7_version = (
+    subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE)
+    .stdout.decode("utf-8")
+    .strip()
+)
 assert "." in soft7_version
 
 assert os.path.isfile("soft/version.py")
@@ -27,7 +32,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
-    package_data={'soft7-pkg-quaat': ['VERSION']},
+    package_data={"soft7-pkg-quaat": ["VERSION"]},
     include_package_data=True,
-    python_requires='>=3.7',
+    python_requires=">=3.7",
 )

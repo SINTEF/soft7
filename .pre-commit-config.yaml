@@ -48,7 +48,7 @@ repos:
     - id: pylint
       name: pylint
       entry: pylint
-      args: ["--rcfile=.pylintrc", "--extension-pkg-whitelist='pydantic'"]
+      args: ["--extension-pkg-whitelist='pydantic'"]
       language: python
       types: [python]
       require_serial: true
