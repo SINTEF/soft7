@@ -8,46 +8,40 @@
 from enum import Enum
 from pathlib import Path
 from types import FunctionType
-from typing import Any, Iterable, Union, Callable, Optional
+from typing import Any, Callable, Iterable, Optional, Type, Union
+
+import yaml
 
 # from IPython import display
 from oteapi.models import ResourceConfig
-from pydantic import create_model, Field
-import yaml
+from pydantic import Field, create_model
 
-from soft.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
-from soft.graph import Graph
+from s7.graph import Graph
+from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
 TEST_KNOWLEDGE_BASE = Graph(
     [
         ("imp_to_eis", "isA", "function"),
         ("imp_to_eis", "expects", "ImpedancekOhmCm2"),
         ("imp_to_eis", "outputs", "EISEfficiency"),
-
         ("imp_to_lpr", "isA", "function"),
         ("imp_to_lpr", "expects", "LPR24h"),
         ("imp_to_lpr", "outputs", "LPREfficiency"),
-
         ("imp_pow_func", "isA", "function"),
         ("imp_pow_func", "expects", "ImpedanceLogOhm"),
         ("imp_pow_func", "outputs", "ImpedanceOhm"),
-
         ("impkflux", "isA", "function"),
         ("impkflux", "expects", "ImpedanceOhm"),
         ("impkflux", "outputs", "ImpedancekOhmCm2"),
-
         ("cas_to_smiles", "isA", "function"),
         ("cas_to_smiles", "expects", "CASNumber"),
         ("cas_to_smiles", "outputs", "SMILES"),
-
         ("cas_to_inchi", "isA", "function"),
         ("cas_to_inchi", "expects", "CASNumber"),
         ("cas_to_inchi", "outputs", "InChI"),
-
         # ("cas_to_cas", "isA", "function"),
         # ("cas_to_cas", "expects", "CASNumber"),
         # ("cas_to_cas", "outputs", "CASNumber"),
-
         ("LPR24h", "isA", "Resistance"),
         ("ImpedanceOhm", "isA", "Resistance"),
         ("ImpedanceLogOhm", "isA", "Resistance"),
@@ -68,7 +62,8 @@ class HashableResourceConfig(ResourceConfig):
         return hash(
             tuple(
                 (field_name, field_value)
-                if isinstance(field_value, (str, bytes, tuple, frozenset, int, float)) or field_value is None
+                if isinstance(field_value, (str, bytes, tuple, frozenset, int, float))
+                or field_value is None
                 else (field_name, None)
                 for field_name, field_value in self.__dict__.items()
             )
@@ -90,21 +85,21 @@ class SOFT7EntityPropertyType(str, Enum):
         }[self]
 
 
-def _get_inputs(name: str, graph: Graph) -> list[tuple[str, Optional[FunctionType], Optional[tuple[str, str]]]]:
-    """Retrieve all inputs/parameters for a function ONLY if it comes from internal entity."""
-    expects = [
-        expect for _, _, expect in graph.match(name, "expects", None)
-    ]
+def _get_inputs(
+    name: str, graph: Graph
+) -> list[tuple[str, Optional[FunctionType], Optional[tuple[str, ...]]]]:
+    """Retrieve all inputs/parameters for a function ONLY if it comes from internal
+    entity."""
+    expects = [expect for _, _, expect in graph.match(name, "expects", None)]
     # print(expects)
 
     inputs: list[str] = []
     for expect in expects:
-        mapped_input = [
-            input_ for input_, _, _ in graph.match(None, "mapsTo", expect)
-        ]
+        mapped_input = [input_ for input_, _, _ in graph.match(None, "mapsTo", expect)]
         if len(mapped_input) > 1:
             raise RuntimeError(
-                f"Expected exactly 1 mapping to {expect}, instead found {len(mapped_input)} !"
+                f"Expected exactly 1 mapping to {expect}, instead found "
+                f"{len(mapped_input)} !"
             )
         inputs.extend(mapped_input)
     # print(inputs)
@@ -118,7 +113,8 @@ def _get_inputs(name: str, graph: Graph) -> list[tuple[str, Optional[FunctionTyp
         ]
         if len(mapped_getter) > 1:
             raise RuntimeError(
-                f"Expected exactly 1 getter function for {input_!r}, instead found {len(mapped_getter)} !"
+                f"Expected exactly 1 getter function for {input_!r}, instead found "
+                f"{len(mapped_getter)} !"
             )
         input_getters.append(mapped_getter[0])
 
@@ -153,13 +149,16 @@ def _get_property_local(
         # path = path[0]
 
         functions = [
-            _ for _ in path
+            _
+            for _ in path
             if _ in [s for s, _, _ in graph.match(None, "isA", "function")]
         ]
         # print(functions)
 
         if not functions:
-            raise RuntimeError(f"No function found to retrieve {name!r} - what a stupid path")
+            raise RuntimeError(
+                f"No function found to retrieve {name!r} - what a stupid path"
+            )
 
         functions_dict: dict[str, dict[str, Any]] = {}
         for function_name in functions:
@@ -179,7 +178,11 @@ def _get_property_local(
                         param_name: getter_func(
                             inner_entities[getter_func_param[0]], getter_func_param[1]
                         )
-                        for param_name, getter_func, getter_func_param in functions_dict[function_name]["inputs"]
+                        for param_name, getter_func, getter_func_param in functions_dict[
+                            function_name
+                        ][
+                            "inputs"
+                        ]
                     }
                 )
             else:
@@ -199,7 +202,7 @@ def create_outer_entity(
     data_model: Union[SOFT7Entity, Path, str, dict[str, Any]],
     inner_entities: dict[str, SOFT7DataEntity],
     mapping: Union[Graph, Iterable[tuple[str, str, str]]],
-) -> SOFT7DataEntity:
+) -> Type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
@@ -214,14 +217,20 @@ def create_outer_entity(
     """
     if isinstance(data_model, (str, Path)):
         if not Path(data_model).resolve().exists:
-            raise FileNotFoundError(f"Could not find a data model YAML file at {data_model!r}")
-        data_model: dict[str, Any] = yaml.safe_load(Path(data_model).resolve().read_text(encoding="utf8"))
+            raise FileNotFoundError(
+                f"Could not find a data model YAML file at {data_model!r}"
+            )
+        data_model: dict[str, Any] = yaml.safe_load(  # type: ignore[no-redef]
+            Path(data_model).resolve().read_text(encoding="utf8")
+        )
     if isinstance(data_model, dict):
         data_model = SOFT7Entity(**data_model)
     if not isinstance(data_model, SOFT7Entity):
         raise TypeError("data_model must be a 'SOFT7Entity'")
 
-    if not isinstance(inner_entities, dict) or not all(isinstance(entity, SOFT7DataEntity) for entity in inner_entities.values()):
+    if not isinstance(inner_entities, dict) or not all(
+        isinstance(entity, SOFT7DataEntity) for entity in inner_entities.values()
+    ):
         raise TypeError("inner_entity must be a dict with SOFT7DataEntity as values")
 
     if isinstance(mapping, Iterable):
@@ -229,10 +238,7 @@ def create_outer_entity(
     if not isinstance(mapping, Graph):
         raise TypeError("mapping must be a Graph")
 
-    if any(
-        property_name.startswith("_")
-        for property_name in data_model.properties
-    ):
+    if any(property_name.startswith("_") for property_name in data_model.properties):
         raise ValueError(
             "data model property names may not start with an underscore (_)"
         )
@@ -252,10 +258,12 @@ def create_outer_entity(
 
     for s, p, o in mapping.triples:
         local_graph.append((s, p, o))
+        if not isinstance(s, str):
+            continue
         split_subject = s.split(".")
         for triple in [
             (split_subject[0], "hasProperty", s),
-            (s, "get", lambda entity, property_name: getattr(entity, property_name)),
+            (s, "get", getattr),
         ]:
             local_graph.append(triple)
 
@@ -264,42 +272,48 @@ def create_outer_entity(
 
     # Generate (local) execution relations for functions
 
-# TODO: Replace LOCAL FUNCTIONS with named entry points
-#    for function_name, _, _ in local_graph.match(p="isA", o="function"):
-#        missing_functions = []
-#        if not hasattr(known_functions, function_name):
-#            missing_functions.append(function_name)
-#        else:
-#            local_graph.append(
-#                (
-#                    function_name,
-#                    "executes",
-#                    getattr(known_functions, function_name),
-#                )
-#            )
-#        if missing_functions:
-#            raise ValueError(
-#                f"{missing_functions} not found in known (local) functions !"
-#            )
+    # TODO: Replace LOCAL FUNCTIONS with named entry points
+    #    for function_name, _, _ in local_graph.match(p="isA", o="function"):
+    #        missing_functions = []
+    #        if not hasattr(known_functions, function_name):
+    #            missing_functions.append(function_name)
+    #        else:
+    #            local_graph.append(
+    #                (
+    #                    function_name,
+    #                    "executes",
+    #                    getattr(known_functions, function_name),
+    #                )
+    #            )
+    #        if missing_functions:
+    #            raise ValueError(
+    #                f"{missing_functions} not found in known (local) functions !"
+    #            )
 
     return create_model(
         "OuterEntity",
+        __config__=None,
+        __base__=SOFT7DataEntity,
+        __module__=__name__,
+        __validators__=None,
         **{
             property_name: (
                 property_value.type_.py_cls,
                 Field(
-                    default_factory=lambda: _get_property_local(local_graph, inner_entities),
+                    default_factory=lambda: _get_property_local(
+                        local_graph, inner_entities
+                    ),
                     description=property_value.description,
                     title=property_name.replace(" ", "_"),
                     type=property_value.type_.py_cls,
                     **{
                         f"x-{field}": getattr(property_value, field)
                         for field in property_value.__fields__
-                        if field not in ("description", "type_", "shape") and getattr(property_value, field)
-                    }
-                )
-            ) for property_name, property_value in data_model.properties.items()
+                        if field not in ("description", "type_", "shape")
+                        and getattr(property_value, field)
+                    },
+                ),
+            )
+            for property_name, property_value in data_model.properties.items()
         },
-        __module__ = __name__,
-        __base__ = SOFT7DataEntity,
     )

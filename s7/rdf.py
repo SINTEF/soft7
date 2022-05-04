@@ -1,5 +1,9 @@
-from jinja2 import Template
+"""
+RDF (Turtle) serialization of S7 entities
+"""
 import uuid
+
+from jinja2 import Template
 
 __ttl_template__ = """
 @prefix : <{{ base }}#> .
@@ -32,7 +36,7 @@ __ttl_template__ = """
                                              rdfs:label "{{ dimension }}"@en .
 
 :Entity_{{ entity_uuid }} soft:dimension :Dimension_{{ dim_uuid[dimension] }} .
-                                         
+
 {% endfor %}
 
 
@@ -48,10 +52,10 @@ __ttl_template__ = """
 #    Property shapes
 ####################
 
-{% set shape_uuid = {} %}    
+{% set shape_uuid = {} %}
 {% for idx, shape in enumerate(dict['properties'][property]['shape']) | reverse %}
 
-{% set _dummy = shape_uuid.update( {shape: uuid() }) %}        
+{% set _dummy = shape_uuid.update( {shape: uuid() }) %}
 :Shape_{{ shape_uuid[shape]}} rdf:type owl:NamedIndividual ,
                                              soft:Shape ;
                                              soft:hasDimension :Dimension_{{dim_uuid[shape]}} ;
@@ -68,7 +72,7 @@ __ttl_template__ = """
                                              soft:Property ;
 {% if 'shape' in dict['properties'][property] %}
                                              soft:hasShape :Shape_{{shape_uuid[(dict['properties'][property]['shape'][0])]}} ;
-{% endif %}                                             
+{% endif %}
                                              soft:property_description "{{ dict['properties'][property]['description'] }}"^^xsd:string ;
                                              soft:property_label "{{ dict['properties'][property]['label'] }}"^^xsd:string ;
                                              soft:property_type "{{ dict['properties'][property]['type'] }}"^^xsd:string ;
@@ -85,24 +89,27 @@ class Turtle:
     """
     Turtle RDF format writer
     """
-    
+
     @staticmethod
-    def dumps(dict):
+    def dumps(entity):
         """
-        """        
+        Render turtle as string
+        """
         template = Template(__ttl_template__)
-        output = template.render(base="http://example.com/entity", 
-                                 name='Entity', 
-                                 len=len, 
-                                 enumerate=enumerate, 
-                                 dict=dict, 
-                                 uuid=lambda : str(uuid.uuid4()).replace('-','_'))
+        output = template.render(
+            base="http://example.com/entity",
+            name="Entity",
+            len=len,
+            enumerate=enumerate,
+            dict=entity,
+            uuid=lambda: str(uuid.uuid4()).replace("-", "_"),
+        )
         return output
-    
-    
+
     @staticmethod
-    def dump(dict, file):
+    def dump(entity, file):
         """
+        Render turtle into file
         """
-        with open (file, "w") as ttl:
-            ttl.write(dumps(dict))
+        with open(file, "w", encoding="utf8") as ttl:
+            ttl.write(Turtle.dumps(entity))

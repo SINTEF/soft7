@@ -128,7 +128,7 @@
                         owl:FunctionalProperty ;
                rdfs:domain :Unit ;
                rdfs:range xsd:string ;
-               rdfs:comment """Examples: 
+               rdfs:comment """Examples:
 m
 m/s"""@en ,
                             "Refer to a valid unit symbol."@en .

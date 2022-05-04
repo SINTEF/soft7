@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, validator, AnyUrl, Field
+from pydantic import AnyUrl, BaseModel, Field, validator
 
 
 class SOFT7EntityPropertyType(str, Enum):
@@ -11,11 +11,11 @@ class SOFT7EntityPropertyType(str, Enum):
     STR = "string"
     FLOAT = "float"
     INT = "int"
-    COMPLEX = 'complex'
-    DICT = 'dict'
-    BOOLEAN = 'boolean'
-    BYTES = 'bytes'
-    BYTEARRAY = 'bytearray'
+    COMPLEX = "complex"
+    DICT = "dict"
+    BOOLEAN = "boolean"
+    BYTES = "bytes"
+    BYTEARRAY = "bytearray"
 
     @property
     def py_cls(self) -> type:
@@ -49,7 +49,6 @@ class SOFT7DataEntity(BaseModel):
         except Exception as exc:
             raise AttributeError from exc
 
-
     class Config:
         """Pydantic configuration for 'SOFT7DataEntity'."""
 
@@ -71,7 +70,9 @@ class SOFT7EntityProperty(BaseModel):
     shape: Optional[list[str]] = Field(
         None, description="List of dimensions making up the shape of the property."
     )
-    description: Optional[str] = Field(None, description="A human description of the property.")
+    description: Optional[str] = Field(
+        None, description="A human description of the property."
+    )
     unit: Optional[str] = Field(
         None,
         description=(
@@ -94,11 +95,13 @@ class SOFT7Entity(BaseModel):
             "(value)."
         ),
     )
-    properties: dict[str, SOFT7EntityProperty] = Field(..., description="A dictionary of properties.")
+    properties: dict[str, SOFT7EntityProperty] = Field(
+        ..., description="A dictionary of properties."
+    )
 
     @validator("properties")
     def shapes_and_dimensions(
-        value: dict[str, SOFT7EntityProperty], values: dict[str, Any]
+        cls, value: dict[str, SOFT7EntityProperty], values: dict[str, Any]
     ) -> dict[str, SOFT7EntityProperty]:
         """Ensure the shape values are dimensions keys."""
         errors: list[tuple[str, str]] = []
