@@ -8,6 +8,7 @@ class BaseExt(metaclass=abc.ABCMeta):
     """
     Base class
     """
+
     def __init__(self, uid=None):
         pass
 

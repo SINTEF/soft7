@@ -2,6 +2,7 @@
 RDF (Turtle) serialization of S7 entities
 """
 import uuid
+
 from jinja2 import Template
 
 __ttl_template__ = """
@@ -95,19 +96,20 @@ class Turtle:
         Render turtle as string
         """
         template = Template(__ttl_template__)
-        output = template.render(base="http://example.com/entity",
-                                 name='Entity',
-                                 len=len,
-                                 enumerate=enumerate,
-                                 dict=entity,
-                                 uuid=lambda : str(uuid.uuid4()).replace('-','_'))
+        output = template.render(
+            base="http://example.com/entity",
+            name="Entity",
+            len=len,
+            enumerate=enumerate,
+            dict=entity,
+            uuid=lambda: str(uuid.uuid4()).replace("-", "_"),
+        )
         return output
-
 
     @staticmethod
     def dump(entity, file):
         """
         Render turtle into file
         """
-        with open (file, "w", encoding='utf8') as ttl:
+        with open(file, "w", encoding="utf8") as ttl:
             ttl.write(Turtle.dumps(entity))

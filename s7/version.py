@@ -2,6 +2,8 @@
 """
 
 import os
+
+
 def string():
     """_summary_
 
@@ -15,6 +17,6 @@ def string():
             if version:
                 return version
     except IOError as ex:
-        print ('Caught exception: ', ex)
+        print("Caught exception: ", ex)
 
     return "unknown (git checkout)"

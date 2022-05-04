@@ -1,7 +1,9 @@
 """Pydantic data models for SOFT7 entities/data models."""
 from enum import Enum
 from typing import Any, Optional
-from pydantic import BaseModel, validator, AnyUrl, Field
+
+from pydantic import AnyUrl, BaseModel, Field, validator
+
 
 class SOFT7EntityPropertyType(str, Enum):
     """Property type enumeration."""
@@ -94,8 +96,8 @@ class SOFT7Entity(BaseModel):
         ),
     )
     properties: dict[str, SOFT7EntityProperty] = Field(
-        ...,
-        description="A dictionary of properties.")
+        ..., description="A dictionary of properties."
+    )
 
     @validator("properties")
     def shapes_and_dimensions(
