@@ -1,22 +1,24 @@
-"""
-Simple in-memory document store
-"""
+"""Database document."""
+
 
 class Document:
-    """_summary_
-    """
-    def __init__(self, identity, data=None):
-        self._id = identity
+    """Document."""
+
+    def __init__(self, uid, data=None):
+        self._uid = uid
         self._data = data
 
     def update(self, document):
+        """Update document."""
         self.data.update(document)
         return self.data
 
     @property
-    def id(self):
-        return self._id
+    def uid(self):
+        """Unique document id."""
+        return self._uid
 
     @property
     def data(self):
+        """Document data."""
         return self._data

@@ -19,8 +19,8 @@ from oteapi.models import ResourceConfig
 from otelib import OTEClient
 from pydantic import Field, create_model
 
-from soft.pydantic_models.oteapi import HashableResourceConfig
-from soft.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
+from s7.pydantic_models.oteapi import HashableResourceConfig
+from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
 
 def _get_property(config: HashableResourceConfig, url: Optional[str] = None) -> Any:
@@ -42,7 +42,7 @@ def _get_property(config: HashableResourceConfig, url: Optional[str] = None) -> 
 #     config: HashableResourceConfig,
 # ) -> Any:
 #     """TEMPORARY - Get a property - local."""
-#     from soft.temporary.xlsparser import XLSParser
+#     from s7.temporary.xlsparser import XLSParser
 
 #     parser = XLSParser(config.configuration).get()
 

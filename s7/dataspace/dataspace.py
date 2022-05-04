@@ -1,44 +1,30 @@
 """
 Soft7 dataspace
 """
-import uuid
-from soft.storagestrategy import Context, Strategy
-from soft.dataspace.database import Database
+from s7.dataspace.database import Database
+
+# from s7.storagestrategy import Context, Strategy
+
 
 class Dataspace:
-    """_summary_
-    The S7 dataspace orchestrates databases for object state management.
+    """Data space."""
 
-    """
-    def __init__(self, strategy: Strategy):
+    def __init__(self, strategy):
         self._databases = {}
-        self._context = Context(strategy)
-
+        self._context = strategy
 
     def create_db(self, database):
+        """Create/Add a new database."""
         if database in self._databases:
-            raise RuntimeError('Database already created')
-
-        db = Database(database)
-        self._databases[database] = db
-        return db
-
+            raise ValueError(f"{database} already in known databases.")
+        new_database = Database(database)
+        self._databases[database] = new_database
+        return new_database
 
     def database(self, database):
-        """_summary_
-
-        Args:
-            database (_type_): _description_
-
-        Raises:
-            RuntimeError: _description_
-
-        Returns:
-            _type_: _description_
-        """
-        if not database in self._databases:
-            raise RuntimeError('Database not created')
-
+        """Return a database."""
+        if database not in self._databases:
+            raise ValueError(f"{database} not found in known databases.")
         return self._databases[database]
 
     def push(self):
@@ -54,10 +40,7 @@ class Dataspace:
         self._databases = {}
         self._context.read(self._databases)
 
-
-    def set_strategy(self, strategy: Strategy):
-        self._context = Context(strategy)
-
     @property
     def databases(self):
-        return [key for key in self._databases]
+        """Get all databases."""
+        return list(self._databases)
