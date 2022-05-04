@@ -16,8 +16,8 @@ import yaml
 from oteapi.models import ResourceConfig
 from pydantic import Field, create_model
 
-from soft.graph import Graph
-from soft.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
+from s7.graph import Graph
+from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
 TEST_KNOWLEDGE_BASE = Graph(
     [

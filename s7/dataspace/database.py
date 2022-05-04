@@ -1,7 +1,7 @@
 """Dataspace database."""
 from uuid import uuid4
 
-from soft.dataspace.document import Document
+from s7.dataspace.document import Document
 
 
 class Database:

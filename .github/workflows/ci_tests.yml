@@ -51,7 +51,7 @@ jobs:
         pip install safety
 
     - name: Run pylint
-      run: pylint --rcfile=pyproject.toml --extension-pkg-whitelist='pydantic' -- soft
+      run: pylint --rcfile=pyproject.toml --extension-pkg-whitelist='pydantic' -- s7
 
     - name: Run safety
       run: pip freeze | safety check --stdin

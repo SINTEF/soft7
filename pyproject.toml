@@ -51,7 +51,7 @@ Source = "https://github.com/SINTEF/soft7"
 Package = "https://pypi.org/project/soft7-pkg-quaat"
 
 [tool.flit.module]
-name = "soft"
+name = "s7"
 
 # Dev tool configurations
 [tool.mypy]
@@ -80,7 +80,7 @@ max-branches = 15
 
 # [tool.pytest.ini_options]
 # minversion = "6.0"
-# addopts = "-rs --cov=soft --cov-report=term --durations=10"
+# addopts = "-rs --cov=s7 --cov-report=term --durations=10"
 # filterwarnings = [
 #     "ignore:.*imp module.*:DeprecationWarning",
 #     "ignore:.*_yaml extension module.*:DeprecationWarning"

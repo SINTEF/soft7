@@ -1,9 +1,9 @@
 """
 Soft7 dataspace
 """
-from soft.dataspace.database import Database
+from s7.dataspace.database import Database
 
-# from soft.storagestrategy import Context, Strategy
+# from s7.storagestrategy import Context, Strategy
 
 
 class Dataspace:
