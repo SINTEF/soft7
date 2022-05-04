@@ -9,7 +9,8 @@ def string():
         string: version number
     """
     try:
-        with open(os.path.dirname(__file__) + "/VERSION", "r", encoding="utf-8") as handle:
+        filename = os.path.dirname(__file__) + "/VERSION"
+        with open(filename, "r", encoding="utf-8") as handle:
             version = handle.read().strip()
             if version:
                 return version

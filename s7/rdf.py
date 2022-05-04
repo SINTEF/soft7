@@ -1,14 +1,7 @@
-<<<<<<< HEAD:soft/rdf.py
-"""Create Turtle files."""
-=======
 """
 RDF (Turtle) serialization of S7 entities
 """
->>>>>>> 2-github-actions-for-unittesting:s7/rdf.py
 import uuid
-from jinja2 import Template
-
-
 from jinja2 import Template
 
 __ttl_template__ = """
@@ -97,25 +90,6 @@ class Turtle:
     """
 
     @staticmethod
-<<<<<<< HEAD:soft/rdf.py
-    def dumps(dict_):
-        """Serialize dict to Turtle string."""
-        template = Template(__ttl_template__)
-        output = template.render(
-            base="http://example.com/entity",
-            name="Entity",
-            len=len,
-            enumerate=enumerate,
-            dict=dict_,
-            uuid=lambda: str(uuid.uuid4()).replace("-", "_"),
-        )
-        return output
-
-    def dump(self, dict_, file):
-        """Serialize dict to Turtle string and dump as file."""
-        with open(file, "w", encoding="utf8") as ttl:
-            ttl.write(self.dumps(dict_))
-=======
     def dumps(entity):
         """
         Render turtle as string
@@ -137,4 +111,3 @@ class Turtle:
         """
         with open (file, "w", encoding='utf8') as ttl:
             ttl.write(Turtle.dumps(entity))
->>>>>>> 2-github-actions-for-unittesting:s7/rdf.py
