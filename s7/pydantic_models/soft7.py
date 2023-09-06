@@ -2,7 +2,8 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import AnyUrl, BaseModel, Field, validator
+from pydantic import ConfigDict, AnyUrl, BaseModel, Field
+from pydantic.functional_validators import model_validator
 
 
 class SOFT7EntityPropertyType(str, Enum):
@@ -49,14 +50,7 @@ class SOFT7DataEntity(BaseModel):
         except Exception as exc:
             raise AttributeError from exc
 
-    class Config:
-        """Pydantic configuration for 'SOFT7DataEntity'."""
-
-        extra = "forbid"
-        allow_mutation = False
-        frozen = True
-        validate_all = False
-        # arbitrary_types_allowed = True
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
 
 
 class SOFT7EntityProperty(BaseModel):
@@ -99,14 +93,30 @@ class SOFT7Entity(BaseModel):
         ..., description="A dictionary of properties."
     )
 
-    @validator("properties")
-    def shapes_and_dimensions(
-        cls, value: dict[str, SOFT7EntityProperty], values: dict[str, Any]
-    ) -> dict[str, SOFT7EntityProperty]:
+    @model_validator(mode="after")
+    def shapes_and_dimensions(self) -> "SOFT7Entity":
         """Ensure the shape values are dimensions keys."""
         errors: list[tuple[str, str]] = []
-        if not values.get("dimensions", None):
-            for property_name, property_value in value.items():
+        if self.dimensions:
+            for property_name, property_value in self.properties.items():
+                if property_value.shape and not all(
+                    dimension in self.dimensions
+                    for dimension in property_value.shape
+                ):
+                    wrong_dimensions = [
+                        dimension
+                        for dimension in property_value.shape
+                        if dimension not in self.dimensions
+                    ]
+                    errors.append(
+                        (
+                            property_name,
+                            "Contains shape dimensions that are not defined in "
+                            f"'dimensions': {wrong_dimensions}",
+                        )
+                    )
+        else:
+            for property_name, property_value in self.properties.items():
                 if property_value.shape:
                     errors.append(
                         (
@@ -114,22 +124,9 @@ class SOFT7Entity(BaseModel):
                             "Cannot have shape; no dimensions are defined.",
                         )
                     )
-        else:
-            for property_name, property_value in value.items():
-                if property_value.shape and not all(
-                    dimension in values.get("dimensions", {})
-                    for dimension in property_value.shape
-                ):
-                    errors.append(
-                        (
-                            property_name,
-                            "Contains shape dimensions that are not defined in "
-                            "'dimensions'.",
-                        )
-                    )
         if errors:
             raise ValueError(
-                "Property shape(s) and dimensions don't match.\n"
+                "Property shape(s) and dimensions do not match.\n"
                 + "\n".join(f"  {name}\n    {msg}" for name, msg in errors)
             )
-        return value
+        return self
