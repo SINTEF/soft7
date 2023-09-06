@@ -36,8 +36,10 @@ class Graph:
     def parse(self, uri, fmt="ttl"):
         """Create Graph from an ontology file."""
         graph = RDFGraph().parse(uri, format=fmt)
-        for s, p, o in graph.triples((None, None, None)):
-            self.append((s, p, o))
+        for triple in graph.triples(  # pylint: disable=not-an-iterable
+            (None, None, None)
+        ):
+            self.append(triple)
 
     def path(
         self,

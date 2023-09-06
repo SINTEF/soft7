@@ -1,6 +1,7 @@
 """
 Soft7 factory
 """
+# pylint: disable=unnecessary-lambda-assignment,unnecessary-direct-lambda-call
 import abc
 
 
@@ -48,12 +49,12 @@ def __dataspace_class_factory(name, meta, dataspace):
             database.document(self.id).update({key: value})
         )
     )(database)
-    attr = dict(
-        uriref=meta["uri"],
-        properties=meta["properties"],
-        __init__=initializer,
-        set_property=generic_setter,
-    )
+    attr = {
+        "uriref": meta["uri"],
+        "properties": meta["properties"],
+        "__init__": initializer,
+        "set_property": generic_setter,
+    }
 
     gen_dataspace_getset = lambda database: lambda key: lambda: property(
         lambda self: database.document(self.id).data[key]
