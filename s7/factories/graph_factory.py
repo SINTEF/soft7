@@ -178,11 +178,11 @@ def _get_property_local(
                         param_name: getter_func(
                             inner_entities[getter_func_param[0]], getter_func_param[1]
                         )
-                        for param_name, getter_func, getter_func_param in functions_dict[
-                            function_name
-                        ][
-                            "inputs"
-                        ]
+                        for (
+                            param_name,
+                            getter_func,
+                            getter_func_param,
+                        ) in functions_dict[function_name]["inputs"]
                     }
                 )
             else:
@@ -216,7 +216,7 @@ def create_outer_entity(
 
     """
     if isinstance(data_model, (str, Path)):
-        if not Path(data_model).resolve().exists:
+        if not Path(data_model).resolve().exists():
             raise FileNotFoundError(
                 f"Could not find a data model YAML file at {data_model!r}"
             )
@@ -290,29 +290,27 @@ def create_outer_entity(
     #                f"{missing_functions} not found in known (local) functions !"
     #            )
 
-    return create_model(
-        "OuterEntity",
+    return create_model(  # type: ignore[call-overload]
+        __model_name="OuterEntity",
         __config__=None,
         __base__=SOFT7DataEntity,
         __module__=__name__,
         __validators__=None,
+        __cls_kwargs__=None,
         **{
-            property_name: (
-                property_value.type_.py_cls,
-                Field(
-                    default_factory=lambda: _get_property_local(
-                        local_graph, inner_entities
-                    ),
-                    description=property_value.description,
-                    title=property_name.replace(" ", "_"),
-                    type=property_value.type_.py_cls,
-                    **{
-                        f"x-{field}": getattr(property_value, field)
-                        for field in property_value.__fields__
-                        if field not in ("description", "type_", "shape")
-                        and getattr(property_value, field)
-                    },
+            property_name: Field(  # type: ignore[pydantic-field]
+                default_factory=lambda: _get_property_local(
+                    local_graph, inner_entities
                 ),
+                description=property_value.description,
+                title=property_name.replace(" ", "_"),
+                type=property_value.type_.py_cls,
+                **{
+                    f"x-{field}": getattr(property_value, field)
+                    for field in property_value.__fields__
+                    if field not in ("description", "type_", "shape")
+                    and getattr(property_value, field)
+                },
             )
             for property_name, property_value in data_model.properties.items()
         },
