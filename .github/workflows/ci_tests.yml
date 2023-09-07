@@ -17,7 +17,7 @@ jobs:
       # pre-commit
       run_pre-commit: true
       python_version_pre-commit: '3.9'
-      skip_pre-commit_hooks: pylint
+      skip_pre-commit_hooks: pylint,pylint-tests
 
       # pylint & safety
       python_version_pylint_safety: '3.9'
