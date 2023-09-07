@@ -37,9 +37,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+testing = [
+    "pytest ~=7.4",
+    "pytest-cov ~=4.1",
+]
 dev = [
     "pre-commit ~=2.18",
     "pylint ~=2.13",
+    "pytest ~=7.4",
+    "pytest-cov ~=4.1",
 ]
 
 [project.urls]
@@ -71,17 +77,16 @@ disable = [
     "too-few-public-methods",
     "fixme",
     "no-self-argument",
-    "no-self-use",
 ]
 good-names = ["i", "j", "k", "ex", "Run", "_", "s", "p", "o"]
 max-bool-expr = 6
 max-args = 10
 max-branches = 15
 
-# [tool.pytest.ini_options]
-# minversion = "6.0"
-# addopts = "-rs --cov=s7 --cov-report=term --durations=10"
-# filterwarnings = [
-#     "ignore:.*imp module.*:DeprecationWarning",
-#     "ignore:.*_yaml extension module.*:DeprecationWarning"
-# ]
+[tool.pytest.ini_options]
+minversion = "7.4"
+addopts = "-rs --cov=s7 --cov-report=term"
+filterwarnings = [
+    "ignore:.*imp module.*:DeprecationWarning",
+    "ignore:.*_yaml extension module.*:DeprecationWarning"
+]
