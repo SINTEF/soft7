@@ -6,6 +6,10 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
 
+class EntityExistsError(Exception):
+    """Raised when an entity already exists."""
+
+
 class MongoStore:
     """
     Storing soft entities
@@ -47,7 +51,7 @@ class MongoStore:
             raise ValueError("entity does not contain a uri")
         uriref = entity["uri"]
         if self._coll.find_one({"uri": uriref}) is not None:
-            raise Exception(
+            raise EntityExistsError(
                 f"Entity with uri: `{uriref}` already exists. Use update() to modify."
             )
         self._coll.insert_one(entity)
