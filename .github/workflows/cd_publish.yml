@@ -22,12 +22,11 @@ jobs:
       install_extras: '[dev]'
       package_dirs: s7
       build_libs: flit
-      build_cmd: 'flit build'
-      # Make this 'true' when the secret PYPI_TOKEN has been setup.
-      publish_on_pypi: false
+      build_cmd: flit build
+      publish_on_pypi: true
 
       # Documentation
       update_docs: false
     secrets:
       PyPI_token: ${{ secrets.PYPI_TOKEN }}
-      PAT: ${{ secrets.PAT }}
+      PAT: ${{ secrets.TEAM40_PAT }}
