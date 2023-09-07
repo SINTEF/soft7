@@ -3,6 +3,10 @@ Soft7 factory
 """
 # pylint: disable=unnecessary-lambda-assignment,unnecessary-direct-lambda-call
 import abc
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import Any
 
 
 class BaseExt(metaclass=abc.ABCMeta):
@@ -18,21 +22,43 @@ def __class_factory(name, meta):
     """
     Factory function
     """
-    attr = {}
-    attr["uriref"] = meta["uri"]
-    attr["properties"] = meta["properties"]
-    gen_getset = lambda key: lambda: property(
-        lambda self: self.properties[key]["value"]
-        if "value" in self.properties[key]
-        else None,
-        lambda self, value: self.properties[key].update({"value": value}),
-        doc=meta["properties"][key]["description"]
-        if "description" in meta["properties"][key]
-        else None,
-    )
+    attr = {
+        "uriref": meta["uri"],
+        "properties": meta["properties"],
+    }
+
+    def gen_getset(key: str) -> property:
+        def getter(self) -> "Any":
+            return (
+                self.properties[key]["value"]
+                if "value" in self.properties[key]
+                else None
+            )
+
+        def setter(self, value: "Any") -> None:
+            self.properties[key].update({"value": value})
+
+        def deleter(self) -> None:
+            del self.properties[key]["value"]
+
+        return property(
+            getter,
+            setter,
+            deleter,
+            doc=meta["properties"][key]["description"]
+            if "description" in meta["properties"][key]
+            else None,
+        )
+
+    def initializer(self, **kwargs: "Any") -> None:
+        self.__dict__.update(
+            {key: value for key, value in kwargs.items() if key in meta["properties"]}
+        )
+
+    attr["__init__"] = initializer
 
     for key in meta["properties"]:
-        attr[key] = gen_getset(key)()
+        attr[key] = gen_getset(key)
 
     return type(name, (BaseExt,), attr)
 

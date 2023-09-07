@@ -43,6 +43,7 @@ repos:
       additional_dependencies:
         - pydantic
         - types-PyYAML
+      exclude: ^tests/.*$
 
   - repo: local
     hooks:
@@ -56,3 +57,15 @@ repos:
       types: [python]
       require_serial: true
       files: ^.*$
+      exclude: ^tests/.*$
+    - id: pylint-tests
+      name: pylint (tests)
+      entry: pylint
+      args:
+      - "--rcfile=pyproject.toml"
+      - "--extension-pkg-whitelist='pydantic'"
+      - "--disable=import-outside-toplevel"
+      language: python
+      types: [python]
+      require_serial: true
+      files: ^tests/.*$
