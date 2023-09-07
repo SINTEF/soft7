@@ -38,8 +38,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+testing = [
+    "pytest ~=7.4",
+    "pytest-cov ~=4.1",
+]
 dev = [
-    "pre-commit~=2.18",
+    "pre-commit ~=2.18",
+    "soft7[testing]",
 ]
 
 [project.urls]
@@ -62,3 +67,11 @@ warn_unused_configs = true
 show_error_codes = true
 allow_redefinition = true
 plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+minversion = "7.4"
+addopts = "-rs --cov=s7 --cov-report=term"
+filterwarnings = [
+    "ignore:.*imp module.*:DeprecationWarning",
+    "ignore:.*_yaml extension module.*:DeprecationWarning"
+]
