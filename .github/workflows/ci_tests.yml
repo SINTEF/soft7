@@ -24,7 +24,10 @@ jobs:
 
       run_pylint: true
       pylint_targets: s7
-      pylint_options: "--rcfile=pyproject.toml --extension-pkg-whitelist='pydantic'"
+      pylint_options: |
+        --rcfile=pyproject.toml
+        --extension-pkg-whitelist='pydantic'
+        --recursive=yes
 
       run_safety: true
 
