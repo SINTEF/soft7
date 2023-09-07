@@ -71,7 +71,6 @@ disable = [
     "too-few-public-methods",
     "fixme",
     "no-self-argument",
-    "no-self-use",
 ]
 good-names = ["i", "j", "k", "ex", "Run", "_", "s", "p", "o"]
 max-bool-expr = 6

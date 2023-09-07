@@ -74,7 +74,7 @@ def create_entity(
 
     """
     if isinstance(data_model, (str, Path)):
-        if not Path(data_model).resolve().exists:
+        if not Path(data_model).resolve().exists():
             raise FileNotFoundError(
                 f"Could not find a data model YAML file at {data_model!r}"
             )
@@ -103,27 +103,25 @@ def create_entity(
             "data model property names may not start with an underscore (_)"
         )
 
-    return create_model(
-        "DataSourceEntity",
+    return create_model(  # type: ignore[call-overload]
+        __model_name="DataSourceEntity",
         __config__=None,
         __base__=SOFT7DataEntity,
         __module__=__name__,
         __validators__=None,
+        __cls_kwargs__=None,
         **{
-            property_name: (
-                property_value.type_.py_cls,
-                Field(
-                    default_factory=lambda: _get_property(resource_config),
-                    description=property_value.description or "",
-                    title=property_name.replace(" ", "_"),
-                    type=property_value.type_.py_cls,
-                    **{
-                        f"x-{field}": getattr(property_value, field)
-                        for field in property_value.__fields__
-                        if field not in ("description", "type_", "shape")
-                        and getattr(property_value, field)
-                    },
-                ),
+            property_name: Field(  # type: ignore[pydantic-field]
+                default_factory=lambda: _get_property(resource_config),
+                description=property_value.description or "",
+                title=property_name.replace(" ", "_"),
+                type=property_value.type_.py_cls,
+                **{
+                    f"x-{field}": getattr(property_value, field)
+                    for field in property_value.__fields__
+                    if field not in ("description", "type_", "shape")
+                    and getattr(property_value, field)
+                },
             )
             for property_name, property_value in data_model.properties.items()
         },
