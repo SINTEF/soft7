@@ -1,8 +1,9 @@
 """Pydantic data models for SOFT7 entities/data models."""
+# pylint: disable=no-member,unsupported-membership-test
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import ConfigDict, AnyUrl, BaseModel, Field
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
 
 
@@ -100,8 +101,7 @@ class SOFT7Entity(BaseModel):
         if self.dimensions:
             for property_name, property_value in self.properties.items():
                 if property_value.shape and not all(
-                    dimension in self.dimensions
-                    for dimension in property_value.shape
+                    dimension in self.dimensions for dimension in property_value.shape
                 ):
                     wrong_dimensions = [
                         dimension

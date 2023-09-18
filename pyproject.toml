@@ -31,7 +31,7 @@ dependencies = [
     "Jinja2",
     "oteapi-core",
     "otelib",
-    "pydantic",
+    "pydantic>=2",
     "pymongo",
     "pyyaml",
     "rdflib",

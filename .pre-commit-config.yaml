@@ -41,7 +41,7 @@ repos:
     hooks:
     - id: mypy
       additional_dependencies:
-        - pydantic
+        - pydantic>=2
         - types-PyYAML
 
   - repo: local
