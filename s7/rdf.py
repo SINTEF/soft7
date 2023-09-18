@@ -82,7 +82,7 @@ __ttl_template__ = """
 :Entity_{{ entity_uuid }} soft:property :Property_{{ prop_uuid[property] }} .
 {% endfor %}
 
-"""
+"""  # noqa: E501
 
 
 class Turtle:

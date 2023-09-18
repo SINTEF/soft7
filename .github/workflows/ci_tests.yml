@@ -21,14 +21,7 @@ jobs:
 
       # pylint & safety
       python_version_pylint_safety: '3.9'
-
-      run_pylint: true
-      pylint_targets: s7
-      pylint_options: |
-        --rcfile=pyproject.toml
-        --extension-pkg-whitelist='pydantic'
-        --recursive=yes
-
+      run_pylint: false
       run_safety: true
 
       # Build Python package
@@ -39,3 +32,14 @@ jobs:
 
       # Documentation
       run_build_docs: false
+
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ruff
+        uses: chartboost/ruff-action@v1

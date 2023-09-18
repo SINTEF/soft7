@@ -22,7 +22,7 @@ class Database:
         """Get a document."""
         if uid is None:
             return self.insert()
-        if not uid in self._documents:
+        if uid not in self._documents:
             return self.insert(uid=uid)
 
         return self._documents[uid]

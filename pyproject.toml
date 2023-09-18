@@ -40,7 +40,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pre-commit ~=2.18",
-    "pylint ~=2.13",
 ]
 
 [project.urls]
