@@ -29,9 +29,9 @@ dynamic = ["version"]
 dependencies = [
     "graphviz",
     "Jinja2",
-    "oteapi-core",
+    "oteapi-core @ git+https://github.com/EMMC-ASBL/oteapi-core.git@cwa/close-308-support-pydantic-v1-and-v2",
     "otelib",
-    "pydantic>=2",
+    "pydantic~=2.3",
     "pymongo",
     "pyyaml",
     "rdflib",
