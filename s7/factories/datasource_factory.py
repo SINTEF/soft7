@@ -10,9 +10,11 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
+from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import Any, Optional, Type, Union
+from typing import TYPE_CHECKING
 
 import yaml
 from oteapi.models import ResourceConfig
@@ -22,8 +24,11 @@ from pydantic import Field, create_model
 from s7.pydantic_models.oteapi import HashableResourceConfig
 from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import Any
 
-def _get_property(config: HashableResourceConfig, url: Optional[str] = None) -> Any:
+
+def _get_property(config: HashableResourceConfig, url: str | None = None) -> "Any":
     """Get a property."""
     client = OTEClient(url or "http://localhost:8080")
     data_resource = client.create_dataresource(**config.dict())
@@ -40,13 +45,13 @@ def _get_property(config: HashableResourceConfig, url: Optional[str] = None) -> 
 
 # def _get_property_local(
 #     config: HashableResourceConfig,
-# ) -> Any:
+# ) -> "Any":
 #     """TEMPORARY - Get a property - local."""
 #     from s7.temporary.xlsparser import XLSParser
 
 #     parser = XLSParser(config.configuration).get()
 
-#     def __get_property_local(name: str) -> Any:
+#     def __get_property_local(name: str) -> "Any":
 #         if name in parser:
 #             return parser[name]
 
@@ -56,9 +61,9 @@ def _get_property(config: HashableResourceConfig, url: Optional[str] = None) -> 
 
 
 def create_entity(
-    data_model: Union[SOFT7Entity, Path, str, dict[str, Any]],
-    resource_config: Union[HashableResourceConfig, ResourceConfig, dict[str, Any]],
-) -> Type[SOFT7DataEntity]:
+    data_model: SOFT7Entity | Path | str | "dict[str, Any]",
+    resource_config: HashableResourceConfig | ResourceConfig | "dict[str, Any]",
+) -> type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
@@ -78,7 +83,7 @@ def create_entity(
             raise FileNotFoundError(
                 f"Could not find a data model YAML file at {data_model!r}"
             )
-        data_model: dict[str, Any] = yaml.safe_load(  # type: ignore[no-redef]
+        data_model = yaml.safe_load(
             Path(data_model).resolve().read_text(encoding="utf8")
         )
     if isinstance(data_model, dict):
@@ -96,7 +101,6 @@ def create_entity(
         )
     if not isinstance(resource_config, HashableResourceConfig):
         raise TypeError("resource_config must be a 'ResourceConfig' (from oteapi-core)")
-    resource_config: HashableResourceConfig  # type: ignore[no-redef]  # Satisfy mypy
 
     if any(property_name.startswith("_") for property_name in data_model.properties):
         raise ValueError(
@@ -105,7 +109,9 @@ def create_entity(
 
     field_definitions = {
         property_name: Field(
-            default_factory=lambda: _get_property(resource_config),
+            # mypy cannot recognize that resource_config is HashableResourceConfig
+            # even though it's checked above (see isinstance() check above)
+            default_factory=lambda: _get_property(resource_config),  # type: ignore[arg-type]  # noqa: E501
             description=property_value.description or "",
             title=property_name.replace(" ", "_"),
             type=property_value.type_.py_cls,

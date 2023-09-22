@@ -1,7 +1,8 @@
 """Pydantic data models for SOFT7 entities/data models."""
-# pylint: disable=no-member,unsupported-membership-test
+from __future__ import annotations
+
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
@@ -62,13 +63,13 @@ class SOFT7EntityProperty(BaseModel):
         description="A valid property type.",
         alias="type",
     )
-    shape: Optional[list[str]] = Field(
+    shape: list[str] | None = Field(
         None, description="List of dimensions making up the shape of the property."
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description="A human description of the property."
     )
-    unit: Optional[str] = Field(
+    unit: str | None = Field(
         None,
         description=(
             "The unit of the property. Would typically refer to other ontologies, like"
@@ -83,7 +84,7 @@ class SOFT7Entity(BaseModel):
 
     identity: AnyUrl = Field(..., description="The semantic reference for the entity.")
     description: str = Field("", description="A description of the entity.")
-    dimensions: Optional[dict[str, str]] = Field(
+    dimensions: dict[str, str] | None = Field(
         None,
         description=(
             "A dictionary or model of dimension names (key) and descriptions "

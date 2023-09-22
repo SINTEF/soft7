@@ -1,7 +1,6 @@
 """
 Soft7 factory
 """
-# pylint: disable=unnecessary-lambda-assignment,unnecessary-direct-lambda-call
 import abc
 
 
