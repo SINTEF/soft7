@@ -45,7 +45,7 @@ class SOFT7DataEntity(BaseModel):
         try:
             res = object.__getattribute__(self, name)
             if not name.startswith("_"):
-                if name in object.__getattribute__(self, "__fields__"):
+                if name in object.__getattribute__(self, "model_fields"):
                     return res(name)
             return res
         except Exception as exc:
