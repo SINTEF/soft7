@@ -17,18 +17,11 @@ jobs:
       # pre-commit
       run_pre-commit: true
       python_version_pre-commit: '3.9'
-      skip_pre-commit_hooks: pylint
 
       # pylint & safety
       python_version_pylint_safety: '3.9'
 
-      run_pylint: true
-      pylint_targets: s7
-      pylint_options: |
-        --rcfile=pyproject.toml
-        --extension-pkg-whitelist='pydantic'
-        --recursive=yes
-
+      run_pylint: false
       run_safety: true
 
       # Build Python package
