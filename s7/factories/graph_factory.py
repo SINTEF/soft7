@@ -5,8 +5,6 @@
 3. Internal data source SOFT7 entity.
 
 """
-from __future__ import annotations
-
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable
@@ -21,7 +19,7 @@ from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType
-    from typing import Any, Callable
+    from typing import Any, Callable, Union, Optional
 
 
 TEST_KNOWLEDGE_BASE = Graph(
@@ -92,7 +90,7 @@ class SOFT7EntityPropertyType(str, Enum):
 
 def _get_inputs(
     name: str, graph: Graph
-) -> "list[tuple[str, FunctionType | None, tuple[str, ...] | None]]":
+) -> "list[tuple[str, Optional[FunctionType], Optional[tuple[str, ...]]]]":
     """Retrieve all inputs/parameters for a function ONLY if it comes from internal
     entity."""
     expects = [expect for _, _, expect in graph.match(name, "expects", None)]
@@ -204,9 +202,9 @@ def _get_property_local(
 
 
 def create_outer_entity(
-    data_model: SOFT7Entity | Path | str | "dict[str, Any]",
+    data_model: "Union[SOFT7Entity, Path, str, dict[str, Any]]",
     inner_entities: dict[str, SOFT7DataEntity],
-    mapping: Graph | Iterable[tuple[str, str, str]],
+    mapping: "Union[Graph, Iterable[tuple[str, str, str]]]",
 ) -> type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
@@ -230,6 +228,7 @@ def create_outer_entity(
         )
     if isinstance(data_model, dict):
         data_model = SOFT7Entity(**data_model)
+
     if not isinstance(data_model, SOFT7Entity):
         raise TypeError("data_model must be a 'SOFT7Entity'")
 
@@ -240,6 +239,7 @@ def create_outer_entity(
 
     if isinstance(mapping, Iterable):
         mapping = Graph(list(mapping))
+
     if not isinstance(mapping, Graph):
         raise TypeError("mapping must be a Graph")
 

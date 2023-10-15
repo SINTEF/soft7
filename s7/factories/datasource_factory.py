@@ -10,8 +10,6 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -25,10 +23,10 @@ from s7.pydantic_models.oteapi import HashableResourceConfig
 from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
+    from typing import Any, Optional, Union
 
 
-def _get_property(config: HashableResourceConfig, url: str | None = None) -> "Any":
+def _get_property(config: HashableResourceConfig, url: "Optional[str]" = None) -> "Any":
     """Get a property."""
     client = OTEClient(url or "http://localhost:8080")
     data_resource = client.create_dataresource(**config.dict())
@@ -61,8 +59,8 @@ def _get_property(config: HashableResourceConfig, url: str | None = None) -> "An
 
 
 def create_entity(
-    data_model: SOFT7Entity | Path | str | "dict[str, Any]",
-    resource_config: HashableResourceConfig | ResourceConfig | "dict[str, Any]",
+    data_model: "Union[SOFT7Entity, Path, str, dict[str, Any]]",
+    resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
 ) -> type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 

@@ -1,8 +1,6 @@
 """Pydantic data models for SOFT7 entities/data models."""
-from __future__ import annotations
-
 from enum import Enum
-from typing import Any
+from typing import Any, Annotated, Optional
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
@@ -58,47 +56,57 @@ class SOFT7DataEntity(BaseModel):
 class SOFT7EntityProperty(BaseModel):
     """A SOFT7 Entity property."""
 
-    type_: SOFT7EntityPropertyType = Field(
-        ...,
-        description="A valid property type.",
-        alias="type",
-    )
-    shape: list[str] | None = Field(
-        None, description="List of dimensions making up the shape of the property."
-    )
-    description: str | None = Field(
-        None, description="A human description of the property."
-    )
-    unit: str | None = Field(
-        None,
-        description=(
-            "The unit of the property. Would typically refer to other ontologies, like"
-            " EMMO, QUDT or OM, or simply be a conventional symbol for the unit (e.g. "
-            "'km/h'). In future releases unit may be changed to a class."
+    type_: Annotated[
+        SOFT7EntityPropertyType,
+        Field(
+            description="A valid property type.",
+            alias="type",
         ),
-    )
+    ]
+    shape: Annotated[
+        Optional[list[str]],
+        Field(description="List of dimensions making up the shape of the property."),
+    ] = None
+    description: Annotated[
+        Optional[str], Field(description="A human description of the property.")
+    ] = None
+    unit: Annotated[
+        Optional[str],
+        Field(
+            description=(
+                "The unit of the property. Would typically refer to other ontologies, "
+                "like EMMO, QUDT or OM, or simply be a conventional symbol for the "
+                "unit (e.g. 'km/h'). In future releases unit may be changed to a class."
+            ),
+        ),
+    ] = None
 
 
 class SOFT7Entity(BaseModel):
     """A SOFT7 Entity."""
 
-    identity: AnyUrl = Field(..., description="The semantic reference for the entity.")
-    description: str = Field("", description="A description of the entity.")
-    dimensions: dict[str, str] | None = Field(
-        None,
-        description=(
-            "A dictionary or model of dimension names (key) and descriptions "
-            "(value)."
+    identity: Annotated[
+        AnyUrl, Field(description="The semantic reference for the entity.")
+    ]
+    description: Annotated[str, Field(description="A description of the entity.")] = ""
+    dimensions: Annotated[
+        Optional[dict[str, str]],
+        Field(
+            description=(
+                "A dictionary or model of dimension names (key) and descriptions "
+                "(value)."
+            ),
         ),
-    )
-    properties: dict[str, SOFT7EntityProperty] = Field(
-        ..., description="A dictionary of properties."
-    )
+    ] = None
+    properties: Annotated[
+        dict[str, SOFT7EntityProperty], Field(description="A dictionary of properties.")
+    ]
 
     @model_validator(mode="after")
     def shapes_and_dimensions(self) -> "SOFT7Entity":
         """Ensure the shape values are dimensions keys."""
         errors: list[tuple[str, str]] = []
+
         if self.dimensions:
             for property_name, property_value in self.properties.items():
                 if property_value.shape and not all(
@@ -125,9 +133,11 @@ class SOFT7Entity(BaseModel):
                             "Cannot have shape; no dimensions are defined.",
                         )
                     )
+
         if errors:
             raise ValueError(
                 "Property shape(s) and dimensions do not match.\n"
                 + "\n".join(f"  {name}\n    {msg}" for name, msg in errors)
             )
+
         return self
