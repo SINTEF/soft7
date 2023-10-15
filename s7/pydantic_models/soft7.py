@@ -5,15 +5,21 @@ from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator, field_validator
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Union
+    from typing import Union, Protocol
 
-    from s7.factories.datasource_factory import GetProperty
+    UnshapedPropertyType = Union[str, float, int, complex, dict, bool, bytes, bytearray]
+
+    class GetProperty(Protocol):
+        """Protocol for getting a property."""
+
+        def __call__(self, name: str) -> Any:
+            ...
 
 
 SOFT7EntityPropertyType = Literal[
     "string", "float", "int", "complex", "dict", "boolean", "bytes", "bytearray"
 ]
-map_soft_to_py_types: dict[str, type] = {
+map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
     "string": str,
     "float": float,
     "int": int,
@@ -27,6 +33,8 @@ map_soft_to_py_types: dict[str, type] = {
 
 class SOFT7DataEntity(BaseModel):
     """Generic Data source entity"""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
     def __getattribute__(self, name: str) -> Any:
         """Get an attribute.
@@ -43,8 +51,6 @@ class SOFT7DataEntity(BaseModel):
         except Exception as exc:
             raise AttributeError from exc
 
-    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
-
 
 class SOFT7EntityProperty(BaseModel):
     """A SOFT7 Entity property."""
@@ -56,13 +62,16 @@ class SOFT7EntityProperty(BaseModel):
             alias="type",
         ),
     ]
+
     shape: Annotated[
         Optional[list[str]],
         Field(description="List of dimensions making up the shape of the property."),
     ] = None
+
     description: Annotated[
         Optional[str], Field(description="A human description of the property.")
     ] = None
+
     unit: Annotated[
         Optional[str],
         Field(
@@ -81,7 +90,9 @@ class SOFT7Entity(BaseModel):
     identity: Annotated[
         AnyUrl, Field(description="The semantic reference for the entity.")
     ]
+
     description: Annotated[str, Field(description="A description of the entity.")] = ""
+
     dimensions: Annotated[
         Optional[dict[str, str]],
         Field(
@@ -91,6 +102,7 @@ class SOFT7Entity(BaseModel):
             ),
         ),
     ] = None
+
     properties: Annotated[
         dict[str, SOFT7EntityProperty], Field(description="A dictionary of properties.")
     ]

@@ -10,6 +10,7 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
+from copy import deepcopy
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
@@ -23,54 +24,25 @@ from s7.pydantic_models.oteapi import HashableResourceConfig
 from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity, map_soft_to_py_types
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Optional, Union, Protocol
+    from typing import Any, Optional, Union
 
-    class GetProperty(Protocol):
-        """Protocol for getting a property."""
+    from pydantic import ValidationInfo
 
-        def __call__(self, name: str) -> Any:
-            ...
+    from s7.pydantic_models.soft7 import (
+        GetProperty,
+        UnshapedPropertyType,
+        SOFT7EntityProperty,
+    )
 
-
-def _get_property(
-    config: HashableResourceConfig, url: "Optional[str]" = None
-) -> "GetProperty":
-    """Get a property."""
-    client = OTEClient(url or "http://localhost:8080")
-    data_resource = client.create_dataresource(**config.model_dump())
-    result: "dict[str, Any]" = json.loads(data_resource.get())
-
-    # Remove unused variables from memory
-    del client
-    del data_resource
-
-    def __get_property(name: str) -> "Any":
-        if name in result:
-            return result[name]
-
-        raise AttributeError(f"{name!r} could not be determined")
-
-    return __get_property
+    ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
+    PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
 
 
-def create_entity(
+def _parse_inputs(
     data_model: "Union[SOFT7Entity, dict[str, Any], Path, str]",
     resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
-) -> type[SOFT7DataEntity]:
-    """Create and return a SOFT7 entity wrapped as a pydantic model.
-
-    Parameters:
-        data_model: A SOFT7 data model entity or a string/path to a YAML file of the
-            data model.
-        resource_config: A
-            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/
-            all_models/#oteapi.models.ResourceConfig)
-            or a valid dictionary that can be used to instantiate it.
-
-    Returns:
-        A SOFT7 entity class wrapped as a pydantic data model.
-
-    """
+) -> tuple[SOFT7Entity, HashableResourceConfig]:
+    """Parse inputs for creating a SOFT7 Data Source entity."""
     # Handle the case of data model being a string/path to a YAML file
     if isinstance(data_model, (str, Path)):
         data_model_path = Path(data_model).resolve()
@@ -116,21 +88,124 @@ def create_entity(
             f"{type(resource_config)}"
         )
 
+    return data_model, resource_config
+
+
+def _validate_shape(
+    cls: type[SOFT7DataEntity], value: "PropertyType", info: "ValidationInfo"
+) -> "PropertyType":
+    """Validate the shape of a property if a shape is defined.
+
+    This is a validator to be used with `pydantic.field_validator` in `mode="after"`.
+    """
+    value_shape: list[int] = []
+
+    # Iterate over the property value until we reach the innermost value(s).
+    # Ensure that all values are of the same type within any single tuple,
+    # as well as that they are of the same length, if that type is again a tuple.
+    iter_value = deepcopy(value)
+    while isinstance(iter_value, tuple):
+        iter_value_length = len(iter_value)
+
+        value_shape.append(iter_value_length)
+
+        inner_type = type(iter_value[0])
+        inner_value_length = (
+            len(iter_value[0]) if isinstance(iter_value[0], tuple) else 0
+        )
+        if iter_value_length > 1:
+            for inner_value in iter_value[1:]:
+                if type(inner_value) is not inner_type:
+                    raise TypeError(
+                        "All values in a property tuple must be of the same type, "
+                        f"here {inner_type}, but found {type(inner_value)}"
+                    )
+
+                if inner_value_length:
+                    if len(inner_value) != inner_value_length:
+                        raise ValueError(
+                            "All values in a property tuple must be of the same "
+                            f"length, here {inner_value_length}, but found "
+                            f"{len(inner_value)}"
+                        )
+
+        iter_value = iter_value[0]
+
+
+def _generate_property_type(
+    value: "SOFT7EntityProperty", dimensions: "Optional[dict[str, str]]"
+) -> "PropertyType":
+    """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
+    if value.shape:
+        return tuple[
+            Annotated[_generate_property_type(value), Field(validate=_validate_shape)],
+            ...,
+        ]
+
+    if value.type_ == "object":
+        return dict[str, Annotated[_generate_property_type(value), Field(...)]]
+
+    return map_soft_to_py_types[value.type_]
+
+
+def _get_property(
+    config: HashableResourceConfig, url: "Optional[str]" = None
+) -> "GetProperty":
+    """Get a property."""
+    client = OTEClient(url or "http://localhost:8080")
+    data_resource = client.create_dataresource(**config.model_dump())
+    result: "dict[str, Any]" = json.loads(data_resource.get())
+
+    # Remove unused variables from memory
+    del client
+    del data_resource
+
+    def __get_property(name: str) -> "Any":
+        if name in result:
+            return result[name]
+
+        raise AttributeError(f"{name!r} could not be determined")
+
+    return __get_property
+
+
+def create_entity(
+    data_model: "Union[SOFT7Entity, dict[str, Any], Path, str]",
+    resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
+) -> type[SOFT7DataEntity]:
+    """Create and return a SOFT7 entity wrapped as a pydantic model.
+
+    Parameters:
+        data_model: A SOFT7 data model entity or a string/path to a YAML file of the
+            data model.
+        resource_config: A
+            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/
+            all_models/#oteapi.models.ResourceConfig)
+            or a valid dictionary that can be used to instantiate it.
+
+    Returns:
+        A SOFT7 entity class wrapped as a pydantic data model.
+
+    """
+    data_model, resource_config = _parse_inputs(data_model, resource_config)
+
+    # TODO: Create private fields for the top-level data properties:
+    #       - dimensions (Use for shape validation)
+    #       - description (Use as doc-string)
+    #       - identity (Use for back-referencing to the data model)
+
     field_definitions = {
         property_name: Annotated[
-            map_soft_to_py_types[property_value.type_],
+            _generate_property_type(property_value),
             Field(
-                # mypy cannot recognize that resource_config is HashableResourceConfig
-                # even though it's checked above (see isinstance() check above)
-                default_factory=lambda: _get_property(resource_config),  # type: ignore[arg-type]  # noqa: E501
+                default_factory=lambda: _get_property(resource_config),
                 description=property_value.description or "",
                 title=property_name.replace(" ", "_"),
-                validate_default=True,
                 json_schema_extra={
                     f"x-{field}": getattr(property_value, field)
                     for field in property_value.model_fields
                     if (
-                        field not in ("description", "type_", "shape")
+                        field not in ("description", "type_")
                         and getattr(property_value, field)
                     )
                 },
@@ -140,7 +215,7 @@ def create_entity(
     }
 
     return create_model(
-        "DataSourceEntity",
+        "DataSource",
         __config__=None,
         __base__=SOFT7DataEntity,
         __module__=__name__,
