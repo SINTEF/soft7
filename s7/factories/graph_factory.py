@@ -5,9 +5,10 @@
 3. Internal data source SOFT7 entity.
 
 """
+from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Annotated
 
 import yaml
 
@@ -15,7 +16,7 @@ from oteapi.models import ResourceConfig
 from pydantic import Field, create_model
 
 from s7.graph import Graph
-from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
+from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity, map_soft_to_py_types
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType
@@ -296,20 +297,25 @@ def create_outer_entity(
     #            )
 
     field_definitions = {
-        property_name: Field(
-            default_factory=lambda: _get_property_local(local_graph, inner_entities),
-            description=property_value.description,
-            title=property_name.replace(" ", "_"),
-            type=property_value.type_.py_cls,
-            json_schema_extra={
-                f"x-{field}": getattr(property_value, field)
-                for field in property_value.model_fields
-                if (
-                    field not in ("description", "type_", "shape")
-                    and getattr(property_value, field)
-                )
-            },
-        )
+        property_name: Annotated[
+            map_soft_to_py_types[property_value.type_],
+            Field(
+                default_factory=lambda: _get_property_local(
+                    local_graph, inner_entities
+                ),
+                description=property_value.description,
+                title=property_name.replace(" ", "_"),
+                validate_default=True,
+                json_schema_extra={
+                    f"x-{field}": getattr(property_value, field)
+                    for field in property_value.model_fields
+                    if (
+                        field not in ("description", "type_", "shape")
+                        and getattr(property_value, field)
+                    )
+                },
+            ),
+        ]
         for property_name, property_value in data_model.properties.items()
     }
 

@@ -1,36 +1,28 @@
 """Pydantic data models for SOFT7 entities/data models."""
-from enum import Enum
-from typing import Any, Annotated, Optional
+from typing import Any, Annotated, Optional, TYPE_CHECKING, Literal
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
-from pydantic.functional_validators import model_validator
+from pydantic.functional_validators import model_validator, field_validator
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import Union
+
+    from s7.factories.datasource_factory import GetProperty
 
 
-class SOFT7EntityPropertyType(str, Enum):
-    """Property type enumeration."""
-
-    STR = "string"
-    FLOAT = "float"
-    INT = "int"
-    COMPLEX = "complex"
-    DICT = "dict"
-    BOOLEAN = "boolean"
-    BYTES = "bytes"
-    BYTEARRAY = "bytearray"
-
-    @property
-    def py_cls(self) -> type:
-        """Get the equivalent Python cls."""
-        return {
-            self.STR: str,
-            self.FLOAT: float,
-            self.INT: int,
-            self.COMPLEX: complex,
-            self.DICT: dict,
-            self.BOOLEAN: bool,
-            self.BYTES: bytes,
-            self.BYTEARRAY: bytearray,
-        }[self]
+SOFT7EntityPropertyType = Literal[
+    "string", "float", "int", "complex", "dict", "boolean", "bytes", "bytearray"
+]
+map_soft_to_py_types: dict[str, type] = {
+    "string": str,
+    "float": float,
+    "int": int,
+    "complex": complex,
+    "dict": dict,
+    "boolean": bool,
+    "bytes": bytes,
+    "bytearray": bytearray,
+}
 
 
 class SOFT7DataEntity(BaseModel):
@@ -42,11 +34,12 @@ class SOFT7DataEntity(BaseModel):
         This function will _always_ be called whenever an attribute is accessed.
         """
         try:
-            res = object.__getattribute__(self, name)
-            if not name.startswith("_"):
-                if name in object.__getattribute__(self, "model_fields"):
-                    return res(name)
-            return res
+            attr_value: "Union[Any, GetProperty]" = object.__getattribute__(self, name)
+
+            if name in object.__getattribute__(self, "model_fields"):
+                return attr_value(name)
+
+            return attr_value
         except Exception as exc:
             raise AttributeError from exc
 
@@ -101,6 +94,29 @@ class SOFT7Entity(BaseModel):
     properties: Annotated[
         dict[str, SOFT7EntityProperty], Field(description="A dictionary of properties.")
     ]
+
+    @field_validator("properties", mode="after")
+    @classmethod
+    def validate_properties(
+        cls, properties: dict[str, SOFT7EntityProperty]
+    ) -> dict[str, SOFT7EntityProperty]:
+        """Validate properties
+
+        1. `properties` cannot be an empty dict.
+        2. Ensure there are no "private" properties, i.e., property names starting with
+           an underscore (`_`).
+
+        """
+        if not properties:
+            raise ValueError("properties must not be empty.")
+
+        if any(property_name.startswith("_") for property_name in properties):
+            raise ValueError(
+                "property names may not be 'private', i.e., start with an underscore "
+                "(_)"
+            )
+
+        return properties
 
     @model_validator(mode="after")
     def shapes_and_dimensions(self) -> "SOFT7Entity":
