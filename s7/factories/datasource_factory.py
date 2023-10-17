@@ -10,10 +10,9 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
-from copy import deepcopy
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast as type_cast
 
 import yaml
 from oteapi.models import ResourceConfig
@@ -32,7 +31,6 @@ from s7.pydantic_models.soft7 import (
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any, Optional, Union, Literal
 
-    from pydantic import ValidationInfo
     from pydantic.main import Model
 
     from s7.pydantic_models.soft7 import (
@@ -98,62 +96,26 @@ def _parse_inputs(
     return data_model, resource_config
 
 
-def _validate_shape(
-    cls: type[SOFT7DataSource], value: "PropertyType", info: "ValidationInfo"
-) -> "PropertyType":
-    """Validate the shape of a property if a shape is defined.
-
-    This is a validator to be used with `pydantic.field_validator` in `mode="after"`.
-    """
-    value_shape: list[int] = []
-
-    # Iterate over the property value until we reach the innermost value(s).
-    # Ensure that all values are of the same type within any single tuple,
-    # as well as that they are of the same length, if that type is again a tuple.
-    iter_value = deepcopy(value)
-    while isinstance(iter_value, tuple):
-        iter_value_length = len(iter_value)
-
-        value_shape.append(iter_value_length)
-
-        inner_type = type(iter_value[0])
-        inner_value_length = (
-            len(iter_value[0]) if isinstance(iter_value[0], tuple) else 0
-        )
-        if iter_value_length > 1:
-            for inner_value in iter_value[1:]:
-                if type(inner_value) is not inner_type:
-                    raise TypeError(
-                        "All values in a property tuple must be of the same type, "
-                        f"here {inner_type}, but found {type(inner_value)}"
-                    )
-
-                if inner_value_length:
-                    if len(inner_value) != inner_value_length:
-                        raise ValueError(
-                            "All values in a property tuple must be of the same "
-                            f"length, here {inner_value_length}, but found "
-                            f"{len(inner_value)}"
-                        )
-
-        iter_value = iter_value[0]
-
-
 def _generate_dimensions_docstring(data_model: "SOFT7Entity") -> str:
     """Generated a docstring for the dimensions model."""
     _, _, name = parse_identity(data_model.identity)
-    attributes = [
-        f"{dimension_name} (int): {dimension_description}\n"
-        for dimension_name, dimension_description in data_model.dimensions
-    ]
+
+    attributes = (
+        [
+            f"{dimension_name} (int): {dimension_description}\n"
+            for dimension_name, dimension_description in data_model.dimensions.items()
+        ]
+        if data_model.dimensions
+        else []
+    )
 
     return f"""DataSourceDimensions
 
     Dimensions for the {name} SOFT7 data source.
 
-    Identity: {data_model.identity}
+    SOFT7 Entity: {data_model.identity}
 
-    Attributes:
+    {'Attributes:' if attributes else ''}
         {(' ' * 8).join(attributes)}
     """
 
@@ -166,30 +128,36 @@ def _generate_model_docstring(
 
     description = data_model.description.replace("\n", "\n    ")
 
-    dimensions = [
-        f"{dimension_name} (int): {dimension_description}\n"
-        for dimension_name, dimension_description in data_model.dimensions
-    ]
+    dimensions = (
+        [
+            f"{dimension_name} (int): {dimension_description}\n"
+            for dimension_name, dimension_description in data_model.dimensions.items()
+        ]
+        if data_model.dimensions
+        else []
+    )
 
-    properties = [
-        f"{property_name} "
-        f"({_generate_property_type(property_value, dimensions_data)}): "
-        f"{property_value.description}\n"
-        for property_name, property_value in data_model.properties.items()
-    ]
+    properties = []
+    for property_name, property_value in data_model.properties.items():
+        property_type = _generate_property_type(property_value, dimensions_data)
+
+        properties.append(
+            f"{property_name} ({type_cast('str', property_type)}): "
+            f"{property_value.description}\n"
+        )
 
     return f"""{name}
 
     {description}
 
-    SOFT7 Metadata:
+    SOFT7 Entity Metadata:
         Identity: {data_model.identity}
 
         Namespace: {namespace}
         Version: {version if version else "N/A"}
         Name: {name}
 
-    Dimensions:
+    {'Dimensions:' if dimensions else 'There are no dimensions defined.'}
         {(' ' * 8).join(dimensions)}
 
     Attributes:
@@ -207,8 +175,8 @@ def _generate_property_type(
     if value.shape:
         # Go through the dimensions in reversed order and nest the property type in on
         # itself.
-        for dimension_name in value.shape.reverse():
-            if dimension_name not in dimensions.model_fields:
+        for dimension_name in reversed(value.shape):
+            if not hasattr(dimensions, dimension_name):
                 raise ValueError(
                     f"Dimension {dimension_name!r} is not defined in the data model"
                 )
@@ -222,9 +190,9 @@ def _generate_property_type(
                 )
 
             # The dimension defines the number of times the property type is repeated.
-            property_type = type((property_type,) * dimension)
+            property_type = type((property_type,) * dimension)  # type: ignore[assignment]
 
-    return property_type
+    return property_type  # type: ignore[return-value]
 
 
 def _get_data(
@@ -326,9 +294,8 @@ def create_entity(
     namespace, version, name = parse_identity(data_model.identity)
 
     # Create the dimensions model
-    dimensions = {}
-    if data_model.dimensions:
-        dimensions = {
+    dimensions = (
+        {
             dimension_name: Annotated[
                 int,
                 Field(
@@ -336,8 +303,11 @@ def create_entity(
                     description=dimension_description,
                 ),
             ]
-            for dimension_name, dimension_description in data_model.dimensions
+            for dimension_name, dimension_description in data_model.dimensions.items()
         }
+        if data_model.dimensions
+        else {}
+    )
 
     dimensions_model = create_model(
         f"{name.replace(' ', '')}Dimensions",
@@ -353,29 +323,30 @@ def create_entity(
     # Create the SOFT7 metadata fields for the data source model
     # All of these fields will be excluded from the data source model represntation as
     # well as the serialized JSON schema or Python dictionary.
-    soft7_metadata = {
+    soft7_metadata: dict[str, tuple[Union[type, object], "Any"]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
-        # Note, Field() returns a FieldInfo instance.
-        "dimensions": tuple(
-            dimensions_model, Field(dimensions_model_instance, repr=False, exclude=True)
+        # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
+        "dimensions": (
+            dimensions_model,
+            Field(dimensions_model_instance, repr=False, exclude=True),
         ),
-        "identity": tuple(
+        "identity": (
             data_model.model_fields["identity"].rebuild_annotation(),
             Field(data_model.identity, repr=False, exclude=True),
         ),
-        "namespace": tuple(str, Field(namespace, repr=False, exclude=True)),
-        "version": tuple(Optional[str], Field(version, repr=False, exclude=True)),
-        "name": tuple(str, Field(name, repr=False, exclude=True)),
+        "namespace": (str, Field(namespace, repr=False, exclude=True)),
+        "version": (Optional[str], Field(version, repr=False, exclude=True)),
+        "name": (str, Field(name, repr=False, exclude=True)),
     }
 
     # Generate the data source model class docstring
-    __doc__ = _generate_model_docstring(data_model)
+    __doc__ = _generate_model_docstring(data_model, dimensions_model_instance)
 
     # Create the data source model's properties
-    field_definitions = {
+    field_definitions: dict[str, tuple["PropertyType", "Any"]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
-        # Note, Field() returns a FieldInfo instance.
-        property_name: tuple(
+        # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
+        property_name: (
             _generate_property_type(property_value, dimensions_model_instance),
             Field(
                 default_factory=lambda: _get_data(resource_config, "properties"),
