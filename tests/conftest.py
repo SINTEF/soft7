@@ -1,10 +1,10 @@
-"""Pytest fixtures for `pydantic_models`."""
+"""Pytest fixtures for all tests."""
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:
-    from typing import Union
+    from typing import Union, Any
 
 
 @pytest.fixture
@@ -37,5 +37,18 @@ def soft_entity_init() -> "dict[str, Union[str, dict]]":
                 "description": "Atomic radius.",
                 "unit": "Å",
             },
+        },
+    }
+
+
+@pytest.fixture
+def soft_datasource_init() -> "dict[str, Any]":
+    return {
+        "dimensions": {"N": 5},
+        "properties": {
+            "atom": ["Si", "Al", "O", "Cu", "Co"],
+            "electrons": [14, 13, 8, 29, 27],
+            "mass": [28.085, 26.982, 15.999, 63.546, 58.933],
+            "radius": [1.10, 1.25, 0.6, 1.35, 1.35],
         },
     }
