@@ -44,35 +44,34 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def _parse_inputs(
-    data_model: "Union[SOFT7Entity, dict[str, Any], Path, str]",
+    entity: "Union[SOFT7Entity, dict[str, Any], Path, str]",
     resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
 ) -> tuple[SOFT7Entity, HashableResourceConfig]:
     """Parse inputs for creating a SOFT7 Data Source entity."""
     # Handle the case of data model being a string/path to a YAML file
-    if isinstance(data_model, (str, Path)):
-        data_model_path = Path(data_model).resolve()
+    if isinstance(entity, (str, Path)):
+        entity_path = Path(entity).resolve()
 
-        if not data_model_path.exists():
+        if not entity_path.exists():
             raise FileNotFoundError(
-                f"Could not find a data model YAML file at {data_model_path}"
+                f"Could not find a data model YAML file at {entity_path}"
             )
 
-        data_model = yaml.safe_load(data_model_path.read_text(encoding="utf8"))
+        entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
 
-        if not isinstance(data_model, dict):
+        if not isinstance(entity, dict):
             raise TypeError(
-                f"Data model YAML file at {data_model_path} did not contain a "
-                "dictionary"
+                f"Data model YAML file at {entity_path} did not contain a " "dictionary"
             )
 
     # Now the data model is either a SOFT7Entity instance or a dictionary, ready to be
     # used to create the SOFT7Entity instance.
-    if isinstance(data_model, dict):
-        data_model = SOFT7Entity(**data_model)
+    if isinstance(entity, dict):
+        entity = SOFT7Entity(**entity)
 
-    if not isinstance(data_model, SOFT7Entity):
+    if not isinstance(entity, SOFT7Entity):
         raise TypeError(
-            f"data_model must be a 'SOFT7Entity', instead it was a {type(data_model)}"
+            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
         )
 
     # Handle the case of resource_config being a dictionary or a "pure" OTEAPI Core
@@ -93,19 +92,19 @@ def _parse_inputs(
             f"{type(resource_config)}"
         )
 
-    return data_model, resource_config
+    return entity, resource_config
 
 
-def _generate_dimensions_docstring(data_model: "SOFT7Entity") -> str:
+def _generate_dimensions_docstring(entity: "SOFT7Entity") -> str:
     """Generated a docstring for the dimensions model."""
-    _, _, name = parse_identity(data_model.identity)
+    _, _, name = parse_identity(entity.identity)
 
     attributes = (
         [
             f"{dimension_name} (int): {dimension_description}\n"
-            for dimension_name, dimension_description in data_model.dimensions.items()
+            for dimension_name, dimension_description in entity.dimensions.items()
         ]
-        if data_model.dimensions
+        if entity.dimensions
         else []
     )
 
@@ -113,32 +112,30 @@ def _generate_dimensions_docstring(data_model: "SOFT7Entity") -> str:
 
     Dimensions for the {name} SOFT7 data source.
 
-    SOFT7 Entity: {data_model.identity}
+    SOFT7 Entity: {entity.identity}
 
     {'Attributes:' if attributes else ''}
         {(' ' * 8).join(attributes)}
     """
 
 
-def _generate_model_docstring(
-    data_model: "SOFT7Entity", dimensions_data: "Model"
-) -> str:
+def _generate_model_docstring(entity: "SOFT7Entity", dimensions_data: "Model") -> str:
     """Generated a docstring for the data source model."""
-    namespace, version, name = parse_identity(data_model.identity)
+    namespace, version, name = parse_identity(entity.identity)
 
-    description = data_model.description.replace("\n", "\n    ")
+    description = entity.description.replace("\n", "\n    ")
 
     dimensions = (
         [
             f"{dimension_name} (int): {dimension_description}\n"
-            for dimension_name, dimension_description in data_model.dimensions.items()
+            for dimension_name, dimension_description in entity.dimensions.items()
         ]
-        if data_model.dimensions
+        if entity.dimensions
         else []
     )
 
     properties = []
-    for property_name, property_value in data_model.properties.items():
+    for property_name, property_value in entity.properties.items():
         property_type = _generate_property_type(property_value, dimensions_data)
 
         properties.append(
@@ -151,7 +148,7 @@ def _generate_model_docstring(
     {description}
 
     SOFT7 Entity Metadata:
-        Identity: {data_model.identity}
+        Identity: {entity.identity}
 
         Namespace: {namespace}
         Version: {version if version else "N/A"}
@@ -270,15 +267,15 @@ def _get_data(
     return __get_data
 
 
-def create_entity(
-    data_model: "Union[SOFT7Entity, dict[str, Any], Path, str]",
+def create_datasource(
+    entity: "Union[SOFT7Entity, dict[str, Any], Path, str]",
     resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
-) -> type[SOFT7DataSource]:
-    """Create and return a SOFT7 entity wrapped as a pydantic model.
+) -> SOFT7DataSource:
+    """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.
 
     Parameters:
-        data_model: A SOFT7 data model entity or a string/path to a YAML file of the
-            data model.
+        entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
+            entity.
         resource_config: A
             [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/
             all_models/#oteapi.models.ResourceConfig)
@@ -288,10 +285,10 @@ def create_entity(
         A SOFT7 entity class wrapped as a pydantic data model.
 
     """
-    data_model, resource_config = _parse_inputs(data_model, resource_config)
+    entity, resource_config = _parse_inputs(entity, resource_config)
 
     # Split the identity into its parts
-    namespace, version, name = parse_identity(data_model.identity)
+    namespace, version, name = parse_identity(entity.identity)
 
     # Create the dimensions model
     dimensions = (
@@ -303,9 +300,9 @@ def create_entity(
                     description=dimension_description,
                 ),
             ]
-            for dimension_name, dimension_description in data_model.dimensions.items()
+            for dimension_name, dimension_description in entity.dimensions.items()
         }
-        if data_model.dimensions
+        if entity.dimensions
         else {}
     )
 
@@ -315,7 +312,7 @@ def create_entity(
         __base__=None,
         __module__=__name__,
         __validators__=None,
-        __cls_kwargs__={"__doc__": _generate_dimensions_docstring(data_model)},
+        __cls_kwargs__={"__doc__": _generate_dimensions_docstring(entity)},
         **dimensions,
     )
     dimensions_model_instance = dimensions_model()
@@ -331,8 +328,8 @@ def create_entity(
             Field(dimensions_model_instance, repr=False, exclude=True),
         ),
         "identity": (
-            data_model.model_fields["identity"].rebuild_annotation(),
-            Field(data_model.identity, repr=False, exclude=True),
+            entity.model_fields["identity"].rebuild_annotation(),
+            Field(entity.identity, repr=False, exclude=True),
         ),
         "namespace": (str, Field(namespace, repr=False, exclude=True)),
         "version": (Optional[str], Field(version, repr=False, exclude=True)),
@@ -340,7 +337,7 @@ def create_entity(
     }
 
     # Generate the data source model class docstring
-    __doc__ = _generate_model_docstring(data_model, dimensions_model_instance)
+    __doc__ = _generate_model_docstring(entity, dimensions_model_instance)
 
     # Create the data source model's properties
     field_definitions: dict[str, tuple["PropertyType", "Any"]] = {
@@ -362,7 +359,7 @@ def create_entity(
                 },
             ),
         )
-        for property_name, property_value in data_model.properties.items()
+        for property_name, property_value in entity.properties.items()
     }
 
     # Ensure there is no overlap between the SOFT7 metadata fields and the data source
@@ -374,7 +371,7 @@ def create_entity(
             "metadata fields."
         )
 
-    return create_model(
+    return create_model(  # type: ignore[call-arg]
         name.replace(" ", ""),
         __config__=None,
         __base__=SOFT7DataSource,
@@ -387,4 +384,4 @@ def create_entity(
             # Data source properties
             **field_definitions,
         },
-    )
+    )()
