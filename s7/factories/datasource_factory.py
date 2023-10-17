@@ -1,9 +1,9 @@
-"""Generate SOFT7 entities based on basic information:
+"""Generate SOFT7 entity instances based on basic information:
 
 1. Data source (DB, File, Webpage, ...)
 2. Generic data source parser
 3. Data source parser configuration
-4. SOFT7 entity data model.
+4. SOFT7 entity (data model).
 
 Parts 2 and 3 are together considered to produce the "specific parser".
 Parts 1 through 3 are provided through a single dictionary based on the
@@ -18,18 +18,25 @@ from typing import TYPE_CHECKING, Annotated
 import yaml
 from oteapi.models import ResourceConfig
 from otelib import OTEClient
-from pydantic import Field, create_model
+from pydantic import Field, create_model, ConfigDict
+from pydantic_core import PydanticUndefined
 
 from s7.pydantic_models.oteapi import HashableResourceConfig
-from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity, map_soft_to_py_types
+from s7.pydantic_models.soft7 import (
+    SOFT7DataSource,
+    SOFT7Entity,
+    map_soft_to_py_types,
+    parse_identity,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Optional, Union
+    from typing import Any, Optional, Union, Literal
 
     from pydantic import ValidationInfo
+    from pydantic.main import Model
 
     from s7.pydantic_models.soft7 import (
-        GetProperty,
+        GetData,
         UnshapedPropertyType,
         SOFT7EntityProperty,
     )
@@ -92,7 +99,7 @@ def _parse_inputs(
 
 
 def _validate_shape(
-    cls: type[SOFT7DataEntity], value: "PropertyType", info: "ValidationInfo"
+    cls: type[SOFT7DataSource], value: "PropertyType", info: "ValidationInfo"
 ) -> "PropertyType":
     """Validate the shape of a property if a shape is defined.
 
@@ -132,47 +139,173 @@ def _validate_shape(
         iter_value = iter_value[0]
 
 
+def _generate_dimensions_docstring(data_model: "SOFT7Entity") -> str:
+    """Generated a docstring for the dimensions model."""
+    _, _, name = parse_identity(data_model.identity)
+    attributes = [
+        f"{dimension_name} (int): {dimension_description}\n"
+        for dimension_name, dimension_description in data_model.dimensions
+    ]
+
+    return f"""DataSourceDimensions
+
+    Dimensions for the {name} SOFT7 data source.
+
+    Identity: {data_model.identity}
+
+    Attributes:
+        {(' ' * 8).join(attributes)}
+    """
+
+
+def _generate_model_docstring(
+    data_model: "SOFT7Entity", dimensions_data: "Model"
+) -> str:
+    """Generated a docstring for the data source model."""
+    namespace, version, name = parse_identity(data_model.identity)
+
+    description = data_model.description.replace("\n", "\n    ")
+
+    dimensions = [
+        f"{dimension_name} (int): {dimension_description}\n"
+        for dimension_name, dimension_description in data_model.dimensions
+    ]
+
+    properties = [
+        f"{property_name} "
+        f"({_generate_property_type(property_value, dimensions_data)}): "
+        f"{property_value.description}\n"
+        for property_name, property_value in data_model.properties.items()
+    ]
+
+    return f"""{name}
+
+    {description}
+
+    SOFT7 Metadata:
+        Identity: {data_model.identity}
+
+        Namespace: {namespace}
+        Version: {version if version else "N/A"}
+        Name: {name}
+
+    Dimensions:
+        {(' ' * 8).join(dimensions)}
+
+    Attributes:
+        {(' ' * 8).join(properties)}
+    """
+
+
 def _generate_property_type(
-    value: "SOFT7EntityProperty", dimensions: "Optional[dict[str, str]]"
+    value: "SOFT7EntityProperty", dimensions: "Model"
 ) -> "PropertyType":
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
+    # Get the Python type for the property as defined by SOFT7 data types.
+    property_type = map_soft_to_py_types[value.type_]
+
     if value.shape:
-        return tuple[
-            Annotated[_generate_property_type(value), Field(validate=_validate_shape)],
-            ...,
-        ]
+        # Go through the dimensions in reversed order and nest the property type in on
+        # itself.
+        for dimension_name in value.shape.reverse():
+            if dimension_name not in dimensions.model_fields:
+                raise ValueError(
+                    f"Dimension {dimension_name!r} is not defined in the data model"
+                )
 
-    if value.type_ == "object":
-        return dict[str, Annotated[_generate_property_type(value), Field(...)]]
+            dimension = getattr(dimensions, dimension_name)
 
-    return map_soft_to_py_types[value.type_]
+            if not isinstance(dimension, int):
+                raise TypeError(
+                    f"Dimension values must be integers, got {type(dimension)} for "
+                    f"{dimension_name!r}"
+                )
+
+            # The dimension defines the number of times the property type is repeated.
+            property_type = type((property_type,) * dimension)
+
+    return property_type
 
 
-def _get_property(
-    config: HashableResourceConfig, url: "Optional[str]" = None
-) -> "GetProperty":
-    """Get a property."""
+def _get_data(
+    config: HashableResourceConfig,
+    category: 'Literal["dimensions", "properties"]',
+    *,
+    url: "Optional[str]" = None,
+) -> "GetData":
+    """Get a datum from category.
+
+    Everything in the __get_data() function will not be called until the first time
+    the attribute `name` is accessed.
+
+    To do something "lazy", it should be moved to the __get_data() function.
+    To instead pre-cache something, it should be moved outside of the __get_data()
+    function.
+
+    Parameters:
+        config: The OTEAPI data resource configuration.
+        category: Either of the top-level SOFT7 Entity fields `dimensions` or
+            `properties`.
+        url: The base URL of the OTEAPI service instance to use.
+
+    Returns:
+        A function that will return the value of a named dimension or property.
+
+    """
+    # OTEAPI Pipeline
     client = OTEClient(url or "http://localhost:8080")
     data_resource = client.create_dataresource(**config.model_dump())
     result: "dict[str, Any]" = json.loads(data_resource.get())
 
+    # TODO: This whole section should be updated to properly resolve how data is to be
+    # retrieved from external sources through the OTEAPI. For now, we just "say" that
+    # the `result` contains keys equal to the top-level SOFT7 entity fields, i.e., what
+    # is called `category` here.
+    data = result.get(category, PydanticUndefined)
+
+    optional_categories = [
+        field_name
+        for field_name, field_info in SOFT7Entity.model_fields.items()
+        if field_info.is_required() is False
+    ]
+
     # Remove unused variables from memory
     del client
     del data_resource
+    del result
 
-    def __get_property(name: str) -> "Any":
-        if name in result:
-            return result[name]
+    def __get_data(name: str) -> "Any":
+        f"""Get a named {category} from the data resource.
 
-        raise AttributeError(f"{name!r} could not be determined")
+        Properties:
+            name: The name of a datum in the resource's {category} to get.
 
-    return __get_property
+        Returns:
+            The value of the named datum in the resource's {category}.
+
+        """
+        if data is PydanticUndefined:
+            if category in optional_categories:
+                return None
+
+            raise AttributeError(
+                f"{name!r} is not defined for the resource's {category}"
+            )
+
+        if name in data:
+            return data[name]
+
+        raise AttributeError(
+            f"{name!r} could not be determined for the resource's {category}"
+        )
+
+    return __get_data
 
 
 def create_entity(
     data_model: "Union[SOFT7Entity, dict[str, Any], Path, str]",
     resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
-) -> type[SOFT7DataEntity]:
+) -> type[SOFT7DataSource]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
@@ -189,20 +322,67 @@ def create_entity(
     """
     data_model, resource_config = _parse_inputs(data_model, resource_config)
 
-    # TODO: Create private fields for the top-level data properties:
-    #       - dimensions (Use for shape validation)
-    #       - description (Use as doc-string)
-    #       - identity (Use for back-referencing to the data model)
+    # Split the identity into its parts
+    namespace, version, name = parse_identity(data_model.identity)
 
+    # Create the dimensions model
+    dimensions = {}
+    if data_model.dimensions:
+        dimensions = {
+            dimension_name: Annotated[
+                int,
+                Field(
+                    default_factory=lambda: _get_data(resource_config, "dimensions"),
+                    description=dimension_description,
+                ),
+            ]
+            for dimension_name, dimension_description in data_model.dimensions
+        }
+
+    dimensions_model = create_model(
+        f"{name.replace(' ', '')}Dimensions",
+        __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
+        __base__=None,
+        __module__=__name__,
+        __validators__=None,
+        __cls_kwargs__={"__doc__": _generate_dimensions_docstring(data_model)},
+        **dimensions,
+    )
+    dimensions_model_instance = dimensions_model()
+
+    # Create the SOFT7 metadata fields for the data source model
+    # All of these fields will be excluded from the data source model represntation as
+    # well as the serialized JSON schema or Python dictionary.
+    soft7_metadata = {
+        # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
+        # Note, Field() returns a FieldInfo instance.
+        "dimensions": tuple(
+            dimensions_model, Field(dimensions_model_instance, repr=False, exclude=True)
+        ),
+        "identity": tuple(
+            data_model.model_fields["identity"].rebuild_annotation(),
+            Field(data_model.identity, repr=False, exclude=True),
+        ),
+        "namespace": tuple(str, Field(namespace, repr=False, exclude=True)),
+        "version": tuple(Optional[str], Field(version, repr=False, exclude=True)),
+        "name": tuple(str, Field(name, repr=False, exclude=True)),
+    }
+
+    # Generate the data source model class docstring
+    __doc__ = _generate_model_docstring(data_model)
+
+    # Create the data source model's properties
     field_definitions = {
-        property_name: Annotated[
-            _generate_property_type(property_value),
+        # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
+        # Note, Field() returns a FieldInfo instance.
+        property_name: tuple(
+            _generate_property_type(property_value, dimensions_model_instance),
             Field(
-                default_factory=lambda: _get_property(resource_config),
+                default_factory=lambda: _get_data(resource_config, "properties"),
                 description=property_value.description or "",
                 title=property_name.replace(" ", "_"),
                 json_schema_extra={
-                    f"x-{field}": getattr(property_value, field)
+                    f"x-soft7-{field}": getattr(property_value, field)
                     for field in property_value.model_fields
                     if (
                         field not in ("description", "type_")
@@ -210,16 +390,30 @@ def create_entity(
                     )
                 },
             ),
-        ]
+        )
         for property_name, property_value in data_model.properties.items()
     }
 
+    # Ensure there is no overlap between the SOFT7 metadata fields and the data source
+    # model properties and the data source model properties are not trying to hack the
+    # attribute retrieval mechanism.
+    if any(field.startswith("soft7___") for field in field_definitions):
+        raise ValueError(
+            "The data model properties are not allowed to overwrite or mock SOFT7 "
+            "metadata fields."
+        )
+
     return create_model(
-        "DataSource",
+        name.replace(" ", ""),
         __config__=None,
-        __base__=SOFT7DataEntity,
+        __base__=SOFT7DataSource,
         __module__=__name__,
         __validators__=None,
-        __cls_kwargs__=None,
-        **field_definitions,
+        __cls_kwargs__={"__doc__": __doc__},
+        **{
+            # SOFT7 metadata fields
+            **{f"soft7___{name}": value for name, value in soft7_metadata.items()},
+            # Data source properties
+            **field_definitions,
+        },
     )
