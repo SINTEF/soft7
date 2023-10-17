@@ -10,10 +10,8 @@ if TYPE_CHECKING:
 @pytest.fixture
 def soft_entity_init() -> "dict[str, Union[str, dict]]":
     """A dict for initializing a `SOFT7Entity`."""
-    from uuid import uuid4
-
     return {
-        "identity": f"https://onto-ns.com/s7/entity/0/Entity#{uuid4()}",
+        "identity": "https://onto-ns.com/s7/0.1.0/temperature",
         "description": "A bare-bones entity for testing.",
         "dimensions": {"N": "Number of elements."},
         "properties": {
