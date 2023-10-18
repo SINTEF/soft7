@@ -1,27 +1,44 @@
 """Pydantic data models for SOFT7 entities/data models."""
-from typing import Any, Annotated, Optional, TYPE_CHECKING, Literal
+from typing import (
+    Any,
+    Annotated,
+    Optional,
+    TYPE_CHECKING,
+    Literal,
+    Protocol,
+    runtime_checkable,
+)
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.functional_validators import model_validator, field_validator
+from pydantic.functional_serializers import model_serializer
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Union, Protocol
+    from typing import Union
+
+    from pydantic import SerializerFunctionWrapHandler
 
     UnshapedPropertyType = Union[str, float, int, complex, dict, bool, bytes, bytearray]
+    ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
 
-    class GetData(Protocol):
-        """Get a named datum from the data resource.
+    PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
 
-        Properties:
-            name: The name of a datum to get.
 
-        Returns:
-            The value of the named datum.
+@runtime_checkable
+class GetData(Protocol):
+    """Get a named datum (property or dimension) from the data resource.
 
-        """
+    Properties:
+        soft7_property: The name of a datum to get, i.e., the SOFT7 data resource
+            property (or dimension).
 
-        def __call__(self, name: str) -> Any:
-            ...
+    Returns:
+        The value of the SOFT7 data resource property (or dimension).
+
+    """
+
+    def __call__(self, soft7_property: str) -> Any:
+        ...
 
 
 SOFT7EntityPropertyType = Literal[
@@ -129,7 +146,7 @@ class CallableAttributesMixin:
 
             # SOFT7 property
             if name in object.__getattribute__(self, "model_fields"):
-                resolved_attr_value = attr_value(name)
+                resolved_attr_value = attr_value(soft7_property=name)
 
                 # Use TypeAdapter to return and validate the value against the
                 # generated type. This effectively validates the shape and
@@ -143,6 +160,32 @@ class CallableAttributesMixin:
             return attr_value
         except Exception as exc:
             raise AttributeError from exc
+
+    @model_serializer(mode="wrap", when_used="always")
+    def _serialize_callable_attributes(  # type: ignore[misc]
+        self: "BaseModel", handler: "SerializerFunctionWrapHandler"
+    ) -> "Any":
+        """Serialize all "lazy" SOFT7 property values.
+
+        If the value matches the GetData protocol, i.e., it's a callable function with
+        the `name` parameter, call it with the property's name and the result will be
+        used in a copy of the model. Otherwise, the value will be used as-is.
+
+        The copy of the model is returned through the SerializerFunctionWrapHandler.
+        """
+        resolved_fields: "dict[str, PropertyType]" = {}
+
+        # This iteration works, due to how BaseModel yields fields (from __dict__ +
+        # __pydantic__extras__).
+        for field_name, field_value in self:
+            if isinstance(field_value, GetData):
+                # Call the function via self.__getattribute__ to ensure proper type
+                # validation and store the returned value for later use.
+                resolved_fields[field_name] = getattr(self, field_name)
+
+            # Else: The value is not a GetData, so use it as-is, i.e., no changes.
+
+        return handler(self.model_copy(update=resolved_fields))
 
 
 class SOFT7DataSource(BaseModel, CallableAttributesMixin):

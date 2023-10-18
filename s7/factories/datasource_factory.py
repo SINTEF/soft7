@@ -36,12 +36,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from s7.pydantic_models.soft7 import (
         GetData,
-        UnshapedPropertyType,
+        PropertyType,
         SOFT7EntityProperty,
     )
-
-    ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
-    PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
 
 
 class DataSourceDimensions(BaseModel, CallableAttributesMixin):
@@ -139,7 +136,9 @@ def _generate_dimensions_docstring(entity: "SOFT7Entity") -> str:
     """
 
 
-def _generate_model_docstring(entity: "SOFT7Entity", dimensions_data: "Model") -> str:
+def _generate_model_docstring(
+    entity: "SOFT7Entity", property_types: dict[str, type["PropertyType"]]
+) -> str:
     """Generated a docstring for the data source model."""
     namespace, version, name = parse_identity(entity.identity)
 
@@ -156,9 +155,7 @@ def _generate_model_docstring(entity: "SOFT7Entity", dimensions_data: "Model") -
 
     properties = []
     for property_name, property_value in entity.properties.items():
-        property_type = type_cast(
-            "str", _generate_property_type(property_value, dimensions_data)
-        )
+        property_type = type_cast("str", property_types[property_name])
 
         properties.append(
             f"{property_name} ({property_type}): " f"{property_value.description}\n"
@@ -262,14 +259,15 @@ def _get_data(
     del data_resource
     del result
 
-    def __get_data(name: str) -> "Any":
-        f"""Get a named {category} from the data resource.
+    def __get_data(soft7_property: str) -> "Any":
+        """Get a named datum (property or dimension) from the data resource.
 
         Properties:
-            name: The name of a datum in the resource's {category} to get.
+            soft7_property: The name of a datum to get, i.e., the SOFT7 data resource
+                property (or dimension).
 
         Returns:
-            The value of the named datum in the resource's {category}.
+            The value of the SOFT7 data resource property (or dimension).
 
         """
         if data is PydanticUndefined:
@@ -277,14 +275,14 @@ def _get_data(
                 return None
 
             raise AttributeError(
-                f"{name!r} is not defined for the resource's {category}"
+                f"{soft7_property!r} is not defined for the resource's {category}"
             )
 
-        if name in data:
-            return data[name]
+        if soft7_property in data:
+            return data[soft7_property]
 
         raise AttributeError(
-            f"{name!r} could not be determined for the resource's {category}"
+            f"{soft7_property!r} could not be determined for the resource's {category}"
         )
 
     return __get_data
@@ -344,6 +342,7 @@ def create_datasource(
         __cls_kwargs__=None,
         **dimensions,
     )
+
     # Update the class docstring
     dimensions_model.__doc__ = _generate_dimensions_docstring(entity)
 
@@ -368,15 +367,23 @@ def create_datasource(
         "name": (str, Field(name, repr=False, exclude=True)),
     }
 
+    # Pre-calculate property types
+    property_types: dict[str, type["PropertyType"]] = {
+        property_name: _generate_property_type(
+            property_value, dimensions_model_instance
+        )
+        for property_name, property_value in entity.properties.items()
+    }
+
     # Generate the data source model class docstring
-    __doc__ = _generate_model_docstring(entity, dimensions_model_instance)
+    __doc__ = _generate_model_docstring(entity, property_types)
 
     # Create the data source model's properties
     field_definitions: dict[str, tuple["type[PropertyType]", "GetData"]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
-            _generate_property_type(property_value, dimensions_model_instance),
+            property_types[property_name],
             Field(
                 default_factory=lambda: _get_data(
                     resource_config, "properties", url=oteapi_url
@@ -419,6 +426,7 @@ def create_datasource(
             **field_definitions,
         },
     )
+
     # Update the class docstring
     DataSourceModel.__doc__ = __doc__
 
