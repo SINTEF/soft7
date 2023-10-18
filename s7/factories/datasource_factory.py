@@ -12,7 +12,7 @@ Parts 1 through 3 are provided through a single dictionary based on the
 """
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, cast as type_cast, Optional
+from typing import TYPE_CHECKING, Optional, cast as type_cast
 
 import yaml
 from oteapi.models import ResourceConfig
@@ -128,7 +128,7 @@ def _generate_dimensions_docstring(entity: "SOFT7Entity") -> str:
         else []
     )
 
-    return f"""DataSourceDimensions
+    return f"""{name.replace(' ', '')}Dimensions
 
     Dimensions for the {name} SOFT7 data source.
 
@@ -156,11 +156,12 @@ def _generate_model_docstring(entity: "SOFT7Entity", dimensions_data: "Model") -
 
     properties = []
     for property_name, property_value in entity.properties.items():
-        property_type = _generate_property_type(property_value, dimensions_data)
+        property_type = type_cast(
+            "str", _generate_property_type(property_value, dimensions_data)
+        )
 
         properties.append(
-            f"{property_name} ({type_cast('str', property_type)}): "
-            f"{property_value.description}\n"
+            f"{property_name} ({property_type}): " f"{property_value.description}\n"
         )
 
     return f"""{name}
@@ -176,7 +177,6 @@ def _generate_model_docstring(entity: "SOFT7Entity", dimensions_data: "Model") -
 
     {'Dimensions:' if dimensions else 'There are no dimensions defined.'}
         {(' ' * 8).join(dimensions)}
-
     Attributes:
         {(' ' * 8).join(properties)}
     """
@@ -184,8 +184,11 @@ def _generate_model_docstring(entity: "SOFT7Entity", dimensions_data: "Model") -
 
 def _generate_property_type(
     value: "SOFT7EntityProperty", dimensions: "Model"
-) -> "PropertyType":
+) -> "type[PropertyType]":
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
+    if TYPE_CHECKING:  # pragma: no cover
+        property_type: "type[PropertyType]"
+
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type = map_soft_to_py_types[value.type_]
 
@@ -198,7 +201,7 @@ def _generate_property_type(
                     f"Dimension {dimension_name!r} is not defined in the data model"
                 )
 
-            dimension = getattr(dimensions, dimension_name)
+            dimension: int = getattr(dimensions, dimension_name)
 
             if not isinstance(dimension, int):
                 raise TypeError(
@@ -207,9 +210,9 @@ def _generate_property_type(
                 )
 
             # The dimension defines the number of times the property type is repeated.
-            property_type = type((property_type,) * dimension)  # type: ignore[assignment]
+            property_type = tuple[(property_type,) * dimension]  # type: ignore[misc]
 
-    return property_type  # type: ignore[return-value]
+    return property_type
 
 
 def _get_data(
@@ -313,7 +316,7 @@ def create_datasource(
     namespace, version, name = parse_identity(entity.identity)
 
     # Create the dimensions model
-    dimensions: dict[str, tuple[type, "Any"]] = (
+    dimensions: dict[str, tuple[type[int], "GetData"]] = (
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
@@ -369,7 +372,7 @@ def create_datasource(
     __doc__ = _generate_model_docstring(entity, dimensions_model_instance)
 
     # Create the data source model's properties
-    field_definitions: dict[str, tuple["PropertyType", "Any"]] = {
+    field_definitions: dict[str, tuple["type[PropertyType]", "GetData"]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (

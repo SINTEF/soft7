@@ -47,7 +47,7 @@ if TYPE_CHECKING:
             ...
 
 
-### Fixtures from oteapi-core - should be made available through pytest plugin instead !!!
+### Fixtures from oteapi-core - should be made available through pytest plugin instead
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +144,7 @@ def create_importlib_entry_points() -> "CreateEntryPoints":
           oteapi.celery/remote = oteapi.strategies.transformation.celery_remote:CeleryRemoteStrategy
         ```
 
-    """
+    """  # noqa: E501
     import re
     from importlib.metadata import EntryPoint
 

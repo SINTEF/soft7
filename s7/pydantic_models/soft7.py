@@ -89,7 +89,13 @@ def parse_identity(identity: AnyUrl) -> tuple[str, "Union[str, None]", str]:
     namespace += identity.host
 
     if identity.port:
-        namespace += f":{identity.port}"
+        # Remove default ports.
+        if identity.scheme == "http" and identity.port == 80:
+            pass
+        elif identity.scheme == "https" and identity.port == 443:
+            pass
+        else:
+            namespace += f":{identity.port}"
 
     # Remove version and name from path, including the 2 associated preceding slashes.
     namespace += identity.path.rstrip("/")[: -len(version) - len(name) - 2]

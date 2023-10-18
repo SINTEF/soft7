@@ -58,7 +58,158 @@ def test_create_datasource(
 @pytest.mark.usefixtures("load_test_strategies")
 def test_inspect_created_dataresource(
     soft_entity_init: "dict[str, Union[str, dict]]",
+    generic_resource_config: "dict[str, Union[str, dict]]",
     soft_datasource_init: "dict[str, Any]",
+) -> None:
+    """Test the generated data source contains the expected attributes and metadata."""
+    from pydantic import BaseModel
+
+    from s7.factories.datasource_factory import create_datasource
+
+    datasource = create_datasource(
+        entity=soft_entity_init,
+        resource_config=generic_resource_config,
+        oteapi_url="python",
+    )
+
+    ## Check the special attributes set on the class are what we expect
+    # doc-string
+    # Checked against the `soft_entity_init`'s values - check the fixture for
+    # confirmation that the content here matches the fixture.
+    # The type of the properties are derived from the `soft_datasource_init` fixture,
+    # in the sense of dimensionality.
+    assert (
+        datasource.__doc__
+        == """temperature
+
+    A bare-bones entity for testing.
+
+    SOFT7 Entity Metadata:
+        Identity: https://onto-ns.com/s7/0.1.0/temperature
+
+        Namespace: https://onto-ns.com/s7
+        Version: 0.1.0
+        Name: temperature
+
+    Dimensions:
+        N (int): Number of elements.
+
+    Attributes:
+        atom (tuple[str, str, str, str, str]): An atom.
+        electrons (tuple[int, int, int, int, int]): Number of electrons.
+        mass (tuple[float, float, float, float, float]): Atomic mass.
+        radius (tuple[float, float, float, float, float]): Atomic radius.
+
+    """
+    )
+
+    ## Check the data source's attribute values are currently (lambda) functions
+    # Get the data source's representation
+    datasource_repr = repr(datasource)
+
+    # Remove the class name and the surrounding parentheses
+    datasource_repr_fields = datasource_repr[
+        len(datasource.__class__.__name__) + 1 : -1
+    ]
+
+    for field in datasource_repr_fields.split(", "):
+        field_name, field_value = field.split("=", maxsplit=1)
+        assert field_value.startswith("<function _get_data.<locals>.__get_data at"), (
+            f"{field_name} is not a lambda function of "
+            "`s7.factories.datasource_factory._get_data` and its inner function "
+            f"`__get_data`, it is a {field_value}."
+        )
+
+    ## Check the data source's data is correctly resolved
+    for field_name in datasource.model_fields:
+        if field_name.startswith("soft7___"):
+            # Avoid checking metadata
+            continue
+
+        assert (
+            getattr(datasource, field_name)
+            == soft_datasource_init["properties"][field_name]
+        ), (
+            f"{field_name} is not correctly resolved, it is "
+            f"{getattr(datasource, field_name)} and should be "
+            f"{soft_datasource_init['properties'][field_name]}."
+        )
+
+    ## Check the data source's metadata is correctly resolved
+    checked_metadata_names = set()
+
+    # identity, including the derived metadata: namespace, version, and name."
+    assert (
+        str(datasource.soft7___identity)
+        == soft_entity_init["identity"]
+        == "https://onto-ns.com/s7/0.1.0/temperature"
+    )
+    assert datasource.soft7___namespace == "https://onto-ns.com/s7"
+    assert datasource.soft7___version == "0.1.0"
+    assert datasource.soft7___name == "temperature"
+    checked_metadata_names.update({"identity", "namespace", "version", "name"})
+
+    # dimensions
+    assert isinstance(datasource.soft7___dimensions, BaseModel)
+
+    dimensions_metadata = datasource.soft7___dimensions
+
+    # doc-string
+    # Checked against the `soft_entity_init`'s values - check the fixture for
+    # confirmation that the content here matches the fixture.
+    # The type of the dimensions is always `int`.
+    assert (
+        dimensions_metadata.__doc__
+        == """temperatureDimensions
+
+    Dimensions for the temperature SOFT7 data source.
+
+    SOFT7 Entity: https://onto-ns.com/s7/0.1.0/temperature
+
+    Attributes:
+        N (int): Number of elements.
+
+    """
+    )
+    # Check the dimensions values are currently (lambda) functions
+    # Get the dimensions' representation
+    dimensions_repr = repr(dimensions_metadata)
+
+    # Remove the class name and the surrounding parentheses
+    dimensions_repr_fields = dimensions_repr[
+        len(dimensions_metadata.__class__.__name__) + 1 : -1
+    ]
+
+    for field in dimensions_repr_fields.split(", "):
+        dimension_name, dimension_value = field.split("=", maxsplit=1)
+        assert dimension_value.startswith(
+            "<function _get_data.<locals>.__get_data at"
+        ), (
+            f"{dimension_name} is not a lambda function of "
+            "`s7.factories.datasource_factory._get_data` and its inner function "
+            f"`__get_data`, it is a {dimension_value}."
+        )
+
+    # Check there are no excluded fields
+    assert len(dimensions_repr_fields.split(", ")) == len(
+        dimensions_metadata.model_fields
+    )
+
+    # Check the dimensions are correctly resolved
+    for dimension_name in dimensions_metadata.model_fields:
+        assert (
+            getattr(dimensions_metadata, dimension_name)
+            == soft_datasource_init["dimensions"][dimension_name]
+        ), (
+            f"{dimension_name} is not correctly resolved, it is "
+            f"{getattr(dimensions_metadata, dimension_name)} and should be "
+            f"{soft_datasource_init['dimensions'][dimension_name]}."
+        )
+
+
+@pytest.mark.usefixtures("load_test_strategies")
+def test_serialize_python_dataresource(
+    soft_entity_init: "dict[str, Union[str, dict]]",
     generic_resource_config: "dict[str, Union[str, dict]]",
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
@@ -69,4 +220,5 @@ def test_inspect_created_dataresource(
         resource_config=generic_resource_config,
         oteapi_url="python",
     )
-    print(datasource)
+
+    datasource.model_dump()
