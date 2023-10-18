@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Union, Any
+    from typing import Any, Union
 
     from requests_mock import Mocker
 

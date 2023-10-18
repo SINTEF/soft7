@@ -16,7 +16,7 @@ from oteapi.models import ResourceConfig
 from pydantic import Field, create_model
 
 from s7.graph import Graph
-from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity, map_soft_to_py_types
+from s7.pydantic_models.soft7 import SOFT7DataSource, SOFT7Entity, map_soft_to_py_types
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType
@@ -133,7 +133,7 @@ def _get_inputs(
 
 def _get_property_local(
     graph: Graph,
-    inner_entities: dict[str, SOFT7DataEntity],
+    inner_entities: dict[str, SOFT7DataSource],
 ) -> "Callable[[str], Any]":
     """Get a property - local."""
     predicate_filter = ["mapsTo", "outputs", "expects", "hasProperty", "hasPart"]
@@ -204,9 +204,9 @@ def _get_property_local(
 
 def create_outer_entity(
     data_model: "Union[SOFT7Entity, Path, str, dict[str, Any]]",
-    inner_entities: dict[str, SOFT7DataEntity],
+    inner_entities: dict[str, SOFT7DataSource],
     mapping: "Union[Graph, Iterable[tuple[str, str, str]]]",
-) -> type[SOFT7DataEntity]:
+) -> type[SOFT7DataSource]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
@@ -234,9 +234,9 @@ def create_outer_entity(
         raise TypeError("data_model must be a 'SOFT7Entity'")
 
     if not isinstance(inner_entities, dict) or not all(
-        isinstance(entity, SOFT7DataEntity) for entity in inner_entities.values()
+        isinstance(entity, SOFT7DataSource) for entity in inner_entities.values()
     ):
-        raise TypeError("inner_entity must be a dict with SOFT7DataEntity as values")
+        raise TypeError("inner_entity must be a dict with SOFT7DataSource as values")
 
     if isinstance(mapping, Iterable):
         mapping = Graph(list(mapping))
@@ -254,8 +254,8 @@ def create_outer_entity(
         [
             # ("inner", "isA", "DataSourceEntity"),
             ("outer", "isA", "OuterEntity"),
-            ("DataSourceEntity", "isA", "SOFT7DataEntity"),
-            ("OuterEntity", "isA", "SOFT7DataEntity"),
+            ("DataSourceEntity", "isA", "SOFT7DataSource"),
+            ("OuterEntity", "isA", "SOFT7DataSource"),
         ]
     )
     for inner in inner_entities:
@@ -322,7 +322,7 @@ def create_outer_entity(
     return create_model(
         "OuterEntity",
         __config__=None,
-        __base__=SOFT7DataEntity,
+        __base__=SOFT7DataSource,
         __module__=__name__,
         __validators__=None,
         __cls_kwargs__=None,

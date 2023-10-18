@@ -12,24 +12,25 @@ Parts 1 through 3 are provided through a single dictionary based on the
 """
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, cast as type_cast
+from typing import TYPE_CHECKING, cast as type_cast, Optional
 
 import yaml
 from oteapi.models import ResourceConfig
 from otelib import OTEClient
-from pydantic import Field, create_model, ConfigDict
+from pydantic import Field, create_model, ConfigDict, BaseModel
 from pydantic_core import PydanticUndefined
 
 from s7.pydantic_models.oteapi import HashableResourceConfig
 from s7.pydantic_models.soft7 import (
     SOFT7DataSource,
     SOFT7Entity,
+    CallableAttributesMixin,
     map_soft_to_py_types,
     parse_identity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Optional, Union, Literal
+    from typing import Any, Union, Literal
 
     from pydantic.main import Model
 
@@ -41,6 +42,25 @@ if TYPE_CHECKING:  # pragma: no cover
 
     ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
+
+
+class DataSourceDimensions(BaseModel, CallableAttributesMixin):
+    """Dimensions for the SOFT7 data source.
+
+    This doc-string will/should be overridden in the `create_datasource()` function.
+
+    The configuration options:
+    - `extra="forbid"`: Ensures an exception is raised if the instantiated data source
+      tries to specify undefined properties.
+    - `frozen=True`: Ensures an exception is raised if the instantiated data source
+      tries to modify any properties, i.e., manually set an attribute value.
+    - `validate_default=False`: Set explicitly (`False` is the default) to avoid a
+      ValidationError when instantiating the data source. This is due to the properties
+      being lazily retrieved from the data source.
+
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
 
 
 def _parse_inputs(
@@ -291,15 +311,17 @@ def create_datasource(
     namespace, version, name = parse_identity(entity.identity)
 
     # Create the dimensions model
-    dimensions = (
+    dimensions: dict[str, tuple[type, "Any"]] = (
+        # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
+        # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
-            dimension_name: Annotated[
+            dimension_name: (
                 int,
                 Field(
                     default_factory=lambda: _get_data(resource_config, "dimensions"),
                     description=dimension_description,
                 ),
-            ]
+            )
             for dimension_name, dimension_description in entity.dimensions.items()
         }
         if entity.dimensions
@@ -308,19 +330,22 @@ def create_datasource(
 
     dimensions_model = create_model(
         f"{name.replace(' ', '')}Dimensions",
-        __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
-        __base__=None,
+        __config__=None,
+        __base__=DataSourceDimensions,
         __module__=__name__,
         __validators__=None,
-        __cls_kwargs__={"__doc__": _generate_dimensions_docstring(entity)},
+        __cls_kwargs__=None,
         **dimensions,
     )
+    # Update the class docstring
+    dimensions_model.__doc__ = _generate_dimensions_docstring(entity)
+
     dimensions_model_instance = dimensions_model()
 
     # Create the SOFT7 metadata fields for the data source model
-    # All of these fields will be excluded from the data source model represntation as
+    # All of these fields will be excluded from the data source model representation as
     # well as the serialized JSON schema or Python dictionary.
-    soft7_metadata: dict[str, tuple[Union[type, object], "Any"]] = {
+    soft7_metadata: dict[str, tuple["Union[type, object]", "Any"]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         "dimensions": (
@@ -371,17 +396,21 @@ def create_datasource(
             "metadata fields."
         )
 
-    return create_model(  # type: ignore[call-arg]
+    DataSourceModel = create_model(
         name.replace(" ", ""),
         __config__=None,
         __base__=SOFT7DataSource,
         __module__=__name__,
         __validators__=None,
-        __cls_kwargs__={"__doc__": __doc__},
+        __cls_kwargs__=None,
         **{
             # SOFT7 metadata fields
             **{f"soft7___{name}": value for name, value in soft7_metadata.items()},
             # Data source properties
             **field_definitions,
         },
-    )()
+    )
+    # Update the class docstring
+    DataSourceModel.__doc__ = __doc__
+
+    return DataSourceModel()  # type: ignore[call-arg]

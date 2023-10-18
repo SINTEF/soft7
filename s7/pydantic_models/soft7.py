@@ -97,40 +97,8 @@ def parse_identity(identity: AnyUrl) -> tuple[str, "Union[str, None]", str]:
     return namespace, version or None, name
 
 
-class SOFT7DataSource(BaseModel):
-    """Generic SOFT7 data source
-
-    This doc-string should be replaced with the specific data source's `description`.
-
-    The configuration options:
-    - `extra="forbid"`: Ensures an exception is raised if the instantiated data source
-      tries to specify undefined properties.
-    - `frozen=True`: Ensures an exception is raised if the instantiated data source
-      tries to modify any properties, i.e., manually set an attribute value.
-    - `validate_default=False`: Set explicitly (`False` is the default) to avoid a
-      ValidationError when instantiating the data source. This is due to the properties
-      being lazily retrieved from the data source.
-
-    Note:
-        The defined `soft7___*` fields will be overwritten by `pydantic.create_model()`,
-        but they are defined here to help with understanding what the SOFT7 metadata
-        attributes are.
-
-        They act as a "contract" between the factory function and the SOFT7DataSource
-        model, i.e., the factory function must return a dictionary that at least defines
-        the metadata attributes, since otherwise a ValidationError will be raised upon
-        instantiation.
-
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
-
-    soft7___dimensions: BaseModel
-    soft7___identity: AnyUrl
-
-    soft7___namespace: str
-    soft7___version: Optional[str]
-    soft7___name: str
+class CallableAttributesMixin:
+    """Mixin to call and resolve attributes if they are SOFT7 properties."""
 
     def __getattribute__(self, name: str) -> Any:
         """Get an attribute.
@@ -169,6 +137,42 @@ class SOFT7DataSource(BaseModel):
             return attr_value
         except Exception as exc:
             raise AttributeError from exc
+
+
+class SOFT7DataSource(BaseModel, CallableAttributesMixin):
+    """Generic SOFT7 data source
+
+    This doc-string should be replaced with the specific data source's `description`.
+
+    The configuration options:
+    - `extra="forbid"`: Ensures an exception is raised if the instantiated data source
+      tries to specify undefined properties.
+    - `frozen=True`: Ensures an exception is raised if the instantiated data source
+      tries to modify any properties, i.e., manually set an attribute value.
+    - `validate_default=False`: Set explicitly (`False` is the default) to avoid a
+      ValidationError when instantiating the data source. This is due to the properties
+      being lazily retrieved from the data source.
+
+    Note:
+        The defined `soft7___*` fields will be overwritten by `pydantic.create_model()`,
+        but they are defined here to help with understanding what the SOFT7 metadata
+        attributes are.
+
+        They act as a "contract" between the factory function and the SOFT7DataSource
+        model, i.e., the factory function must return a dictionary that at least defines
+        the metadata attributes, since otherwise a ValidationError will be raised upon
+        instantiation.
+
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
+
+    soft7___dimensions: BaseModel
+    soft7___identity: AnyUrl
+
+    soft7___namespace: str
+    soft7___version: Optional[str]
+    soft7___name: str
 
 
 class SOFT7EntityProperty(BaseModel):

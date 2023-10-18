@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from typing import Union, Any
+    from typing import Any, Union
 
 
 @pytest.fixture
