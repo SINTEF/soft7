@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Optional, cast as type_cast
 import yaml
 from oteapi.models import ResourceConfig
 from otelib import OTEClient
-from pydantic import Field, create_model, ConfigDict, BaseModel
+from pydantic import Field, create_model, ConfigDict, BaseModel, AnyUrl
 from pydantic_core import PydanticUndefined
 
 from s7.pydantic_models.oteapi import HashableResourceConfig
@@ -246,6 +246,8 @@ def _get_data(
     # retrieved from external sources through the OTEAPI. For now, we just "say" that
     # the `result` contains keys equal to the top-level SOFT7 entity fields, i.e., what
     # is called `category` here.
+    # Furthermore, using the OTEClient should probably be put into the inner function
+    # to make these calls "lazy"/postponed.
     data = result.get(category, PydanticUndefined)
 
     optional_categories = [
@@ -362,7 +364,7 @@ def create_datasource(
             entity.model_fields["identity"].rebuild_annotation(),
             Field(entity.identity, repr=False, exclude=True),
         ),
-        "namespace": (str, Field(namespace, repr=False, exclude=True)),
+        "namespace": (AnyUrl, Field(namespace, repr=False, exclude=True)),
         "version": (Optional[str], Field(version, repr=False, exclude=True)),
         "name": (str, Field(name, repr=False, exclude=True)),
     }

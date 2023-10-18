@@ -62,7 +62,7 @@ def test_inspect_created_datasource(
     soft_datasource_init: "dict[str, Any]",
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
-    from pydantic import BaseModel
+    from pydantic import BaseModel, AnyUrl
 
     from s7.factories.datasource_factory import create_datasource
 
@@ -144,7 +144,7 @@ def test_inspect_created_datasource(
         == soft_entity_init["identity"]
         == "https://onto-ns.com/s7/0.1.0/temperature"
     )
-    assert datasource.soft7___namespace == "https://onto-ns.com/s7"
+    assert datasource.soft7___namespace == AnyUrl("https://onto-ns.com/s7")
     assert datasource.soft7___version == "0.1.0"
     assert datasource.soft7___name == "temperature"
     checked_metadata_names.update({"identity", "namespace", "version", "name"})
@@ -210,6 +210,7 @@ def test_inspect_created_datasource(
 @pytest.mark.usefixtures("load_test_strategies")
 def test_serialize_python_datasource(
     soft_entity_init: "dict[str, Union[str, dict]]",
+    soft_datasource_init: "dict[str, Any]",
     generic_resource_config: "dict[str, Union[str, dict]]",
 ) -> None:
     """Check the data source contents when serialized to a Python dict."""
@@ -221,15 +222,20 @@ def test_serialize_python_datasource(
         oteapi_url="python",
     )
 
-    datasource.model_dump()
+    python_serialized = datasource.model_dump()
+
+    assert python_serialized == soft_datasource_init["properties"]
 
 
 @pytest.mark.usefixtures("load_test_strategies")
 def test_serialize_json_datasource(
     soft_entity_init: "dict[str, Union[str, dict]]",
+    soft_datasource_init: "dict[str, Any]",
     generic_resource_config: "dict[str, Union[str, dict]]",
 ) -> None:
     """Check the data source contents when serialized to JSON."""
+    import json
+
     from s7.factories.datasource_factory import create_datasource
 
     datasource = create_datasource(
@@ -238,7 +244,11 @@ def test_serialize_json_datasource(
         oteapi_url="python",
     )
 
-    datasource.model_dump_json()
+    json_serialized = datasource.model_dump_json()
+
+    assert json_serialized == json.dumps(
+        soft_datasource_init["properties"], separators=(",", ":"), indent=None
+    )
 
 
 @pytest.mark.usefixtures("load_test_strategies")
@@ -255,4 +265,143 @@ def test_datasource_json_schema(
         oteapi_url="python",
     )
 
-    datasource.model_json_schema()
+    json_schema = datasource.model_json_schema()
+
+    assert json_schema == {
+        "title": "temperature",
+        "description": """temperature
+
+A bare-bones entity for testing.
+
+SOFT7 Entity Metadata:
+    Identity: https://onto-ns.com/s7/0.1.0/temperature
+
+    Namespace: https://onto-ns.com/s7
+    Version: 0.1.0
+    Name: temperature
+
+Dimensions:
+    N (int): Number of elements.
+
+Attributes:
+    atom (tuple[str, str, str, str, str]): An atom.
+    electrons (tuple[int, int, int, int, int]): Number of electrons.
+    mass (tuple[float, float, float, float, float]): Atomic mass.
+    radius (tuple[float, float, float, float, float]): Atomic radius.""",
+        "type": "object",
+        "properties": {
+            "atom": {
+                "title": "atom",
+                "type": "array",
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                    {"type": "string"},
+                    {"type": "string"},
+                    {"type": "string"},
+                    {"type": "string"},
+                    {"type": "string"},
+                ],
+                "description": "An atom.",
+                "x-soft7-shape": ["N"],
+            },
+            "electrons": {
+                "title": "electrons",
+                "type": "array",
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                    {"type": "integer"},
+                    {"type": "integer"},
+                    {"type": "integer"},
+                    {"type": "integer"},
+                    {"type": "integer"},
+                ],
+                "description": "Number of electrons.",
+                "x-soft7-shape": ["N"],
+            },
+            "mass": {
+                "title": "mass",
+                "type": "array",
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                ],
+                "description": "Atomic mass.",
+                "x-soft7-shape": ["N"],
+                "x-soft7-unit": "amu",
+            },
+            "radius": {
+                "title": "radius",
+                "type": "array",
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number"},
+                ],
+                "description": "Atomic radius.",
+                "x-soft7-shape": ["N"],
+                "x-soft7-unit": "Å",
+            },
+            "soft7___dimensions": {
+                "allOf": [{"$ref": "#/$defs/temperatureDimensions"}],
+                "default": {"N": 5},
+            },
+            "soft7___identity": {
+                "title": "Soft7   Identity",
+                "type": "string",
+                "format": "uri",
+                "minLength": 1,
+                "default": "https://onto-ns.com/s7/0.1.0/temperature",
+            },
+            "soft7___namespace": {
+                "title": "Soft7   Namespace",
+                "type": "string",
+                "format": "uri",
+                "minLength": 1,
+                "default": "https://onto-ns.com/s7",
+            },
+            "soft7___version": {
+                "title": "Soft7   Version",
+                "default": "0.1.0",
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+            },
+            "soft7___name": {
+                "title": "Soft7   Name",
+                "default": "temperature",
+                "type": "string",
+            },
+        },
+        "$defs": {
+            "temperatureDimensions": {
+                "title": "temperatureDimensions",
+                "description": """temperatureDimensions
+
+Dimensions for the temperature SOFT7 data source.
+
+SOFT7 Entity: https://onto-ns.com/s7/0.1.0/temperature
+
+Attributes:
+    N (int): Number of elements.""",
+                "type": "object",
+                "properties": {
+                    "N": {
+                        "title": "N",
+                        "description": "Number of elements.",
+                        "type": "integer",
+                    }
+                },
+                "additionalProperties": False,
+            }
+        },
+        "additionalProperties": False,
+    }

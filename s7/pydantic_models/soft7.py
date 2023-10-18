@@ -56,7 +56,7 @@ map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
 }
 
 
-def parse_identity(identity: AnyUrl) -> tuple[str, "Union[str, None]", str]:
+def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, "Union[str, None]", str]:
     """Parse the identity into a tuple of (namespace, version, name).
 
     The identity is a URI of the form: `<namespace>/<version>/<name>`.
@@ -117,7 +117,7 @@ def parse_identity(identity: AnyUrl) -> tuple[str, "Union[str, None]", str]:
     # Remove version and name from path, including the 2 associated preceding slashes.
     namespace += identity.path.rstrip("/")[: -len(version) - len(name) - 2]
 
-    return namespace, version or None, name
+    return AnyUrl(namespace), version or None, name
 
 
 class CallableAttributesMixin:
