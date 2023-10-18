@@ -4,7 +4,18 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from typing import Any, Union
+
+
+@pytest.fixture
+def static_folder() -> "Path":
+    """Path to the 'static' folder."""
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.resolve() / "static"
+    assert path.exists() and path.is_dir()
+    return path
 
 
 @pytest.fixture
@@ -42,13 +53,12 @@ def soft_entity_init() -> "dict[str, Union[str, dict]]":
 
 
 @pytest.fixture
-def soft_datasource_init() -> "dict[str, Any]":
-    return {
-        "dimensions": {"N": 5},
-        "properties": {
-            "atom": ["Si", "Al", "O", "Cu", "Co"],
-            "electrons": [14, 13, 8, 29, 27],
-            "mass": [28.085, 26.982, 15.999, 63.546, 58.933],
-            "radius": [1.10, 1.25, 0.6, 1.35, 1.35],
-        },
-    }
+def soft_datasource_init(static_folder: "Path") -> "dict[str, Any]":
+    """A dict representating data source content."""
+    import yaml
+
+    test_data_path = static_folder / "soft_datasource_content.yaml"
+    assert test_data_path.exists()
+    test_data = yaml.safe_load(test_data_path.read_text(encoding="utf-8"))
+    assert isinstance(test_data, dict)
+    return test_data

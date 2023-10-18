@@ -290,6 +290,7 @@ def _get_data(
 def create_datasource(
     entity: "Union[SOFT7Entity, dict[str, Any], Path, str]",
     resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
+    oteapi_url: "Optional[str]" = None,
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.
 
@@ -300,6 +301,7 @@ def create_datasource(
             [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/
             all_models/#oteapi.models.ResourceConfig)
             or a valid dictionary that can be used to instantiate it.
+        oteapi_url: The base URL of the OTEAPI service to use.
 
     Returns:
         A SOFT7 entity class wrapped as a pydantic data model.
@@ -318,7 +320,9 @@ def create_datasource(
             dimension_name: (
                 int,
                 Field(
-                    default_factory=lambda: _get_data(resource_config, "dimensions"),
+                    default_factory=lambda: _get_data(
+                        resource_config, "dimensions", url=oteapi_url
+                    ),
                     description=dimension_description,
                 ),
             )
@@ -371,7 +375,9 @@ def create_datasource(
         property_name: (
             _generate_property_type(property_value, dimensions_model_instance),
             Field(
-                default_factory=lambda: _get_data(resource_config, "properties"),
+                default_factory=lambda: _get_data(
+                    resource_config, "properties", url=oteapi_url
+                ),
                 description=property_value.description or "",
                 title=property_name.replace(" ", "_"),
                 json_schema_extra={
