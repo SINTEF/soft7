@@ -56,7 +56,7 @@ def test_create_datasource(
 
 
 @pytest.mark.usefixtures("load_test_strategies")
-def test_inspect_created_dataresource(
+def test_inspect_created_datasource(
     soft_entity_init: "dict[str, Union[str, dict]]",
     generic_resource_config: "dict[str, Union[str, dict]]",
     soft_datasource_init: "dict[str, Any]",
@@ -208,11 +208,11 @@ def test_inspect_created_dataresource(
 
 
 @pytest.mark.usefixtures("load_test_strategies")
-def test_serialize_python_dataresource(
+def test_serialize_python_datasource(
     soft_entity_init: "dict[str, Union[str, dict]]",
     generic_resource_config: "dict[str, Union[str, dict]]",
 ) -> None:
-    """Test the generated data source contains the expected attributes and metadata."""
+    """Check the data source contents when serialized to a Python dict."""
     from s7.factories.datasource_factory import create_datasource
 
     datasource = create_datasource(
@@ -222,3 +222,37 @@ def test_serialize_python_dataresource(
     )
 
     datasource.model_dump()
+
+
+@pytest.mark.usefixtures("load_test_strategies")
+def test_serialize_json_datasource(
+    soft_entity_init: "dict[str, Union[str, dict]]",
+    generic_resource_config: "dict[str, Union[str, dict]]",
+) -> None:
+    """Check the data source contents when serialized to JSON."""
+    from s7.factories.datasource_factory import create_datasource
+
+    datasource = create_datasource(
+        entity=soft_entity_init,
+        resource_config=generic_resource_config,
+        oteapi_url="python",
+    )
+
+    datasource.model_dump_json()
+
+
+@pytest.mark.usefixtures("load_test_strategies")
+def test_datasource_json_schema(
+    soft_entity_init: "dict[str, Union[str, dict]]",
+    generic_resource_config: "dict[str, Union[str, dict]]",
+) -> None:
+    """Check the generated JSON Schema for the data source."""
+    from s7.factories.datasource_factory import create_datasource
+
+    datasource = create_datasource(
+        entity=soft_entity_init,
+        resource_config=generic_resource_config,
+        oteapi_url="python",
+    )
+
+    datasource.model_json_schema()
