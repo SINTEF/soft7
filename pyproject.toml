@@ -71,7 +71,7 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 minversion = "7.4"
-addopts = "-rs --cov=s7 --cov-report=term"
+addopts = "-rs --cov=s7 --cov-report=term-missing"
 filterwarnings = [
     "error",  # Fail on any warning
 ]

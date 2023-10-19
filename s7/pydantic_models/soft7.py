@@ -37,7 +37,7 @@ class GetData(Protocol):
 
     """
 
-    def __call__(self, soft7_property: str) -> Any:
+    def __call__(self, soft7_property: str) -> Any:  # pragma: no cover
         ...
 
 
@@ -106,10 +106,8 @@ def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, "Union[str, None]", str]:
     namespace += identity.host
 
     if identity.port:
-        # Remove default ports.
-        if identity.scheme == "http" and identity.port == 80:
-            pass
-        elif identity.scheme == "https" and identity.port == 443:
+        # Do not include default ports for http(s) schemes.
+        if (identity.scheme, identity.port) in (("http", 80), ("https", 443)):
             pass
         else:
             namespace += f":{identity.port}"
