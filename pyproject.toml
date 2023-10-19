@@ -39,12 +39,12 @@ dependencies = [
 
 [project.optional-dependencies]
 testing = [
-    "pytest ~=7.4",
-    "pytest-cov ~=4.1",
-    "requests-mock ~=1.11",
+    "pytest~=7.4",
+    "pytest-cov~=4.1",
+    "requests-mock~=1.11",
 ]
 dev = [
-    "pre-commit ~=2.18",
+    "pre-commit~=2.18",
     "soft7[testing]",
 ]
 
