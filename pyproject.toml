@@ -30,7 +30,7 @@ dependencies = [
     "graphviz",
     "Jinja2",
     "oteapi-core>=0.6.0,<1",
-    "otelib",
+    "otelib>=0.4.0,<1",
     "pydantic~=2.4",
     "pymongo",
     "pyyaml",
@@ -39,7 +39,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pre-commit ~=2.18",
+    "pre-commit~=2.18",
 ]
 
 [project.urls]
