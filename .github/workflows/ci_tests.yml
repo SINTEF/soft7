@@ -20,7 +20,6 @@ jobs:
 
       # pylint & safety
       python_version_pylint_safety: '3.9'
-
       run_pylint: false
       run_safety: true
 
@@ -32,12 +31,3 @@ jobs:
 
       # Documentation
       run_build_docs: false
-
-  ruff:
-    name: Ruff
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - uses: chartboost/ruff-action@v1

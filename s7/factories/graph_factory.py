@@ -5,19 +5,23 @@
 3. Internal data source SOFT7 entity.
 
 """
+from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from types import FunctionType
-from typing import Any, Callable, Iterable, Optional, Type, Union
+from typing import TYPE_CHECKING, Annotated
 
 import yaml
 
-# from IPython import display
 from oteapi.models import ResourceConfig
 from pydantic import Field, create_model
 
 from s7.graph import Graph
-from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity
+from s7.pydantic_models.soft7 import SOFT7DataEntity, SOFT7Entity, map_soft_to_py_types
+
+if TYPE_CHECKING:  # pragma: no cover
+    from types import FunctionType
+    from typing import Any, Callable, Union, Optional
+
 
 TEST_KNOWLEDGE_BASE = Graph(
     [
@@ -87,7 +91,7 @@ class SOFT7EntityPropertyType(str, Enum):
 
 def _get_inputs(
     name: str, graph: Graph
-) -> list[tuple[str, Optional[FunctionType], Optional[tuple[str, ...]]]]:
+) -> "list[tuple[str, Optional[FunctionType], Optional[tuple[str, ...]]]]":
     """Retrieve all inputs/parameters for a function ONLY if it comes from internal
     entity."""
     expects = [expect for _, _, expect in graph.match(name, "expects", None)]
@@ -130,12 +134,12 @@ def _get_inputs(
 def _get_property_local(
     graph: Graph,
     inner_entities: dict[str, SOFT7DataEntity],
-) -> Callable[[str], Any]:
+) -> "Callable[[str], Any]":
     """Get a property - local."""
     predicate_filter = ["mapsTo", "outputs", "expects", "hasProperty", "hasPart"]
     node_filter = ["outer"]
 
-    def __get_property(name: str) -> Any:
+    def __get_property(name: str) -> "Any":
         paths = graph.path(f"outer.{name}", "inner_data", predicate_filter, node_filter)
         print(paths)
         for path in paths:
@@ -160,7 +164,7 @@ def _get_property_local(
                 f"No function found to retrieve {name!r} - what a stupid path"
             )
 
-        functions_dict: dict[str, dict[str, Any]] = {}
+        functions_dict: "dict[str, dict[str, Any]]" = {}
         for function_name in functions:
             functions_dict[function_name] = {
                 "inputs": _get_inputs(function_name, graph),
@@ -199,10 +203,10 @@ def _get_property_local(
 
 
 def create_outer_entity(
-    data_model: Union[SOFT7Entity, Path, str, dict[str, Any]],
+    data_model: "Union[SOFT7Entity, Path, str, dict[str, Any]]",
     inner_entities: dict[str, SOFT7DataEntity],
-    mapping: Union[Graph, Iterable[tuple[str, str, str]]],
-) -> Type[SOFT7DataEntity]:
+    mapping: "Union[Graph, Iterable[tuple[str, str, str]]]",
+) -> type[SOFT7DataEntity]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
     Parameters:
@@ -220,11 +224,12 @@ def create_outer_entity(
             raise FileNotFoundError(
                 f"Could not find a data model YAML file at {data_model!r}"
             )
-        data_model: dict[str, Any] = yaml.safe_load(  # type: ignore[no-redef]
+        data_model = yaml.safe_load(
             Path(data_model).resolve().read_text(encoding="utf8")
         )
     if isinstance(data_model, dict):
         data_model = SOFT7Entity(**data_model)
+
     if not isinstance(data_model, SOFT7Entity):
         raise TypeError("data_model must be a 'SOFT7Entity'")
 
@@ -235,6 +240,7 @@ def create_outer_entity(
 
     if isinstance(mapping, Iterable):
         mapping = Graph(list(mapping))
+
     if not isinstance(mapping, Graph):
         raise TypeError("mapping must be a Graph")
 
@@ -290,28 +296,35 @@ def create_outer_entity(
     #                f"{missing_functions} not found in known (local) functions !"
     #            )
 
-    return create_model(  # type: ignore[call-overload]
-        __model_name="OuterEntity",
-        __config__=None,
-        __base__=SOFT7DataEntity,
-        __module__=__name__,
-        __validators__=None,
-        __cls_kwargs__=None,
-        **{
-            property_name: Field(  # type: ignore[pydantic-field]
+    field_definitions = {
+        property_name: Annotated[
+            map_soft_to_py_types[property_value.type_],
+            Field(
                 default_factory=lambda: _get_property_local(
                     local_graph, inner_entities
                 ),
                 description=property_value.description,
                 title=property_name.replace(" ", "_"),
-                type=property_value.type_.py_cls,
-                **{
+                validate_default=True,
+                json_schema_extra={
                     f"x-{field}": getattr(property_value, field)
-                    for field in property_value.__fields__
-                    if field not in ("description", "type_", "shape")
-                    and getattr(property_value, field)
+                    for field in property_value.model_fields
+                    if (
+                        field not in ("description", "type_", "shape")
+                        and getattr(property_value, field)
+                    )
                 },
-            )
-            for property_name, property_value in data_model.properties.items()
-        },
+            ),
+        ]
+        for property_name, property_value in data_model.properties.items()
+    }
+
+    return create_model(
+        "OuterEntity",
+        __config__=None,
+        __base__=SOFT7DataEntity,
+        __module__=__name__,
+        __validators__=None,
+        __cls_kwargs__=None,
+        **field_definitions,
     )
