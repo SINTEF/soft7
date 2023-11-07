@@ -1,5 +1,5 @@
 """Customized OTEAPI pydantic models."""
-from typing import Hashable
+from collections.abc import Hashable
 
 from oteapi.models import ResourceConfig
 
