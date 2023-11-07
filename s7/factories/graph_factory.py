@@ -16,7 +16,11 @@ from oteapi.models import ResourceConfig
 from pydantic import Field, create_model
 
 from s7.graph import Graph
-from s7.pydantic_models.soft7 import SOFT7DataSource, SOFT7Entity, map_soft_to_py_types
+from s7.pydantic_models.soft7_entity import (
+    SOFT7DataSource,
+    SOFT7Entity,
+    map_soft_to_py_types,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType

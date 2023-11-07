@@ -9,7 +9,7 @@ def test_entity_shapes_and_dimensions(
     soft_entity_init: "dict[str, Union[str, dict]]",
 ) -> None:
     """Ensure the validator `shapes_and_dimensions` enforces the desired rules."""
-    from s7.pydantic_models.soft7 import SOFT7Entity
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
 
     additional_dimensions = {
         "nsites": "Number of sites.",
