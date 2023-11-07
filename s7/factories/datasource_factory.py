@@ -131,8 +131,7 @@ def create_datasource(
         entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
             entity.
         resource_config: A
-            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/
-            all_models/#oteapi.models.ResourceConfig)
+            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/all_models/#oteapi.models.ResourceConfig)
             or a valid dictionary that can be used to instantiate it.
         oteapi_url: The base URL of the OTEAPI service to use.
 
