@@ -11,6 +11,7 @@ Parts 1 through 3 are provided through a single dictionary based on the
 
 """
 import json
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -40,6 +41,9 @@ if TYPE_CHECKING:  # pragma: no cover
         GetData,
         PropertyType,
     )
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _get_data(
@@ -79,6 +83,11 @@ def _get_data(
     # Furthermore, using the OTEClient should probably be put into the inner function
     # to make these calls "lazy"/postponed.
     data = result.get(category, PydanticUndefined)
+
+    LOGGER.debug("Client %s", client)
+    LOGGER.debug("Data resource %s", data_resource)
+    LOGGER.debug("Result %s", result)
+    LOGGER.debug("Data %s", data)
 
     optional_categories = [
         field_name
@@ -122,7 +131,7 @@ def _get_data(
 
 def create_datasource(
     entity: "Union[SOFT7Entity, dict[str, Any], Path, str]",
-    resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any]]",
+    resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any], str]",
     oteapi_url: "Optional[str]" = None,
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.

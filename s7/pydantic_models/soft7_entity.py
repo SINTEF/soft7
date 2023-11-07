@@ -12,16 +12,25 @@ from typing import (
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.functional_validators import model_validator, field_validator
 from pydantic.functional_serializers import model_serializer
+from pydantic.networks import UrlConstraints
+from pydantic_core import Url
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Union
 
     from pydantic import SerializerFunctionWrapHandler
 
-    UnshapedPropertyType = Union[str, float, int, complex, dict, bool, bytes, bytearray]
+    UnshapedPropertyType = Union[
+        str, float, int, complex, dict, bool, bytes, bytearray, "SOFT7DataSource"
+    ]
     ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
 
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
+
+
+SOFT7IdentityURI = Annotated[
+    Url, UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True)
+]
 
 
 @runtime_checkable
@@ -42,18 +51,17 @@ class GetData(Protocol):
 
 
 SOFT7EntityPropertyType = Literal[
-    "string", "float", "int", "complex", "dict", "boolean", "bytes", "bytearray"
+    "string",
+    "str",
+    "float",
+    "int",
+    "complex",
+    "dict",
+    "boolean",
+    "bytes",
+    "bytearray",
+    "ref",
 ]
-map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
-    "string": str,
-    "float": float,
-    "int": int,
-    "complex": complex,
-    "dict": dict,
-    "boolean": bool,
-    "bytes": bytes,
-    "bytearray": bytearray,
-}
 
 
 def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, "Union[str, None]", str]:
@@ -222,6 +230,20 @@ class SOFT7DataSource(BaseModel, CallableAttributesMixin):
     soft7___name: str
 
 
+map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
+    "string": str,
+    "str": str,
+    "float": float,
+    "int": int,
+    "complex": complex,
+    "dict": dict,
+    "boolean": bool,
+    "bytes": bytes,
+    "bytearray": bytearray,
+    "ref": SOFT7DataSource,
+}
+
+
 class SOFT7EntityProperty(BaseModel):
     """A SOFT7 Entity property."""
 
@@ -258,7 +280,8 @@ class SOFT7Entity(BaseModel):
     """A SOFT7 Entity."""
 
     identity: Annotated[
-        AnyUrl, Field(description="The semantic reference for the entity.")
+        SOFT7IdentityURI,
+        Field(description="The semantic reference for the entity.", alias="uri"),
     ]
 
     description: Annotated[str, Field(description="A description of the entity.")] = ""

@@ -28,6 +28,7 @@ dynamic = ["version"]
 
 dependencies = [
     "graphviz",
+    "httpx~=0.25.1",
     "Jinja2",
     "oteapi-core>=0.6.0,<1",
     "otelib>=0.4.0,<1",
@@ -75,3 +76,21 @@ addopts = "-rs --cov=s7 --cov-report=term-missing"
 filterwarnings = [
     "error",  # Fail on any warning
 ]
+
+# [tool.ruff.lint]
+# select = [
+#   # pycodestyle
+#   "E",
+#   # Pyflakes
+#   "F",
+#   # pyupgrade
+#   "UP",
+#   # flake8-bugbear
+#   "B",
+#   # flake8-simplify
+#   "SIM",
+#   # isort
+#   "I",
+#   # ruff
+#   "RUF",
+# ]
