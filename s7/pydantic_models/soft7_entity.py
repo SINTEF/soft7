@@ -1,17 +1,17 @@
 """Pydantic data models for SOFT7 entities/data models."""
 from typing import (
-    Any,
-    Annotated,
-    Optional,
     TYPE_CHECKING,
+    Annotated,
+    Any,
     Literal,
+    Optional,
     Protocol,
     runtime_checkable,
 )
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter, AliasChoices
-from pydantic.functional_validators import model_validator, field_validator
+from pydantic import AliasChoices, AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.functional_serializers import model_serializer
+from pydantic.functional_validators import field_validator, model_validator
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
 
@@ -164,7 +164,7 @@ class CallableAttributesMixin:
                 ).validate_python(resolved_attr_value)
 
             return attr_value
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             raise AttributeError from exc
 
     @model_serializer(mode="wrap", when_used="always")

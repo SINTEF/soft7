@@ -74,7 +74,7 @@ class Graph:
 
         visited.append(origin)
         to_visit = []
-        for s, p, o in self.match(origin, None, None):
+        for _, p, o in self.match(origin, None, None):
             if (
                 (predicate_filter is None or p in predicate_filter)
                 and (node_avoidance_filter is None or o not in node_avoidance_filter)
@@ -82,7 +82,7 @@ class Graph:
             ):
                 to_visit.append(o)
 
-        for s, p, o in self.match(None, None, origin):
+        for s, p, _ in self.match(None, None, origin):
             if (
                 (predicate_filter is None or p in predicate_filter)
                 and (node_avoidance_filter is None or s not in node_avoidance_filter)

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 import yaml
-
 from oteapi.models import ResourceConfig
 from pydantic import Field, create_model
 
@@ -24,7 +23,7 @@ from s7.pydantic_models.soft7_entity import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType
-    from typing import Any, Callable, Union, Optional
+    from typing import Any, Callable, Optional, Union
 
 
 TEST_KNOWLEDGE_BASE = Graph(
@@ -146,8 +145,9 @@ def _get_property_local(
     def __get_property(name: str) -> "Any":
         paths = graph.path(f"outer.{name}", "inner_data", predicate_filter, node_filter)
         print(paths)
+        only_supported_path_length = 2
         for path in paths:
-            if len([_ for _ in path if "." in _]) == 2:
+            if len([_ for _ in path if "." in _]) == only_supported_path_length:
                 break
         else:
             raise RuntimeError("Could not determine a proper path through the graph !")
@@ -172,7 +172,7 @@ def _get_property_local(
         for function_name in functions:
             functions_dict[function_name] = {
                 "inputs": _get_inputs(function_name, graph),
-                "function": [
+                "function": [  # noqa: RUF015
                     function_
                     for _, _, function_ in graph.match(function_name, "executes", None)
                 ][0],

@@ -62,7 +62,7 @@ def test_inspect_created_datasource(
     soft_datasource_init: "dict[str, Any]",
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
-    from pydantic import BaseModel, AnyUrl
+    from pydantic import AnyUrl, BaseModel
 
     from s7.factories.datasource_factory import create_datasource
 

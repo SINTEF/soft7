@@ -2,21 +2,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, cast as type_cast
+from typing import TYPE_CHECKING
+from typing import cast as type_cast
 
 import httpx
 import yaml
 from oteapi.models import ResourceConfig
-from pydantic import ConfigDict, BaseModel, ValidationError, AnyHttpUrl
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, ValidationError
 
 from s7.exceptions import EntityNotFound
 from s7.pydantic_models.oteapi import HashableResourceConfig
 from s7.pydantic_models.soft7_entity import (
     CallableAttributesMixin,
     SOFT7Entity,
+    SOFT7IdentityURI,
     map_soft_to_py_types,
     parse_identity,
-    SOFT7IdentityURI,
 )
 
 if TYPE_CHECKING:  # pragma: no cover

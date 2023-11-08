@@ -6,7 +6,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from importlib.metadata import EntryPoint
-    from typing import Any, Union, Protocol
+    from typing import Any, Protocol, Union
 
     class MockEntryPoints(Protocol):
         """Mock `importlib.metadata.entry_points()`.

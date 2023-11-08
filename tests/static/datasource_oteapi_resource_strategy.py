@@ -2,10 +2,9 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pydantic.dataclasses import dataclass
 import yaml
-
 from oteapi.models import ResourceConfig, SessionUpdate
+from pydantic.dataclasses import dataclass
 
 if TYPE_CHECKING:
     from typing import Any, Optional

@@ -10,6 +10,8 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -17,7 +19,7 @@ from typing import TYPE_CHECKING, Optional
 
 from oteapi.models import ResourceConfig
 from otelib import OTEClient
-from pydantic import Field, create_model, AnyUrl
+from pydantic import AnyUrl, Field, create_model
 from pydantic_core import PydanticUndefined
 
 from s7.pydantic_models.oteapi import HashableResourceConfig
@@ -28,14 +30,14 @@ from s7.pydantic_models.soft7_entity import (
 )
 from s7.pydantic_models.soft7_instance import (
     DataSourceDimensions,
-    parse_inputs,
     generate_dimensions_docstring,
     generate_model_docstring,
     generate_property_type,
+    parse_inputs,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Union, Literal
+    from typing import Any, Literal
 
     from s7.pydantic_models.soft7_entity import (
         GetData,
@@ -48,10 +50,10 @@ LOGGER = logging.getLogger(__name__)
 
 def _get_data(
     config: HashableResourceConfig,
-    category: 'Literal["dimensions", "properties"]',
+    category: Literal["dimensions", "properties"],
     *,
-    url: "Optional[str]" = None,
-) -> "GetData":
+    url: str | None = None,
+) -> GetData:
     """Get a datum from category.
 
     Everything in the __get_data() function will not be called until the first time
@@ -74,7 +76,7 @@ def _get_data(
     # OTEAPI Pipeline
     client = OTEClient(url or "http://localhost:8080")
     data_resource = client.create_dataresource(**config.model_dump())
-    result: "dict[str, Any]" = json.loads(data_resource.get())
+    result: dict[str, Any] = json.loads(data_resource.get())
 
     # TODO: This whole section should be updated to properly resolve how data is to be
     # retrieved from external sources through the OTEAPI. For now, we just "say" that
@@ -100,7 +102,7 @@ def _get_data(
     del data_resource
     del result
 
-    def __get_data(soft7_property: str) -> "Any":
+    def __get_data(soft7_property: str) -> Any:
         """Get a named datum (property or dimension) from the data resource.
 
         Properties:
@@ -130,9 +132,9 @@ def _get_data(
 
 
 def create_datasource(
-    entity: "Union[SOFT7Entity, dict[str, Any], Path, str]",
-    resource_config: "Union[HashableResourceConfig, ResourceConfig, dict[str, Any], str]",
-    oteapi_url: "Optional[str]" = None,
+    entity: SOFT7Entity | dict[str, Any] | Path | str,
+    resource_config: HashableResourceConfig | ResourceConfig | dict[str, Any] | str,
+    oteapi_url: str | None = None,
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.
 
@@ -154,7 +156,7 @@ def create_datasource(
     namespace, version, name = parse_identity(entity.identity)
 
     # Create the dimensions model
-    dimensions: dict[str, tuple[type[int], "GetData"]] = (
+    dimensions: dict[str, tuple[type[int], GetData]] = (
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
@@ -191,7 +193,7 @@ def create_datasource(
     # Create the SOFT7 metadata fields for the data source model
     # All of these fields will be excluded from the data source model representation as
     # well as the serialized JSON schema or Python dictionary.
-    soft7_metadata: dict[str, tuple["Union[type, object]", "Any"]] = {
+    soft7_metadata: dict[str, tuple[type | object, Any]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         "dimensions": (
@@ -208,7 +210,7 @@ def create_datasource(
     }
 
     # Pre-calculate property types
-    property_types: dict[str, type["PropertyType"]] = {
+    property_types: dict[str, type[PropertyType]] = {
         property_name: generate_property_type(property_value, dimensions_model_instance)
         for property_name, property_value in entity.properties.items()
     }
@@ -217,7 +219,7 @@ def create_datasource(
     __doc__ = generate_model_docstring(entity, property_types)
 
     # Create the data source model's properties
-    field_definitions: dict[str, tuple["type[PropertyType]", "GetData"]] = {
+    field_definitions: dict[str, tuple[type[PropertyType], GetData]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (

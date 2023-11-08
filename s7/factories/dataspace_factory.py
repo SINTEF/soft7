@@ -1,10 +1,9 @@
 """
 Soft7 factory
 """
-import abc
 
 
-class BaseExt(metaclass=abc.ABCMeta):
+class BaseExt:
     """
     Base class
     """
@@ -40,16 +39,13 @@ def __class_factory(name, meta):
 
 def __dataspace_class_factory(name, meta, dataspace):
     database = dataspace.create_db(meta["uri"])
-    initializer = (
-        lambda __database: lambda self, id=None: self.__dict__.update(
-            {"id": (__database.document(id)).id}
-        )
-    )(database)
-    generic_setter = (
-        lambda database: lambda self, key, value: (
-            database.document(self.id).update({key: value})
-        )
-    )(database)
+
+    def initializer(self, id=None):
+        self.__dict__.update({"id": (database.document(id)).id})
+
+    def generic_setter(self, key, value):
+        database.document(self.id).update({key: value})
+
     attr = {
         "uriref": meta["uri"],
         "properties": meta["properties"],
