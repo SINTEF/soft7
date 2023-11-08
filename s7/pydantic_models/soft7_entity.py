@@ -9,7 +9,7 @@ from typing import (
     runtime_checkable,
 )
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter, AliasChoices
 from pydantic.functional_validators import model_validator, field_validator
 from pydantic.functional_serializers import model_serializer
 from pydantic.networks import UrlConstraints
@@ -281,7 +281,10 @@ class SOFT7Entity(BaseModel):
 
     identity: Annotated[
         SOFT7IdentityURI,
-        Field(description="The semantic reference for the entity.", alias="uri"),
+        Field(
+            description="The semantic reference for the entity.",
+            validation_alias=AliasChoices("identity", "uri"),
+        ),
     ]
 
     description: Annotated[str, Field(description="A description of the entity.")] = ""
