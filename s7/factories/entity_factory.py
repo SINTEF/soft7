@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import ConfigDict, Field, create_model
 
 from s7.pydantic_models.oteapi import (
     HashableFunctionConfig,
@@ -46,7 +46,7 @@ LOGGER = logging.getLogger(__name__)
 
 def create_entity(
     entity: SOFT7Entity | dict[str, Any] | Path | str,
-) -> type[BaseModel]:
+) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.
 
     Parameters:

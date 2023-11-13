@@ -62,6 +62,18 @@ SOFT7EntityPropertyType = Literal[
     "bytearray",
     "ref",
 ]
+map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
+    "string": str,
+    "str": str,
+    "float": float,
+    "int": int,
+    "complex": complex,
+    "dict": dict,
+    "boolean": bool,
+    "bytes": bytes,
+    "bytearray": bytearray,
+    "ref": BaseModel,
+}
 
 
 def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, "Union[str, None]", str]:
@@ -230,20 +242,6 @@ class SOFT7DataSource(BaseModel, CallableAttributesMixin):
     soft7___name: str
 
 
-map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
-    "string": str,
-    "str": str,
-    "float": float,
-    "int": int,
-    "complex": complex,
-    "dict": dict,
-    "boolean": bool,
-    "bytes": bytes,
-    "bytearray": bytearray,
-    "ref": BaseModel,
-}
-
-
 class SOFT7EntityProperty(BaseModel):
     """A SOFT7 Entity property."""
 
@@ -254,6 +252,11 @@ class SOFT7EntityProperty(BaseModel):
             alias="type",
         ),
     ]
+
+    ref: Annotated[
+        Optional[SOFT7IdentityURI],
+        Field(description="A reference to another SOFT7 entity.", alias="$ref"),
+    ] = None
 
     shape: Annotated[
         Optional[list[str]],
@@ -274,6 +277,22 @@ class SOFT7EntityProperty(BaseModel):
             ),
         ),
     ] = None
+
+    @model_validator(mode="after")
+    def validate_ref(self) -> "SOFT7EntityProperty":
+        """Validate the reference.
+
+        1. If `type` is `ref`, `ref` must be defined.
+        2. If `type` is not `ref`, `ref` must not be defined.
+
+        """
+        if self.type_ == "ref" and not self.ref:
+            raise ValueError("type is 'ref', but ref is not defined.")
+
+        if self.type_ != "ref" and self.ref:
+            raise ValueError("type is not 'ref', but ref is defined.")
+
+        return self
 
 
 class SOFT7Entity(BaseModel):

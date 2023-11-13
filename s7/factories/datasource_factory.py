@@ -17,7 +17,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, TypedDict
 
-from oteapi.models import ResourceConfig
 from otelib import OTEClient
 from pydantic import AnyUrl, Field, create_model
 
@@ -37,8 +36,8 @@ from s7.pydantic_models.soft7_instance import (
     generate_dimensions_docstring,
     generate_model_docstring,
     generate_property_type,
+    parse_input_configs,
     parse_input_entity,
-    parse_input_resource_config,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -48,7 +47,7 @@ if TYPE_CHECKING:  # pragma: no cover
         GetData,
         PropertyType,
     )
-    from s7.pydantic_models.soft7_instance import SOFT7InstanceeDict
+    from s7.pydantic_models.soft7_instance import SOFT7InstanceDict
 
     class GetDataConfigDict(TypedDict):
         """A dictionary of the various required OTEAPI strategy configurations needed
@@ -95,9 +94,7 @@ def _get_data(
     )
     ote_mapping = client.create_mapping(**config["mapping"].model_dump())
     ote_function = client.create_function(
-        **config.get(
-            "function", default_soft7_ote_function_config(config["dataresource"])
-        ).model_dump()
+        **config.get("function", default_soft7_ote_function_config()).model_dump()
     )
 
     ote_pipeline = ote_data_resource >> ote_mapping >> ote_function
@@ -138,7 +135,7 @@ def _get_data(
             )
             raise ValueError(error_message)
 
-        data: SOFT7InstanceeDict = pipeline_result["soft7_entity_data"]
+        data: SOFT7InstanceDict = pipeline_result["soft7_entity_data"]
 
         if soft7_property in data["properties"]:
             return data["properties"][soft7_property]
@@ -163,8 +160,12 @@ def _get_data(
 
 
 def create_datasource(
-    entity: SOFT7Entity | dict[str, Any] | Path | str,
-    resource_config: HashableResourceConfig | ResourceConfig | dict[str, Any] | str,
+    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
+    configs: GetDataConfigDict
+    | dict[str, dict[str, Any] | None]
+    | dict[str, Any]
+    | AnyUrl
+    | str,
     oteapi_url: str | None = None,
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.
@@ -172,9 +173,8 @@ def create_datasource(
     Parameters:
         entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
             entity.
-        resource_config: A
-            [`ResourceConfig`](https://emmc-asbl.github.io/oteapi-core/latest/all_models/#oteapi.models.ResourceConfig)
-            or a valid dictionary that can be used to instantiate it.
+        configs: A dictionary of the various required OTEAPI strategy configurations
+            needed for the underlying OTEAPI pipeline.
         oteapi_url: The base URL of the OTEAPI service to use.
 
     Returns:
@@ -182,13 +182,13 @@ def create_datasource(
 
     """
     entity = parse_input_entity(entity)
-    resource_config = parse_input_resource_config(resource_config)
+    configs = parse_input_configs(configs)
 
     # Split the identity into its parts
     namespace, version, name = parse_identity(entity.identity)
 
     # Setup the OTEAPI pipeline configuration
-    get_piped_data = lambda: _get_data(resource_config, url=oteapi_url)
+    get_piped_data = lambda: _get_data(configs, url=oteapi_url)
 
     # Create the dimensions model
     dimensions: dict[str, tuple[type[int], GetData]] = (

@@ -1,6 +1,7 @@
 """Pydantic model for the SOFT7 data source instance."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 from typing import cast as type_cast
@@ -10,6 +11,7 @@ import yaml
 from oteapi.models import ResourceConfig
 from pydantic import (
     AnyHttpUrl,
+    AnyUrl,
     BaseModel,
     ConfigDict,
     ValidationError,
@@ -39,6 +41,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
         dimensions: dict[str, int] | None
         properties: dict[str, Any]
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class SOFT7EntityInstance(BaseModel):
@@ -121,12 +126,12 @@ class DataSourceDimensions(BaseModel, CallableAttributesMixin):
 
 
 def parse_input_entity(
-    entity: SOFT7Entity | dict[str, Any] | Path | str,
+    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
-    # Handle the case of the entity being a string
-    if isinstance(entity, str):
-        # If it's a string, we expect to either be:
+    # Handle the case of the entity being a string or a URL
+    if isinstance(entity, (str, AnyUrl)):
+        # If it's a string or URL, we expect to either be:
         # - A path to a YAML file.
         # - A SOFT7 entity identity.
 
@@ -139,14 +144,16 @@ def parse_input_entity(
         else:
             # If it is a URL, assume it's a SOFT7 entity identity.
             with httpx.Client(follow_redirects=True) as client:
-                response = client.get(entity, headers={"Accept": "application/yaml"})
+                response = client.get(
+                    str(entity), headers={"Accept": "application/yaml"}
+                )
 
             if not response.is_success:
                 try:
                     response.raise_for_status()
                 except httpx.HTTPStatusError as error:
                     raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity!r}"
+                        f"Could not retrieve SOFT7 entity online from {entity}"
                     ) from error
 
             # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
@@ -175,11 +182,15 @@ def parse_input_entity(
     return entity
 
 
-def parse_input_resource_config(
-    resource_config: HashableResourceConfig | ResourceConfig | dict[str, Any] | str,
+def parse_input_configs(
+    resource_config: HashableResourceConfig
+    | ResourceConfig
+    | dict[str, Any]
+    | AnyUrl
+    | str,
 ) -> HashableResourceConfig:
     """Parse input to a function that expects a resource config."""
-    # Handle the case of resource_config being a string.
+    # Handle the case of resource_config being a string or URL.
     if isinstance(resource_config, str):
         # Expect it to be either:
         # - A URL to a JSON/YAML resource online.
@@ -206,7 +217,7 @@ def parse_input_resource_config(
             # If it is a URL, assume it's a URL to a JSON/YAML resource online.
             with httpx.Client(follow_redirects=True) as client:
                 response = client.get(
-                    resource_config, headers={"Accept": "application/yaml"}
+                    str(resource_config), headers={"Accept": "application/yaml"}
                 )
 
             if not response.is_success:
@@ -215,7 +226,7 @@ def parse_input_resource_config(
                 except httpx.HTTPStatusError as error:
                     raise EntityNotFound(
                         f"Could not retrieve resource config online from "
-                        f"{resource_config!r}"
+                        f"{resource_config}"
                     ) from error
 
             # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
@@ -375,11 +386,18 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[PropertyType
     This makes it unnecessary to retrieve the actual dimension values, as they are not
     needed.
     """
+    from s7.factories.entity_factory import create_entity
+
     if TYPE_CHECKING:  # pragma: no cover
         property_type: type[PropertyType]
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type = map_soft_to_py_types[value.type_]
+
+    if value.type_ == "ref":
+        # If the property type is a BaseModel, it's a SOFT7 entity instance.
+        # We need to get the property type for the SOFT7 entity instance.
+        property_type = create_entity(value.ref)
 
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.
