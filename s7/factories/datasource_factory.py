@@ -15,14 +15,18 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 from oteapi.models import ResourceConfig
 from otelib import OTEClient
 from pydantic import AnyUrl, Field, create_model
-from pydantic_core import PydanticUndefined
 
-from s7.pydantic_models.oteapi import HashableResourceConfig
+from s7.pydantic_models.oteapi import (
+    HashableFunctionConfig,
+    HashableMappingConfig,
+    HashableResourceConfig,
+    default_soft7_ote_function_config,
+)
 from s7.pydantic_models.soft7_entity import (
     SOFT7DataSource,
     SOFT7Entity,
@@ -33,28 +37,40 @@ from s7.pydantic_models.soft7_instance import (
     generate_dimensions_docstring,
     generate_model_docstring,
     generate_property_type,
-    parse_inputs,
+    parse_input_entity,
+    parse_input_resource_config,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Literal
+    from typing import Any
 
     from s7.pydantic_models.soft7_entity import (
         GetData,
         PropertyType,
     )
+    from s7.pydantic_models.soft7_instance import SOFT7InstanceeDict
+
+    class GetDataConfigDict(TypedDict):
+        """A dictionary of the various required OTEAPI strategy configurations needed
+        for the _get_data() OTEAPI pipeline."""
+
+        dataresource: HashableResourceConfig
+        mapping: HashableMappingConfig
+        function: HashableFunctionConfig | None
 
 
 LOGGER = logging.getLogger(__name__)
 
+CACHE: dict[str, dict[str, Any]] = {}
+"""A cache of the OTEAPI pipeline results."""
+
 
 def _get_data(
-    config: HashableResourceConfig,
-    category: Literal["dimensions", "properties"],
+    config: GetDataConfigDict,
     *,
     url: str | None = None,
 ) -> GetData:
-    """Get a datum from category.
+    """Get a datum via an OTEAPI pipeline.
 
     Everything in the __get_data() function will not be called until the first time
     the attribute `name` is accessed.
@@ -64,69 +80,84 @@ def _get_data(
     function.
 
     Parameters:
-        config: The OTEAPI data resource configuration.
-        category: Either of the top-level SOFT7 Entity fields `dimensions` or
-            `properties`.
+        config: Mapping for all necessary OTEAPI strategy configuration.
         url: The base URL of the OTEAPI service instance to use.
 
     Returns:
         A function that will return the value of a named dimension or property.
 
     """
-    # OTEAPI Pipeline
+    # OTEAPI pipeline configuration
     client = OTEClient(url or "http://localhost:8080")
-    data_resource = client.create_dataresource(**config.model_dump())
-    result: dict[str, Any] = json.loads(data_resource.get())
 
-    # TODO: This whole section should be updated to properly resolve how data is to be
-    # retrieved from external sources through the OTEAPI. For now, we just "say" that
-    # the `result` contains keys equal to the top-level SOFT7 entity fields, i.e., what
-    # is called `category` here.
-    # Furthermore, using the OTEClient should probably be put into the inner function
-    # to make these calls "lazy"/postponed.
-    data = result.get(category, PydanticUndefined)
+    ote_data_resource = client.create_dataresource(
+        **config["dataresource"].model_dump()
+    )
+    ote_mapping = client.create_mapping(**config["mapping"].model_dump())
+    ote_function = client.create_function(
+        **config.get(
+            "function", default_soft7_ote_function_config(config["dataresource"])
+        ).model_dump()
+    )
 
-    LOGGER.debug("Client %s", client)
-    LOGGER.debug("Data resource %s", data_resource)
-    LOGGER.debug("Result %s", result)
-    LOGGER.debug("Data %s", data)
-
-    optional_categories = [
-        field_name
-        for field_name, field_info in SOFT7Entity.model_fields.items()
-        if field_info.is_required() is False
-    ]
+    ote_pipeline = ote_data_resource >> ote_mapping >> ote_function
 
     # Remove unused variables from memory
     del client
-    del data_resource
-    del result
 
     def __get_data(soft7_property: str) -> Any:
         """Get a named datum (property or dimension) from the data resource.
 
         Properties:
             soft7_property: The name of a datum to get, i.e., the SOFT7 data resource
-                property (or dimension).
+                (property or dimension).
 
         Returns:
-            The value of the SOFT7 data resource property (or dimension).
+            The value of the SOFT7 data resource (property or dimension).
 
         """
-        if data is PydanticUndefined:
-            if category in optional_categories:
-                return None
+        if id(ote_pipeline) not in CACHE:
+            # Should only run once per pipeline - after that we retrieve from the cache
+            pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
+            CACHE[id(ote_pipeline)] = pipeline_result
+        else:
+            pipeline_result = CACHE[id(ote_pipeline)]
 
-            raise AttributeError(
-                f"{soft7_property!r} is not defined for the resource's {category}"
+        # TODO: Use variable from SOFT7 OTEAPI Function configuration instead of
+        # 'soft7_entity_data'. Maybe even consider parsing `pipeline_result` as the
+        # eventual Session model.
+        if "soft7_entity_data" not in pipeline_result:
+            error_message = (
+                "The OTEAPI pipeline did not return the expected data structure."
             )
+            LOGGER.error(
+                "%s\nsoft7_property: %r\npipeline_result: %r",
+                error_message,
+                soft7_property,
+                pipeline_result,
+            )
+            raise ValueError(error_message)
 
-        if soft7_property in data:
-            return data[soft7_property]
+        data: SOFT7InstanceeDict = pipeline_result["soft7_entity_data"]
 
-        raise AttributeError(
-            f"{soft7_property!r} could not be determined for the resource's {category}"
+        if soft7_property in data["properties"]:
+            return data["properties"][soft7_property]
+
+        if (
+            "dimensions" in data
+            and data["dimensions"]
+            and soft7_property in data["dimensions"]
+        ):
+            return data["dimensions"][soft7_property]
+
+        error_message = f"{soft7_property!r} could not be determined for the resource."
+        LOGGER.error(
+            "%s\nsoft7_property: %r\ndata: %r",
+            error_message,
+            soft7_property,
+            data,
         )
+        raise AttributeError(error_message)
 
     return __get_data
 
@@ -150,10 +181,14 @@ def create_datasource(
         A SOFT7 entity class wrapped as a pydantic data model.
 
     """
-    entity, resource_config = parse_inputs(entity, resource_config)
+    entity = parse_input_entity(entity)
+    resource_config = parse_input_resource_config(resource_config)
 
     # Split the identity into its parts
     namespace, version, name = parse_identity(entity.identity)
+
+    # Setup the OTEAPI pipeline configuration
+    get_piped_data = lambda: _get_data(resource_config, url=oteapi_url)
 
     # Create the dimensions model
     dimensions: dict[str, tuple[type[int], GetData]] = (
@@ -163,9 +198,7 @@ def create_datasource(
             dimension_name: (
                 int,
                 Field(
-                    default_factory=lambda: _get_data(
-                        resource_config, "dimensions", url=oteapi_url
-                    ),
+                    default_factory=get_piped_data,
                     description=dimension_description,
                 ),
             )
@@ -225,9 +258,7 @@ def create_datasource(
         property_name: (
             property_types[property_name],
             Field(
-                default_factory=lambda: _get_data(
-                    resource_config, "properties", url=oteapi_url
-                ),
+                default_factory=get_piped_data,
                 description=property_value.description or "",
                 title=property_name.replace(" ", "_"),
                 json_schema_extra={

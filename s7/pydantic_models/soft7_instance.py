@@ -2,13 +2,20 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from typing import cast as type_cast
 
 import httpx
 import yaml
 from oteapi.models import ResourceConfig
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, ValidationError
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    ValidationError,
+    conlist,
+    model_validator,
+)
 
 from s7.exceptions import EntityNotFound
 from s7.pydantic_models.oteapi import HashableResourceConfig
@@ -21,11 +28,77 @@ from s7.pydantic_models.soft7_entity import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
+    from typing import Any, TypedDict
 
     from pydantic.main import Model
 
     from s7.pydantic_models.soft7_entity import PropertyType, SOFT7EntityProperty
+
+    class SOFT7InstanceDict(TypedDict):
+        """A dictionary representation of a SOFT7 instance."""
+
+        dimensions: dict[str, int] | None
+        properties: dict[str, Any]
+
+
+class SOFT7EntityInstance(BaseModel):
+    """A SOFT7 entity instance."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
+
+    # Metadata, i.e., the SOFT7 entity
+    # Will not be part of fields on the instance
+    entity: ClassVar[SOFT7Entity]
+
+    dimensions: BaseModel | None
+    properties: BaseModel
+
+    @model_validator(mode="after")
+    def validate_shaped_properties(self) -> SOFT7EntityInstance:
+        """Validate that the shape of the properties matches the dimensions."""
+        shaped_properties = {
+            property_name: entity_property_value.shape
+            for property_name, entity_property_value in self.entity.properties.items()
+            if entity_property_value.shape
+        }
+
+        dimensions = self.dimensions.model_copy()
+        properties = self.properties.model_copy()
+
+        for property_name, shape in shaped_properties.items():
+            property_value = getattr(properties, property_name)
+
+            try:
+                literal_dimensions = [
+                    getattr(dimensions, dimension_name) for dimension_name in shape
+                ]
+            except AttributeError as exc:
+                raise ValueError(
+                    f"Property {property_name!r} is shaped, but not all the dimensions "
+                    "are defined"
+                ) from exc
+
+            property_type = map_soft_to_py_types[
+                getattr(self.entity.properties, property_name).type_
+            ]
+
+            # Go through the dimensions in reversed order and nest the property type in on
+            # itself.
+            for literal_dimension in reversed(literal_dimensions):
+                # The literal dimension defines the number of times the property type is
+                # repeated.
+                property_type = conlist(property_type, min_length=literal_dimension, max_length=literal_dimension)  # type: ignore[misc]
+
+            # Validate the property value against the property type
+            try:
+                property_type(property_value)
+            except ValidationError as exc:
+                raise ValueError(
+                    f"Property {property_name!r} is shaped, but the shape does not match "
+                    "the property value"
+                ) from exc
+
+        return self
 
 
 class DataSourceDimensions(BaseModel, CallableAttributesMixin):
@@ -47,11 +120,10 @@ class DataSourceDimensions(BaseModel, CallableAttributesMixin):
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
 
 
-def parse_inputs(
+def parse_input_entity(
     entity: SOFT7Entity | dict[str, Any] | Path | str,
-    resource_config: HashableResourceConfig | ResourceConfig | dict[str, Any] | str,
-) -> tuple[SOFT7Entity, HashableResourceConfig]:
-    """Parse inputs for creating a SOFT7 Data Source entity."""
+) -> SOFT7Entity:
+    """Parse input to a function that expects a SOFT7 entity."""
     # Handle the case of the entity being a string
     if isinstance(entity, str):
         # If it's a string, we expect to either be:
@@ -100,6 +172,13 @@ def parse_inputs(
             f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
         )
 
+    return entity
+
+
+def parse_input_resource_config(
+    resource_config: HashableResourceConfig | ResourceConfig | dict[str, Any] | str,
+) -> HashableResourceConfig:
+    """Parse input to a function that expects a resource config."""
     # Handle the case of resource_config being a string.
     if isinstance(resource_config, str):
         # Expect it to be either:
@@ -161,7 +240,7 @@ def parse_inputs(
             f"{type(resource_config)}"
         )
 
-    return entity, resource_config
+    return resource_config
 
 
 def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
@@ -188,6 +267,31 @@ def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
     """
 
 
+def generate_properties_docstring(
+    entity: SOFT7Entity, property_types: dict[str, type[PropertyType]]
+) -> str:
+    """Generated a docstring for the properties model."""
+    _, _, name = parse_identity(entity.identity)
+
+    attributes = []
+    for property_name, property_value in entity.properties.items():
+        property_type = type_cast("str", property_types[property_name])
+
+        attributes.append(
+            f"{property_name} ({property_type}): " f"{property_value.description}\n"
+        )
+
+    return f"""{name.replace(' ', '')}Properties
+
+    Properties for the {name} SOFT7 data source.
+
+    SOFT7 Entity: {entity.identity}
+
+    Attributes:
+        {(' ' * 8).join(attributes)}
+    """
+
+
 def generate_model_docstring(
     entity: SOFT7Entity, property_types: dict[str, type[PropertyType]]
 ) -> str:
@@ -207,7 +311,7 @@ def generate_model_docstring(
 
     properties = []
     for property_name, property_value in entity.properties.items():
-        property_type = type_cast("str", property_types[property_name])
+        property_type = type_cast("str", property_types[property_name].__name__)
 
         properties.append(
             f"{property_name} ({property_type}): " f"{property_value.description}\n"
@@ -260,5 +364,26 @@ def generate_property_type(
 
             # The dimension defines the number of times the property type is repeated.
             property_type = tuple[(property_type,) * dimension]  # type: ignore[misc]
+
+    return property_type
+
+
+def generate_list_property_type(value: SOFT7EntityProperty) -> type[PropertyType]:
+    """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty.
+
+    But make it up of lists, not tuples.
+    This makes it unnecessary to retrieve the actual dimension values, as they are not
+    needed.
+    """
+    if TYPE_CHECKING:  # pragma: no cover
+        property_type: type[PropertyType]
+
+    # Get the Python type for the property as defined by SOFT7 data types.
+    property_type = map_soft_to_py_types[value.type_]
+
+    if value.shape:
+        # For each dimension listed in shape, nest the property type in on itself.
+        for _ in range(len(value.shape)):
+            property_type = list[property_type]
 
     return property_type

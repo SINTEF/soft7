@@ -21,7 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
 
     UnshapedPropertyType = Union[
-        str, float, int, complex, dict, bool, bytes, bytearray, "SOFT7DataSource"
+        str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
     ]
     ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
 
@@ -240,7 +240,7 @@ map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
     "boolean": bool,
     "bytes": bytes,
     "bytearray": bytearray,
-    "ref": SOFT7DataSource,
+    "ref": BaseModel,
 }
 
 

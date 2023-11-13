@@ -57,6 +57,11 @@ Source = "https://github.com/SINTEF/soft7"
 Changelog = "https://github.com/SINTEF/soft7/blob/main/CHANGELOG.md"
 Package = "https://pypi.org/project/soft7"
 
+# Register OTEAPI strategies
+[project.entry-points."oteapi.function"]
+"s7.soft7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"s7.SOFT7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+
 [tool.flit.module]
 name = "s7"
 

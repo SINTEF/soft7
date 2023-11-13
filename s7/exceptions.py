@@ -11,3 +11,15 @@ class S7EntityError(S7Error):
 
 class EntityNotFound(S7EntityError, FileNotFoundError):
     """Raised when an entity is or can not be found."""
+
+
+class S7OTEAPIPluginError(S7Error):
+    """Base class for all SOFT7 OTEAPI plugin exceptions."""
+
+
+class InvalidOrMissingSession(S7OTEAPIPluginError):
+    """Raised when the session is either invalid or missing."""
+
+
+class SOFT7JSONParserError(S7OTEAPIPluginError):
+    """Base class for all JSON to SOFT7 Entity OTEAPI parse strategy exceptions."""
