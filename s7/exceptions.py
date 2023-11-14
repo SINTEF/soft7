@@ -1,4 +1,5 @@
 """SOFT7 exceptions."""
+from __future__ import annotations
 
 
 class S7Error(Exception):
@@ -11,6 +12,10 @@ class S7EntityError(S7Error):
 
 class EntityNotFound(S7EntityError, FileNotFoundError):
     """Raised when an entity is or can not be found."""
+
+
+class ConfigsNotFound(S7EntityError, FileNotFoundError):
+    """Raised when the configs are or can not be found."""
 
 
 class S7OTEAPIPluginError(S7Error):

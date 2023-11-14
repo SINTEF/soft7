@@ -1,4 +1,6 @@
 """Pydantic data models for SOFT7 entities/data models."""
+from __future__ import annotations
+
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -24,8 +26,10 @@ if TYPE_CHECKING:  # pragma: no cover
         str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
     ]
     ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
+    ShapedListPropertyType = list[Union["ShapedListPropertyType", UnshapedPropertyType]]
 
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
+    ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
 
 
 SOFT7IdentityURI = Annotated[
@@ -62,7 +66,7 @@ SOFT7EntityPropertyType = Literal[
     "bytearray",
     "ref",
 ]
-map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
+map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
     "string": str,
     "str": str,
     "float": float,
@@ -76,7 +80,7 @@ map_soft_to_py_types: "dict[str, type[UnshapedPropertyType]]" = {
 }
 
 
-def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, "Union[str, None]", str]:
+def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, str | None, str]:
     """Parse the identity into a tuple of (namespace, version, name).
 
     The identity is a URI of the form: `<namespace>/<version>/<name>`.
@@ -156,7 +160,7 @@ class CallableAttributesMixin:
 
         """
         try:
-            attr_value: "Union[Any, GetData]" = object.__getattribute__(self, name)
+            attr_value: Any | GetData = object.__getattribute__(self, name)
 
             # SOFT7 metadata
             if name.startswith("soft7___"):
@@ -181,8 +185,8 @@ class CallableAttributesMixin:
 
     @model_serializer(mode="wrap", when_used="always")
     def _serialize_callable_attributes(  # type: ignore[misc]
-        self: "BaseModel", handler: "SerializerFunctionWrapHandler"
-    ) -> "Any":
+        self: BaseModel, handler: SerializerFunctionWrapHandler
+    ) -> Any:
         """Serialize all "lazy" SOFT7 property values.
 
         If the value matches the GetData protocol, i.e., it's a callable function with
@@ -191,7 +195,7 @@ class CallableAttributesMixin:
 
         The copy of the model is returned through the SerializerFunctionWrapHandler.
         """
-        resolved_fields: "dict[str, PropertyType]" = {}
+        resolved_fields: dict[str, PropertyType] = {}
 
         # This iteration works, due to how BaseModel yields fields (from __dict__ +
         # __pydantic__extras__).
@@ -279,7 +283,7 @@ class SOFT7EntityProperty(BaseModel):
     ] = None
 
     @model_validator(mode="after")
-    def validate_ref(self) -> "SOFT7EntityProperty":
+    def validate_ref(self) -> SOFT7EntityProperty:
         """Validate the reference.
 
         1. If `type` is `ref`, `ref` must be defined.
@@ -346,7 +350,7 @@ class SOFT7Entity(BaseModel):
         return properties
 
     @model_validator(mode="after")
-    def shapes_and_dimensions(self) -> "SOFT7Entity":
+    def shapes_and_dimensions(self) -> SOFT7Entity:
         """Ensure the shape values are dimensions keys."""
         errors: list[tuple[str, str]] = []
 

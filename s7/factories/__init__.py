@@ -1,4 +1,6 @@
 """Public factory functions for creating SOFT7-related classes and instances."""
+from __future__ import annotations
+
 from .datasource_factory import create_datasource
 from .dataspace_factory import class_factory as create_dataspace
 from .entity_factory import create_entity

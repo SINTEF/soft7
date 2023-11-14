@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
-from pydantic import ConfigDict, Field, create_model
+from pydantic import AnyUrl, ConfigDict, Field, create_model
 
 from s7.pydantic_models.oteapi import (
     HashableFunctionConfig,
@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from typing import Any
 
     from s7.pydantic_models.soft7_entity import (
-        PropertyType,
+        ListPropertyType,
     )
 
     class GetDataConfigDict(TypedDict):
@@ -38,14 +38,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
         dataresource: HashableResourceConfig
         mapping: HashableMappingConfig
-        function: HashableFunctionConfig | None
+        function: HashableFunctionConfig
 
 
 LOGGER = logging.getLogger(__name__)
 
 
 def create_entity(
-    entity: SOFT7Entity | dict[str, Any] | Path | str,
+    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
 ) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.
 
@@ -81,22 +81,22 @@ def create_entity(
         Dimensions = create_model(
             f"{name.replace(' ', '')}Dimensions",
             __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
+            __doc__=generate_dimensions_docstring(entity),
             __base__=None,
             __module__=__name__,
             __validators__=None,
             __cls_kwargs__=None,
             **dimensions,
         )
-        Dimensions.__doc__ = generate_dimensions_docstring(entity)
 
     # Pre-calculate property types
-    property_types: dict[str, type[PropertyType]] = {
+    property_types: dict[str, type[ListPropertyType]] = {
         property_name: generate_list_property_type(property_value)
         for property_name, property_value in entity.properties.items()
     }
 
     # Create the entity model's properties
-    properties: dict[str, tuple[type[PropertyType], Any]] = {
+    properties: dict[str, tuple[type[ListPropertyType], Any]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
@@ -120,13 +120,13 @@ def create_entity(
     Properties = create_model(
         f"{name.replace(' ', '')}Properties",
         __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
+        __doc__=generate_properties_docstring(entity, property_types),
         __base__=None,
         __module__=__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **properties,
     )
-    Properties.__doc__ = generate_properties_docstring(entity, property_types)
 
     # Generate the fields_definitions for the final model
     fields_definitions: dict[str, Any] = {
@@ -149,14 +149,12 @@ def create_entity(
     EntityInstance = create_model(
         name.replace(" ", ""),
         __config__=None,
+        __doc__=generate_model_docstring(entity, property_types),
         __base__=SOFT7EntityInstance,
         __module__=__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **fields_definitions,
     )
-
-    # Generate and update the class docstring
-    EntityInstance.__doc__ = generate_model_docstring(entity, property_types)
 
     return EntityInstance

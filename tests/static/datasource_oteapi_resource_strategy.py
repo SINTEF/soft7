@@ -1,4 +1,6 @@
 """Resource test strategy class."""
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -7,7 +9,7 @@ from oteapi.models import ResourceConfig, SessionUpdate
 from pydantic.dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 @dataclass
@@ -20,11 +22,11 @@ class ResourceTestStrategy:
 
     resource_config: ResourceConfig
 
-    def initialize(self, session: "Optional[dict[str, Any]]" = None) -> SessionUpdate:
+    def initialize(self, session: dict[str, Any] | None = None) -> SessionUpdate:
         """Initialize."""
         return SessionUpdate()
 
-    def get(self, session: "Optional[dict[str, Any]]" = None) -> SessionUpdate:
+    def get(self, session: dict[str, Any] | None = None) -> SessionUpdate:
         """Run resource strategy."""
         test_data_path = (
             Path(__file__).resolve().parent / "soft_datasource_content.yaml"

@@ -6,12 +6,14 @@ the parsed data source into a SOFT7 Entity instance.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
 from oteapi.models import SessionUpdate
 from oteapi.strategies.mapping.mapping import MappingSessionUpdate
 from pydantic import AnyUrl, BaseModel, Field, ValidationError
+from pydantic.dataclasses import dataclass
 
+# from pydantic.dataclasses import dataclass
 from s7.exceptions import InvalidOrMissingSession
 from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
@@ -42,7 +44,8 @@ class RDFTriple(NamedTuple):
 LOGGER = logging.getLogger(__name__)
 
 
-class SOFT7Generator(BaseModel):
+@dataclass
+class SOFT7Generator:
     """SOFT7 Generator function strategy for OTEAPI."""
 
     function_config: Annotated[
@@ -109,7 +112,7 @@ class SOFT7Generator(BaseModel):
         }
 
         # Validate data mapping
-        self._validate_data_mapping(data_mapping)
+        self._validate_data_mapping(data_mapping=data_mapping, entity=Entity)
 
         # Generate the SOFT7 Entity content
         # Dimensions
@@ -178,7 +181,7 @@ class SOFT7Generator(BaseModel):
                         {"namespace": AnyUrl(f"{namespace}#"), "concept": concept}
                     )
 
-            flat_mapping.append(RDFTriple(flat_triple))
+            flat_mapping.append(RDFTriple(*flat_triple))
 
         return flat_mapping
 
@@ -202,7 +205,7 @@ class SOFT7Generator(BaseModel):
                 raise ValueError("Nested dimensions are not supported.")
 
         # Dimensions - Ensure all dimensions are present in the data mapping
-        for dimension in entity.model_fields["dimensions"].annotation.model_fields:
+        for dimension in entity.model_fields["dimensions"].annotation.model_fields:  # type: ignore[union-attr]
             if f"dimensions.{dimension}" not in data_mapping:
                 raise ValueError(
                     f"Dimension {dimension!r} is missing from the data mapping."
@@ -216,7 +219,9 @@ class SOFT7Generator(BaseModel):
                 for dimension in data_mapping
                 if dimension.startswith("dimensions.")
             ]
-        ) != len(entity.model_fields["dimensions"].annotation.model_fields):
+        ) != len(
+            entity.model_fields["dimensions"].annotation.model_fields  # type: ignore[union-attr]
+        ):
             raise ValueError(
                 "The exact number of dimensions in the entity should be present in the "
                 "data mapping."
@@ -235,7 +240,7 @@ class SOFT7Generator(BaseModel):
         }
         top_properties = set(data_mapping) - nested_properties
 
-        for property_name in entity.model_fields["properties"].annotation.model_fields:
+        for property_name in entity.model_fields["properties"].annotation.model_fields:  # type: ignore[union-attr]
             if f"properties.{property_name}" not in top_properties:
                 raise ValueError(
                     f"Property {property_name!r} is missing from the data mapping."
@@ -248,7 +253,7 @@ class SOFT7Generator(BaseModel):
             property_name = nested_properties.pop()
             property_name_parts = property_name.split(".")
 
-            model_fields = entity.model_fields["properties"].annotation.model_fields
+            model_fields = entity.model_fields["properties"].annotation.model_fields  # type: ignore[union-attr]
 
             for depth in range(len(property_name_parts)):
                 if property_name_parts[depth] not in model_fields:
@@ -260,30 +265,37 @@ class SOFT7Generator(BaseModel):
                     model_fields[property_name_parts[depth]].annotation, BaseModel
                 ):
                     raise ValueError(
-                        f"Property {property_name!r} is not a nested property according to the entity."
+                        f"Property {property_name!r} is not a nested property according"
+                        " to the entity."
                     )
 
-                model_fields = model_fields[
-                    property_name_parts[depth]
-                ].annotation.model_fields
+                model_fields = (
+                    model_fields[property_name_parts[depth]]
+                    .annotation.model_fields["properties"]
+                    .annotation.model_fields
+                )  # type: ignore[union-attr]
 
         # Properties - Ensure the exact number of properties in the entity is present in
         # the data mapping
         total_number_of_properties = 0
 
-        def _recursive_count_properties(model_field_infos: Sequence[FieldInfo]) -> int:
+        def _recursive_count_properties(model_field_infos: Sequence[FieldInfo]) -> None:
             nonlocal total_number_of_properties
 
             for property_value in model_field_infos:
-                if issubclass(property_value.annotation, BaseModel):
+                if property_value.annotation and issubclass(
+                    property_value.annotation, SOFT7EntityInstance
+                ):
                     _recursive_count_properties(
-                        property_value.annotation.model_fields.values()
+                        property_value.annotation.model_fields[  # type: ignore[union-attr]
+                            "properties"
+                        ].annotation.model_fields.values()
                     )
                 else:
                     total_number_of_properties += 1
 
         _recursive_count_properties(
-            entity.model_fields["properties"].annotation.model_fields.values()
+            entity.model_fields["properties"].annotation.model_fields.values()  # type: ignore[union-attr]
         )
 
         if (

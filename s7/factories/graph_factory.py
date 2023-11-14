@@ -5,6 +5,8 @@
 3. Internal data source SOFT7 entity.
 
 """
+from __future__ import annotations
+
 from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
@@ -23,7 +25,7 @@ from s7.pydantic_models.soft7_entity import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType
-    from typing import Any, Callable, Optional, Union
+    from typing import Any, Callable
 
 
 TEST_KNOWLEDGE_BASE = Graph(
@@ -94,7 +96,7 @@ class SOFT7EntityPropertyType(str, Enum):
 
 def _get_inputs(
     name: str, graph: Graph
-) -> "list[tuple[str, Optional[FunctionType], Optional[tuple[str, ...]]]]":
+) -> list[tuple[str, FunctionType | None, tuple[str, ...] | None]]:
     """Retrieve all inputs/parameters for a function ONLY if it comes from internal
     entity."""
     expects = [expect for _, _, expect in graph.match(name, "expects", None)]
@@ -137,12 +139,12 @@ def _get_inputs(
 def _get_property_local(
     graph: Graph,
     inner_entities: dict[str, SOFT7DataSource],
-) -> "Callable[[str], Any]":
+) -> Callable[[str], Any]:
     """Get a property - local."""
     predicate_filter = ["mapsTo", "outputs", "expects", "hasProperty", "hasPart"]
     node_filter = ["outer"]
 
-    def __get_property(name: str) -> "Any":
+    def __get_property(name: str) -> Any:
         paths = graph.path(f"outer.{name}", "inner_data", predicate_filter, node_filter)
         print(paths)
         only_supported_path_length = 2
@@ -168,7 +170,7 @@ def _get_property_local(
                 f"No function found to retrieve {name!r} - what a stupid path"
             )
 
-        functions_dict: "dict[str, dict[str, Any]]" = {}
+        functions_dict: dict[str, dict[str, Any]] = {}
         for function_name in functions:
             functions_dict[function_name] = {
                 "inputs": _get_inputs(function_name, graph),
@@ -207,9 +209,9 @@ def _get_property_local(
 
 
 def create_outer_entity(
-    data_model: "Union[SOFT7Entity, Path, str, dict[str, Any]]",
+    data_model: SOFT7Entity | Path | str | dict[str, Any],
     inner_entities: dict[str, SOFT7DataSource],
-    mapping: "Union[Graph, Iterable[tuple[str, str, str]]]",
+    mapping: Graph | Iterable[tuple[str, str, str]],
 ) -> type[SOFT7DataSource]:
     """Create and return a SOFT7 entity wrapped as a pydantic model.
 
@@ -326,6 +328,7 @@ def create_outer_entity(
     return create_model(
         "OuterEntity",
         __config__=None,
+        __doc__=None,
         __base__=SOFT7DataSource,
         __module__=__name__,
         __validators__=None,

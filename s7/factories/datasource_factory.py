@@ -15,17 +15,11 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, Optional
 
 from otelib import OTEClient
 from pydantic import AnyUrl, Field, create_model
 
-from s7.pydantic_models.oteapi import (
-    HashableFunctionConfig,
-    HashableMappingConfig,
-    HashableResourceConfig,
-    default_soft7_ote_function_config,
-)
 from s7.pydantic_models.soft7_entity import (
     SOFT7DataSource,
     SOFT7Entity,
@@ -43,29 +37,27 @@ from s7.pydantic_models.soft7_instance import (
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any
 
+    from oteapi.models import GenericConfig
+
     from s7.pydantic_models.soft7_entity import (
         GetData,
         PropertyType,
     )
-    from s7.pydantic_models.soft7_instance import SOFT7InstanceDict
-
-    class GetDataConfigDict(TypedDict):
-        """A dictionary of the various required OTEAPI strategy configurations needed
-        for the _get_data() OTEAPI pipeline."""
-
-        dataresource: HashableResourceConfig
-        mapping: HashableMappingConfig
-        function: HashableFunctionConfig | None
+    from s7.pydantic_models.soft7_instance import (
+        GetDataConfigDict,
+        GetDataImplicitMappingConfigDict,
+        SOFT7InstanceDict,
+    )
 
 
 LOGGER = logging.getLogger(__name__)
 
-CACHE: dict[str, dict[str, Any]] = {}
+CACHE: dict[int, dict[str, Any]] = {}
 """A cache of the OTEAPI pipeline results."""
 
 
 def _get_data(
-    config: GetDataConfigDict,
+    config: GetDataConfigDict | GetDataImplicitMappingConfigDict,
     *,
     url: str | None = None,
 ) -> GetData:
@@ -92,12 +84,20 @@ def _get_data(
     ote_data_resource = client.create_dataresource(
         **config["dataresource"].model_dump()
     )
-    ote_mapping = client.create_mapping(**config["mapping"].model_dump())
-    ote_function = client.create_function(
-        **config.get("function", default_soft7_ote_function_config()).model_dump()
-    )
 
-    ote_pipeline = ote_data_resource >> ote_mapping >> ote_function
+    if "mapping" in config:
+        ote_mapping = client.create_mapping(**config["mapping"].model_dump())  # type: ignore[typeddict-item]
+
+    ote_function = client.create_function(**config["function"].model_dump())
+
+    if "mapping" in config:
+        ote_pipeline = ote_data_resource >> ote_mapping >> ote_function
+    else:
+        raise NotImplementedError(
+            "Only OTEAPI pipelines with a mapping are supported for now, i.e., "
+            "implicit 1:1 mapping is currently not supported."
+        )
+        # ote_pipeline = ote_data_resource >> ote_function
 
     # Remove unused variables from memory
     del client
@@ -113,6 +113,8 @@ def _get_data(
             The value of the SOFT7 data resource (property or dimension).
 
         """
+        global CACHE  # noqa: PLW0602
+
         if id(ote_pipeline) not in CACHE:
             # Should only run once per pipeline - after that we retrieve from the cache
             pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
@@ -162,8 +164,9 @@ def _get_data(
 def create_datasource(
     entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
     configs: GetDataConfigDict
-    | dict[str, dict[str, Any] | None]
-    | dict[str, Any]
+    | GetDataImplicitMappingConfigDict
+    | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
+    | Path
     | AnyUrl
     | str,
     oteapi_url: str | None = None,
@@ -188,7 +191,7 @@ def create_datasource(
     namespace, version, name = parse_identity(entity.identity)
 
     # Setup the OTEAPI pipeline configuration
-    get_piped_data = lambda: _get_data(configs, url=oteapi_url)
+    get_piped_data = lambda: _get_data(configs, url=oteapi_url)  # noqa: E731
 
     # Create the dimensions model
     dimensions: dict[str, tuple[type[int], GetData]] = (
@@ -211,15 +214,13 @@ def create_datasource(
     dimensions_model = create_model(
         f"{name.replace(' ', '')}Dimensions",
         __config__=None,
+        __doc__=generate_dimensions_docstring(entity),
         __base__=DataSourceDimensions,
         __module__=__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **dimensions,
     )
-
-    # Update the class docstring
-    dimensions_model.__doc__ = generate_dimensions_docstring(entity)
 
     dimensions_model_instance = dimensions_model()
 
@@ -247,9 +248,6 @@ def create_datasource(
         property_name: generate_property_type(property_value, dimensions_model_instance)
         for property_name, property_value in entity.properties.items()
     }
-
-    # Generate the data source model class docstring
-    __doc__ = generate_model_docstring(entity, property_types)
 
     # Create the data source model's properties
     field_definitions: dict[str, tuple[type[PropertyType], GetData]] = {
@@ -286,6 +284,7 @@ def create_datasource(
     DataSourceModel = create_model(
         name.replace(" ", ""),
         __config__=None,
+        __doc__=generate_model_docstring(entity, property_types),
         __base__=SOFT7DataSource,
         __module__=__name__,
         __validators__=None,
@@ -297,8 +296,5 @@ def create_datasource(
             **field_definitions,
         },
     )
-
-    # Update the class docstring
-    DataSourceModel.__doc__ = __doc__
 
     return DataSourceModel()  # type: ignore[call-arg]

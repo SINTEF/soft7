@@ -1,6 +1,7 @@
 """
 Soft7 factory
 """
+from __future__ import annotations
 
 
 class BaseExt:

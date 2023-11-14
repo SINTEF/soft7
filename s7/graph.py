@@ -1,4 +1,6 @@
 """Graph"""
+from __future__ import annotations
+
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -7,7 +9,7 @@ from rdflib import Graph as RDFGraph
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Generator
-    from typing import Any, Optional
+    from typing import Any
 
     Triple = tuple[Any, Any, Any]
 
@@ -15,14 +17,14 @@ if TYPE_CHECKING:  # pragma: no cover
 class Graph:
     """RDF Triple Graph."""
 
-    def __init__(self, triples: "Optional[list[Triple]]" = None) -> None:
-        self.triples: "list[Triple]" = triples or []
+    def __init__(self, triples: list[Triple] | None = None) -> None:
+        self.triples: list[Triple] = triples or []
 
     def clear(self):
         """Clear graph."""
         self.triples.clear()
 
-    def append(self, triple: "Triple"):
+    def append(self, triple: Triple):
         """Add an RDF triple."""
         if triple not in self.triples:
             self.triples.append(triple)
@@ -47,8 +49,8 @@ class Graph:
         self,
         origin: str,
         destination: str,
-        predicate_filter: "Optional[list[str]]" = None,
-        node_avoidance_filter: "Optional[list[str]]" = None,
+        predicate_filter: list[str] | None = None,
+        node_avoidance_filter: list[str] | None = None,
     ) -> list[list[str]]:
         """Return all graph traversal paths between `origin` and `destination`."""
         return list(
@@ -61,9 +63,9 @@ class Graph:
         self,
         origin: str,
         dest: str,
-        predicate_filter: "Optional[list[str]]" = None,
-        node_avoidance_filter: "Optional[list[str]]" = None,
-        visited: "Optional[list[str]]" = None,
+        predicate_filter: list[str] | None = None,
+        node_avoidance_filter: list[str] | None = None,
+        visited: list[str] | None = None,
     ) -> tuple[list[str], list[str], bool]:
         """Find path from `origin` to `dest`, used mainly by `recur_find`."""
         if visited and origin == dest:
@@ -96,10 +98,10 @@ class Graph:
         self,
         origin: str,
         dest: str,
-        predicate_filter: "Optional[list[str]]" = None,
-        node_avoidance_filter: "Optional[list[str]]" = None,
-        visited: "Optional[list[str]]" = None,
-    ) -> "Generator[list[str], None, None]":
+        predicate_filter: list[str] | None = None,
+        node_avoidance_filter: list[str] | None = None,
+        visited: list[str] | None = None,
+    ) -> Generator[list[str], None, None]:
         """Recursively find path from `origin` to `dest`."""
         if visited and origin == dest:
             visited.append(origin)

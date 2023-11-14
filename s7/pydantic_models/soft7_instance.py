@@ -3,24 +3,29 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Optional
 from typing import cast as type_cast
 
 import httpx
 import yaml
-from oteapi.models import ResourceConfig
 from pydantic import (
     AnyHttpUrl,
     AnyUrl,
     BaseModel,
     ConfigDict,
+    TypeAdapter,
     ValidationError,
     conlist,
     model_validator,
 )
 
-from s7.exceptions import EntityNotFound
-from s7.pydantic_models.oteapi import HashableResourceConfig
+from s7.exceptions import ConfigsNotFound, EntityNotFound, S7EntityError
+from s7.pydantic_models.oteapi import (
+    HashableFunctionConfig,
+    HashableMappingConfig,
+    HashableResourceConfig,
+    default_soft7_ote_function_config,
+)
 from s7.pydantic_models.soft7_entity import (
     CallableAttributesMixin,
     SOFT7Entity,
@@ -32,15 +37,38 @@ from s7.pydantic_models.soft7_entity import (
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any, TypedDict
 
+    from oteapi.models import GenericConfig
     from pydantic.main import Model
 
-    from s7.pydantic_models.soft7_entity import PropertyType, SOFT7EntityProperty
+    from s7.pydantic_models.soft7_entity import (
+        ListPropertyType,
+        PropertyType,
+        SOFT7EntityProperty,
+    )
 
     class SOFT7InstanceDict(TypedDict):
         """A dictionary representation of a SOFT7 instance."""
 
         dimensions: dict[str, int] | None
         properties: dict[str, Any]
+
+    class GetDataConfigDict(TypedDict):
+        """A dictionary of the various required OTEAPI strategy configurations needed
+        for the _get_data() OTEAPI pipeline."""
+
+        dataresource: HashableResourceConfig
+        mapping: HashableMappingConfig
+        function: HashableFunctionConfig
+
+    class GetDataImplicitMappingConfigDict(TypedDict):
+        """A dictionary of the various required OTEAPI strategy configurations needed
+        for the _get_data() OTEAPI pipeline.
+        This is a special case where the mapping is implicit, i.e., the mapping is
+        expected to be 1:1 between the data resource and the entity.
+        """
+
+        dataresource: HashableResourceConfig
+        function: HashableFunctionConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -55,7 +83,7 @@ class SOFT7EntityInstance(BaseModel):
     # Will not be part of fields on the instance
     entity: ClassVar[SOFT7Entity]
 
-    dimensions: BaseModel | None
+    dimensions: Optional[BaseModel]
     properties: BaseModel
 
     @model_validator(mode="after")
@@ -67,7 +95,7 @@ class SOFT7EntityInstance(BaseModel):
             if entity_property_value.shape
         }
 
-        dimensions = self.dimensions.model_copy()
+        dimensions = self.dimensions.model_copy() if self.dimensions else {}
         properties = self.properties.model_copy()
 
         for property_name, shape in shaped_properties.items():
@@ -83,24 +111,31 @@ class SOFT7EntityInstance(BaseModel):
                     "are defined"
                 ) from exc
 
+            if TYPE_CHECKING:  # pragma: no cover
+                property_type: type[PropertyType] | type[list[object]]
+
             property_type = map_soft_to_py_types[
                 getattr(self.entity.properties, property_name).type_
             ]
 
-            # Go through the dimensions in reversed order and nest the property type in on
-            # itself.
+            # Go through the dimensions in reversed order and nest the property type in
+            # on itself.
             for literal_dimension in reversed(literal_dimensions):
                 # The literal dimension defines the number of times the property type is
                 # repeated.
-                property_type = conlist(property_type, min_length=literal_dimension, max_length=literal_dimension)  # type: ignore[misc]
+                property_type = conlist(
+                    property_type,
+                    min_length=literal_dimension,
+                    max_length=literal_dimension,
+                )
 
             # Validate the property value against the property type
             try:
-                property_type(property_value)
+                TypeAdapter(property_type).validate_python(property_value)
             except ValidationError as exc:
                 raise ValueError(
-                    f"Property {property_name!r} is shaped, but the shape does not match "
-                    "the property value"
+                    f"Property {property_name!r} is shaped, but the shape does not "
+                    "match the property value"
                 ) from exc
 
         return self
@@ -135,12 +170,23 @@ def parse_input_entity(
         # - A path to a YAML file.
         # - A SOFT7 entity identity.
 
-        # Check if the string is a URL (i.e., a SOFT7 entity identity)
+        # Check if it is a URL (i.e., a SOFT7 entity identity)
         try:
-            SOFT7IdentityURI(entity)
-        except ValidationError:
-            # If it's not a URL, assume it's a path to a YAML file.
-            entity = Path(entity)
+            SOFT7IdentityURI(str(entity))
+        except ValidationError as exc:
+            if not isinstance(entity, str):
+                raise TypeError("Expected entity to be a str at this point") from exc
+
+            # If it's not a URL, check whether it is a path to an (existing) file.
+            entity_path = Path(entity).resolve()
+
+            if entity_path.exists():
+                # If it's a path to an existing file, assume it's a JSON/YAML file.
+                entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
+            else:
+                # If it's not a path to an existing file, assume it's a parseable
+                # JSON/YAML
+                entity = yaml.safe_load(entity)
         else:
             # If it is a URL, assume it's a SOFT7 entity identity.
             with httpx.Client(follow_redirects=True) as client:
@@ -183,15 +229,22 @@ def parse_input_entity(
 
 
 def parse_input_configs(
-    resource_config: HashableResourceConfig
-    | ResourceConfig
-    | dict[str, Any]
+    configs: GetDataConfigDict
+    | GetDataImplicitMappingConfigDict
+    | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
+    | Path
     | AnyUrl
     | str,
-) -> HashableResourceConfig:
+) -> GetDataConfigDict | GetDataImplicitMappingConfigDict:
     """Parse input to a function that expects a resource config."""
-    # Handle the case of resource_config being a string or URL.
-    if isinstance(resource_config, str):
+    name_to_config_type_mapping = {
+        "dataresource": HashableResourceConfig,
+        "mapping": HashableMappingConfig,
+        "function": HashableFunctionConfig,
+    }
+
+    # Handle the case of configs being a string or URL.
+    if isinstance(configs, (str, AnyUrl)):
         # Expect it to be either:
         # - A URL to a JSON/YAML resource online.
         # - A path to a JSON/YAML resource file.
@@ -199,25 +252,26 @@ def parse_input_configs(
 
         # Check if the string is a URL
         try:
-            AnyHttpUrl(resource_config)
-        except ValidationError:
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            resource_config_path = Path(resource_config).resolve()
+            AnyHttpUrl(str(configs))
+        except ValidationError as exc:
+            if not isinstance(configs, str):
+                raise TypeError("Expected configs to be a str at this point") from exc
 
-            if resource_config_path.exists():
+            # If it's not a URL, check whether it is a path to an (existing) file.
+            configs_path = Path(configs).resolve()
+
+            if configs_path.exists():
                 # If it's a path to an existing file, assume it's a JSON/YAML file.
-                resource_config = yaml.safe_load(
-                    resource_config_path.read_text(encoding="utf8")
-                )
+                configs = yaml.safe_load(configs_path.read_text(encoding="utf8"))
             else:
                 # If it's not a path to an existing file, assume it's a parseable
                 # JSON/YAML
-                resource_config = yaml.safe_load(resource_config)
+                configs = yaml.safe_load(configs)
         else:
             # If it is a URL, assume it's a URL to a JSON/YAML resource online.
             with httpx.Client(follow_redirects=True) as client:
                 response = client.get(
-                    str(resource_config), headers={"Accept": "application/yaml"}
+                    str(configs), headers={"Accept": "application/yaml"}
                 )
 
             if not response.is_success:
@@ -225,33 +279,121 @@ def parse_input_configs(
                     response.raise_for_status()
                 except httpx.HTTPStatusError as error:
                     raise EntityNotFound(
-                        f"Could not retrieve resource config online from "
-                        f"{resource_config}"
+                        f"Could not retrieve configurations online from {configs}"
                     ) from error
 
             # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
             # JSON is a subset of YAML.
-            resource_config = yaml.safe_load(response.content)
+            configs = yaml.safe_load(response.content)
 
-    # Handle the case of resource_config being a dictionary or a "pure" OTEAPI Core
-    # ResourceConfig: We need to convert it to a HashableResourceConfig.
-    if isinstance(resource_config, dict):
-        resource_config = HashableResourceConfig(**resource_config)
+    # Handle the case of configs being a path to a JSON/YAML file.
+    if isinstance(configs, Path):
+        configs_path = configs.resolve()
 
-    if isinstance(resource_config, ResourceConfig) and not isinstance(
-        resource_config, HashableResourceConfig
-    ):
-        resource_config = HashableResourceConfig(
-            **resource_config.model_dump(exclude_defaults=True)
+        if not configs_path.exists():
+            raise ConfigsNotFound(
+                f"Could not find a configs YAML file at {configs_path}"
+            )
+
+        configs = yaml.safe_load(configs_path.read_text(encoding="utf8"))
+
+    # Expect configs to be a dictionary at this point.
+    if not isinstance(configs, dict):
+        raise TypeError(f"configs must be a 'dict', instead it was a {type(configs)}")
+
+    for name, config in configs.items():
+        if name and not isinstance(name, str):
+            raise TypeError("The config name must be a string")
+
+        if name not in name_to_config_type_mapping:
+            raise ValueError(
+                f"The config name {name!r} is not a valid config name. "
+                f"Valid config names are: {', '.join(name_to_config_type_mapping)}"
+            )
+
+        # Handle the case of the config being a string or URL.
+        if isinstance(config, (str, AnyUrl)):
+            # Expect it to be either:
+            # - A URL to a JSON/YAML config online.
+            # - A path to a JSON/YAML config file.
+            # - A JSON/YAML parseable string.
+
+            # Check if the string is a URL
+            try:
+                AnyHttpUrl(str(config))
+            except ValidationError as exc:
+                if not isinstance(config, str):
+                    raise TypeError(
+                        "Expected config to be a str at this point"
+                    ) from exc
+
+                # If it's not a URL, check whether it is a path to an (existing)
+                # file.
+                config_path = Path(config).resolve()
+
+                if config_path.exists():
+                    # If it's a path to an existing file, assume it's a JSON/YAML
+                    # file.
+                    config = yaml.safe_load(  # noqa: PLW2901
+                        config_path.read_text(encoding="utf8")
+                    )
+                else:
+                    # If it's not a path to an existing file, assume it's a
+                    # parseable JSON/YAML
+                    config = yaml.safe_load(config)  # noqa: PLW2901
+            else:
+                # If it is a URL, assume it's a URL to a JSON/YAML resource online.
+                with httpx.Client(follow_redirects=True) as client:
+                    response = client.get(
+                        str(config), headers={"Accept": "application/yaml"}
+                    )
+
+                if not response.is_success:
+                    try:
+                        response.raise_for_status()
+                    except httpx.HTTPStatusError as error:
+                        raise ConfigsNotFound(
+                            f"Could not retrieve {name} config online from {config}"
+                        ) from error
+
+                # Using YAML parser, since _if_ the content is JSON, it's still
+                # valid YAML. JSON is a subset of YAML.
+                config = yaml.safe_load(response.content)  # noqa: PLW2901
+
+        # Ensure all values are Hashable*Config instances if they are dictionaries
+        # or Hashable*Config instances.
+        if isinstance(config, (dict, BaseModel)):
+            try:
+                configs[name] = name_to_config_type_mapping[name](  # type: ignore[literal-required]
+                    **(config if isinstance(config, dict) else config.model_dump())
+                )
+            except ValidationError as exc:
+                raise S7EntityError(
+                    f"The {name!r} configuration provided could not be validated "
+                    f"as a proper OTEAPI {name.capitalize()}Config"
+                ) from exc
+
+        # Allow function to be None, as it has a default value.
+        # Otherwise, raise.
+        elif name == "function" and config is None:
+            configs[name] = default_soft7_ote_function_config()  # type: ignore[literal-required]
+        else:
+            raise TypeError(
+                f"The {name!r} configuration provided is not a valid OTEAPI "
+                f"{name.capitalize()}Config. Got type {type(config)}"
+            )
+
+    # Ensure all required configs are present
+    if "dataresource" not in configs:
+        raise S7EntityError(
+            "The configs provided must contain a Resource configuration"
         )
 
-    if not isinstance(resource_config, HashableResourceConfig):
-        raise TypeError(
-            "resource_config must be an OTEAPI Core 'ResourceConfig', instead it was a "
-            f"{type(resource_config)}"
-        )
+    # Set default values if necessary
+    if "function" not in configs:
+        configs["function"] = default_soft7_ote_function_config()
 
-    return resource_config
+    return configs  # type: ignore[return-value]
 
 
 def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
@@ -279,7 +421,8 @@ def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
 
 
 def generate_properties_docstring(
-    entity: SOFT7Entity, property_types: dict[str, type[PropertyType]]
+    entity: SOFT7Entity,
+    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
 ) -> str:
     """Generated a docstring for the properties model."""
     _, _, name = parse_identity(entity.identity)
@@ -304,7 +447,8 @@ def generate_properties_docstring(
 
 
 def generate_model_docstring(
-    entity: SOFT7Entity, property_types: dict[str, type[PropertyType]]
+    entity: SOFT7Entity,
+    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
 ) -> str:
     """Generated a docstring for the data source model."""
     namespace, version, name = parse_identity(entity.identity)
@@ -379,7 +523,7 @@ def generate_property_type(
     return property_type
 
 
-def generate_list_property_type(value: SOFT7EntityProperty) -> type[PropertyType]:
+def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListPropertyType]:
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty.
 
     But make it up of lists, not tuples.
@@ -389,12 +533,15 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[PropertyType
     from s7.factories.entity_factory import create_entity
 
     if TYPE_CHECKING:  # pragma: no cover
-        property_type: type[PropertyType]
+        property_type: type[ListPropertyType]
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type = map_soft_to_py_types[value.type_]
 
     if value.type_ == "ref":
+        if TYPE_CHECKING:  # pragma: no cover
+            assert value.ref is not None  # nosec
+
         # If the property type is a BaseModel, it's a SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
         property_type = create_entity(value.ref)
@@ -402,6 +549,6 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[PropertyType
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.
         for _ in range(len(value.shape)):
-            property_type = list[property_type]
+            property_type = list[property_type]  # type: ignore[valid-type]
 
     return property_type

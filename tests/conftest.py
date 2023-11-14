@@ -1,15 +1,17 @@
 """Pytest fixtures for all tests."""
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any, Union
+    from typing import Any
 
 
 @pytest.fixture
-def static_folder() -> "Path":
+def static_folder() -> Path:
     """Path to the 'static' folder."""
     from pathlib import Path
 
@@ -19,7 +21,7 @@ def static_folder() -> "Path":
 
 
 @pytest.fixture
-def soft_entity_init() -> "dict[str, Union[str, dict]]":
+def soft_entity_init() -> dict[str, str | dict]:
     """A dict for initializing a `SOFT7Entity`."""
     return {
         "identity": "https://onto-ns.com/s7/0.1.0/temperature",
@@ -53,11 +55,11 @@ def soft_entity_init() -> "dict[str, Union[str, dict]]":
 
 
 @pytest.fixture
-def soft_datasource_init(static_folder: "Path") -> "dict[str, Any]":
+def soft_datasource_init(static_folder: Path) -> dict[str, Any]:
     """A dict representating data source content."""
     import yaml
 
-    def _list_to_tuple(value: "Any") -> tuple["Any", ...]:
+    def _list_to_tuple(value: Any) -> tuple[Any, ...]:
         """Convert a list to a tuple."""
         if isinstance(value, list):
             return tuple(_list_to_tuple(_) for _ in value)

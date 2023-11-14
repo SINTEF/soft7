@@ -1,19 +1,21 @@
 """Test the datasource factory."""
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:
-    from typing import Any, Union
+    from typing import Any
 
     from requests_mock import Mocker
 
 
 def test_create_datasource(
-    soft_entity_init: "dict[str, Union[str, dict]]",
-    soft_datasource_init: "dict[str, Any]",
-    generic_resource_config: "dict[str, Union[str, dict]]",
-    requests_mock: "Mocker",
+    soft_entity_init: dict[str, str | dict],
+    soft_datasource_init: dict[str, Any],
+    generic_resource_config: dict[str, str | dict],
+    requests_mock: Mocker,
 ) -> None:
     """Test a straight forward call to create_datasource()."""
     import json
@@ -57,9 +59,9 @@ def test_create_datasource(
 
 @pytest.mark.usefixtures("load_test_strategies")
 def test_inspect_created_datasource(
-    soft_entity_init: "dict[str, Union[str, dict]]",
-    generic_resource_config: "dict[str, Union[str, dict]]",
-    soft_datasource_init: "dict[str, Any]",
+    soft_entity_init: dict[str, str | dict],
+    generic_resource_config: dict[str, str | dict],
+    soft_datasource_init: dict[str, Any],
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
     from pydantic import AnyUrl, BaseModel
@@ -209,9 +211,9 @@ def test_inspect_created_datasource(
 
 @pytest.mark.usefixtures("load_test_strategies")
 def test_serialize_python_datasource(
-    soft_entity_init: "dict[str, Union[str, dict]]",
-    soft_datasource_init: "dict[str, Any]",
-    generic_resource_config: "dict[str, Union[str, dict]]",
+    soft_entity_init: dict[str, str | dict],
+    soft_datasource_init: dict[str, Any],
+    generic_resource_config: dict[str, str | dict],
 ) -> None:
     """Check the data source contents when serialized to a Python dict."""
     from s7.factories.datasource_factory import create_datasource
@@ -229,9 +231,9 @@ def test_serialize_python_datasource(
 
 @pytest.mark.usefixtures("load_test_strategies")
 def test_serialize_json_datasource(
-    soft_entity_init: "dict[str, Union[str, dict]]",
-    soft_datasource_init: "dict[str, Any]",
-    generic_resource_config: "dict[str, Union[str, dict]]",
+    soft_entity_init: dict[str, str | dict],
+    soft_datasource_init: dict[str, Any],
+    generic_resource_config: dict[str, str | dict],
 ) -> None:
     """Check the data source contents when serialized to JSON."""
     import json
@@ -253,8 +255,8 @@ def test_serialize_json_datasource(
 
 @pytest.mark.usefixtures("load_test_strategies")
 def test_datasource_json_schema(
-    soft_entity_init: "dict[str, Union[str, dict]]",
-    generic_resource_config: "dict[str, Union[str, dict]]",
+    soft_entity_init: dict[str, str | dict],
+    generic_resource_config: dict[str, str | dict],
 ) -> None:
     """Check the generated JSON Schema for the data source."""
     from s7.factories.datasource_factory import create_datasource

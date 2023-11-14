@@ -2,25 +2,26 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import TYPE_CHECKING
 
-from oteapi.models import FunctionConfig, MappingConfig, ResourceConfig
-
-if TYPE_CHECKING:  # pragma: no cover
-    pass
+from oteapi.models import FunctionConfig, GenericConfig, MappingConfig, ResourceConfig
 
 
 class HashableMixin:
     """Mixin to make pydantic models hashable."""
 
     def __hash__(self) -> int:
-        return hash(
-            tuple(
-                (field_name, field_value)
-                if (isinstance(field_value, Hashable) or field_value is None)
-                else (field_name, None)
-                for field_name, field_value in self
+        """Hash the model."""
+        if isinstance(self, GenericConfig):
+            return hash(
+                tuple(
+                    (field_name, field_value)
+                    if (isinstance(field_value, Hashable) or field_value is None)
+                    else (field_name, None)
+                    for field_name, field_value in self
+                )
             )
+        raise NotImplementedError(
+            f"Hashing of {self.__class__.__name__} is not implemented."
         )
 
 

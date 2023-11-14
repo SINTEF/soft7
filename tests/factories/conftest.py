@@ -1,4 +1,6 @@
 """Pytest fixtures for 'factoris'."""
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest
@@ -6,7 +8,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from importlib.metadata import EntryPoint
-    from typing import Any, Protocol, Union
+    from typing import Any, Protocol
 
     class MockEntryPoints(Protocol):
         """Mock `importlib.metadata.entry_points()`.
@@ -25,9 +27,7 @@ if TYPE_CHECKING:
 
         """
 
-        def __call__(
-            self, entry_points: Iterable[Union[EntryPoint, dict[str, Any]]]
-        ) -> None:
+        def __call__(self, entry_points: Iterable[EntryPoint | dict[str, Any]]) -> None:
             ...
 
     class CreateEntryPoints(Protocol):
@@ -65,7 +65,7 @@ def add_mock_strategies_to_path() -> None:
 
 
 @pytest.fixture
-def mock_importlib_entry_points(monkeypatch: pytest.MonkeyPatch) -> "MockEntryPoints":
+def mock_importlib_entry_points(monkeypatch: pytest.MonkeyPatch) -> MockEntryPoints:
     """Mock `importlib.metadata.entry_points()` to return a specific set of entry
     points.
 
@@ -78,7 +78,7 @@ def mock_importlib_entry_points(monkeypatch: pytest.MonkeyPatch) -> "MockEntryPo
     from oteapi.plugins import entry_points as oteapi_entry_points
 
     def _mock_entry_points(
-        entry_points: "Iterable[Union[EntryPoint, dict[str, Any]]]",
+        entry_points: Iterable[EntryPoint | dict[str, Any]],
     ) -> None:
         """Mock `importlib.metadata.entry_points()`.
 
@@ -95,7 +95,7 @@ def mock_importlib_entry_points(monkeypatch: pytest.MonkeyPatch) -> "MockEntryPo
                 ```
 
         """
-        load_entry_points: "dict[str, list[EntryPoint]]" = {}
+        load_entry_points: dict[str, list[EntryPoint]] = {}
         for entry_point in entry_points:
             if isinstance(entry_point, dict):
                 if not all(
@@ -129,7 +129,7 @@ def mock_importlib_entry_points(monkeypatch: pytest.MonkeyPatch) -> "MockEntryPo
 
 
 @pytest.fixture
-def create_importlib_entry_points() -> "CreateEntryPoints":
+def create_importlib_entry_points() -> CreateEntryPoints:
     """Generate `importlib.metadata.EntryPoint`s from a parsed `setup.cfg` file's
     `[options.entry_points]` group.
 
@@ -148,7 +148,7 @@ def create_importlib_entry_points() -> "CreateEntryPoints":
     import re
     from importlib.metadata import EntryPoint
 
-    def _create_entry_points(entry_points: str) -> "tuple[EntryPoint, ...]":
+    def _create_entry_points(entry_points: str) -> tuple[EntryPoint, ...]:
         """Create EntryPoint.
 
         Parameters:
@@ -167,7 +167,7 @@ def create_importlib_entry_points() -> "CreateEntryPoints":
                 "(group + entry point)."
             )
 
-        parsed_entry_points: "dict[str, list[str]]" = {}
+        parsed_entry_points: dict[str, list[str]] = {}
         current_group = ""
 
         for line in entry_point_lines:
@@ -202,7 +202,7 @@ def create_importlib_entry_points() -> "CreateEntryPoints":
                     )
                 parsed_entry_points[current_group] = []
 
-        res: "list[EntryPoint]" = []
+        res: list[EntryPoint] = []
         for group, entries in parsed_entry_points.items():
             res.extend(
                 EntryPoint(name=entry["name"], value=entry["value"], group=group)
@@ -215,8 +215,8 @@ def create_importlib_entry_points() -> "CreateEntryPoints":
 
 @pytest.fixture
 def load_test_strategies(
-    create_importlib_entry_points: "CreateEntryPoints",
-    mock_importlib_entry_points: "MockEntryPoints",
+    create_importlib_entry_points: CreateEntryPoints,
+    mock_importlib_entry_points: MockEntryPoints,
 ) -> None:
     """Load strategies under `tests/static/`."""
     setup_cfg = """\
@@ -235,7 +235,7 @@ oteapi.resource =
 
 
 @pytest.fixture
-def generic_resource_config() -> "dict[str, Union[str, dict]]":
+def generic_resource_config() -> dict[str, str | dict]:
     """A generic resource config.
 
     Use the accessService `example` as defined in the `load_test_strategies` fixture.

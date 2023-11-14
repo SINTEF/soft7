@@ -1,7 +1,7 @@
 """Pydantic data models for the SOFT7 OTEAPI plugin."""
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 from oteapi.models import AttrDict, DataCacheConfig
 from pydantic import Field
@@ -13,7 +13,7 @@ class SOFT7GeneratorConfig(AttrDict):
     """SOFT7 Generator strategy-specific configuration."""
 
     datacache_config: Annotated[
-        DataCacheConfig | None,
+        Optional[DataCacheConfig],
         Field(
             description=(
                 "Configurations for the data cache for storing the downloaded file "

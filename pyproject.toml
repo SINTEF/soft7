@@ -31,8 +31,8 @@ dependencies = [
     "httpx~=0.25.1",
     "Jinja2",
     "oteapi-core>=0.6.0,<1",
-    "otelib>=0.4.0,<1",
-    "pydantic~=2.4",
+    "otelib>=0.4.1,<1",
+    "pydantic~=2.5",
     "pymongo",
     "pyyaml",
     "rdflib",
@@ -45,7 +45,7 @@ testing = [
     "requests-mock~=1.11",
 ]
 dev = [
-    "pre-commit~=2.18",
+    "pre-commit~=3.5",
     "soft7[testing]",
 ]
 
@@ -59,8 +59,10 @@ Package = "https://pypi.org/project/soft7"
 
 # Register OTEAPI strategies
 [project.entry-points."oteapi.function"]
-"s7.soft7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
-"s7.SOFT7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.soft7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.SOFT7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.soft" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.SOFT" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
 
 [tool.flit.module]
 name = "s7"
@@ -88,8 +90,6 @@ select = [
   "E",
   # Pyflakes
   "F",
-  # pyupgrade
-  "UP",
   # flake8-bugbear
   "B",
   # flake8-simplify
@@ -98,4 +98,24 @@ select = [
   "I",
   # ruff
   "RUF",
+
+  ## For core code base
+  # flake8-blind-except
+  "BLE",
+  # pylint
+  "PL",
 ]
+ignore = [
+    # Self assignment of variable
+    "PLW0127",
+    # too-many-* rules
+    # Ignore these, as they are not relevant for our code base
+    # We will, e.g., extend the recommended number of branches, statements, function
+    # args, etc.
+    "PLR09",
+]
+isort.required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"docs/**" = ["BLE", "PL"]
+"tests/**" = ["BLE", "PL"]
