@@ -26,5 +26,5 @@ class InvalidOrMissingSession(S7OTEAPIPluginError):
     """Raised when the session is either invalid or missing."""
 
 
-class SOFT7JSONParserError(S7OTEAPIPluginError):
+class SOFT7FunctionError(S7OTEAPIPluginError):
     """Base class for all JSON to SOFT7 Entity OTEAPI parse strategy exceptions."""

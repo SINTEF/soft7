@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
+from typing import TYPE_CHECKING
 
 from oteapi.models import FunctionConfig, GenericConfig, MappingConfig, ResourceConfig
+
+if TYPE_CHECKING:  # pragma: no cover
+    from s7.pydantic_models.soft7_instance import SOFT7IdentityURI
 
 
 class HashableMixin:
@@ -37,9 +41,14 @@ class HashableFunctionConfig(FunctionConfig, HashableMixin):
     """FunctionConfig, but hashable."""
 
 
-def default_soft7_ote_function_config() -> HashableFunctionConfig:
+def default_soft7_ote_function_config(
+    entity_identity: SOFT7IdentityURI | str | None = None,
+) -> HashableFunctionConfig:
     """Create a default SOFT7 OTEAPI Function strategy configuration."""
     return HashableFunctionConfig(
         description="SOFT7 OTEAPI Function configuration.",
         functionType="SOFT7",
+        configuration={"entity_identity": SOFT7IdentityURI(str(entity_identity))}
+        if entity_identity
+        else {},
     )

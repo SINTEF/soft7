@@ -7,6 +7,7 @@ from oteapi.models import AttrDict, DataCacheConfig
 from pydantic import Field
 
 from s7.pydantic_models.oteapi import HashableFunctionConfig
+from s7.pydantic_models.soft7_instance import SOFT7IdentityURI
 
 
 class SOFT7GeneratorConfig(AttrDict):
@@ -20,6 +21,10 @@ class SOFT7GeneratorConfig(AttrDict):
                 "content."
             ),
         ),
+    ] = None
+
+    entity_identity: Annotated[
+        Optional[SOFT7IdentityURI], Field(description="The top-level entity identity.")
     ] = None
 
 
