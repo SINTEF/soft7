@@ -52,20 +52,18 @@ if TYPE_CHECKING:  # pragma: no cover
         dimensions: dict[str, int] | None
         properties: dict[str, Any]
 
-    class GetDataConfigDict(TypedDict):
-        """A dictionary of the various required OTEAPI strategy configurations needed
-        for the _get_data() OTEAPI pipeline."""
-
-        dataresource: HashableResourceConfig
-        mapping: HashableMappingConfig
-        function: HashableFunctionConfig
-
-    class GetDataImplicitMappingConfigDict(TypedDict):
+    class GetDataOptionalMapping(TypedDict, total=False):
         """A dictionary of the various required OTEAPI strategy configurations needed
         for the _get_data() OTEAPI pipeline.
         This is a special case where the mapping is implicit, i.e., the mapping is
         expected to be 1:1 between the data resource and the entity.
         """
+
+        mapping: HashableMappingConfig
+
+    class GetDataConfigDict(GetDataOptionalMapping):
+        """A dictionary of the various required OTEAPI strategy configurations needed
+        for the _get_data() OTEAPI pipeline."""
 
         dataresource: HashableResourceConfig
         function: HashableFunctionConfig
@@ -230,12 +228,11 @@ def parse_input_entity(
 
 def parse_input_configs(
     configs: GetDataConfigDict
-    | GetDataImplicitMappingConfigDict
     | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
     | Path
     | AnyUrl
     | str,
-) -> GetDataConfigDict | GetDataImplicitMappingConfigDict:
+) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping = {
         "dataresource": HashableResourceConfig,

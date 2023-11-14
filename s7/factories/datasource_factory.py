@@ -45,7 +45,6 @@ if TYPE_CHECKING:  # pragma: no cover
     )
     from s7.pydantic_models.soft7_instance import (
         GetDataConfigDict,
-        GetDataImplicitMappingConfigDict,
         SOFT7InstanceDict,
     )
 
@@ -57,7 +56,7 @@ CACHE: dict[int, dict[str, Any]] = {}
 
 
 def _get_data(
-    config: GetDataConfigDict | GetDataImplicitMappingConfigDict,
+    config: GetDataConfigDict,
     *,
     url: str | None = None,
 ) -> GetData:
@@ -113,8 +112,6 @@ def _get_data(
             The value of the SOFT7 data resource (property or dimension).
 
         """
-        global CACHE  # noqa: PLW0602
-
         if id(ote_pipeline) not in CACHE:
             # Should only run once per pipeline - after that we retrieve from the cache
             pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
@@ -164,7 +161,6 @@ def _get_data(
 def create_datasource(
     entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
     configs: GetDataConfigDict
-    | GetDataImplicitMappingConfigDict
     | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
     | Path
     | AnyUrl

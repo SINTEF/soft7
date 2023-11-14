@@ -17,7 +17,7 @@ from pydantic.dataclasses import dataclass
 from s7.exceptions import InvalidOrMissingSession, SOFT7FunctionError
 from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
-from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
+from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, SOFT7IdentityURI
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Sequence
@@ -28,7 +28,7 @@ if TYPE_CHECKING:  # pragma: no cover
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
 
-        namespace: AnyUrl
+        namespace: AnyUrl | str
         concept: str
 
 
@@ -84,7 +84,9 @@ class SOFT7Generator:
                     "to be present in the function configuration."
                 )
             else:
-                self.function_config.configuration.entity_identity = entity_identity
+                self.function_config.configuration.entity_identity = SOFT7IdentityURI(
+                    str(entity_identity)
+                )
 
         entity_identity = self.function_config.configuration.entity_identity
 
@@ -221,7 +223,7 @@ class SOFT7Generator:
             for type_ in get_args(entity.model_fields["dimensions"].annotation)
             if type_ is not None
         )
-        PropertiesType: type[BaseModel] = entity.model_fields["properties"].annotation
+        PropertiesType: type[BaseModel] = entity.model_fields["properties"].annotation  # type: ignore[assignment]
 
         # Validate dimensions:
         #  - Ensure there are no nested dimensions
@@ -276,17 +278,25 @@ class SOFT7Generator:
                     continue
 
                 if property_name_parts[depth] not in model_fields:
-                    print("property_name_parts[depth]", property_name_parts[depth])
-                    print("model_fields", model_fields)
                     raise ValueError(
                         f"Property {property_name!r} is missing from the data mapping."
+                    )
+
+                property_name_part_annotation = (
+                    get_origin(model_fields[property_name_parts[depth]].annotation)
+                    or model_fields[property_name_parts[depth]].annotation
+                )
+
+                if property_name_part_annotation is None:
+                    raise ValueError(
+                        f"Property {property_name!r} is not a nested property according"
+                        " to the entity."
                     )
 
                 if model_fields[
                     property_name_parts[depth]
                 ].annotation is not None and not issubclass(
-                    get_origin(model_fields[property_name_parts[depth]].annotation)
-                    or model_fields[property_name_parts[depth]].annotation,
+                    property_name_part_annotation,
                     BaseModel,
                 ):
                     raise ValueError(
@@ -294,11 +304,9 @@ class SOFT7Generator:
                         " to the entity."
                     )
 
-                model_fields = (
-                    model_fields[property_name_parts[depth]]
-                    .annotation.model_fields["properties"]
-                    .annotation.model_fields
-                )  # type: ignore[union-attr]
+                model_fields = property_name_part_annotation.model_fields[
+                    "properties"
+                ].annotation.model_fields  # type: ignore[union-attr]
 
         # Properties - Ensure the exact number of properties in the entity is present in
         # the data mapping
@@ -320,7 +328,7 @@ class SOFT7Generator:
                 else:
                     total_number_of_properties += 1
 
-        _recursive_count_properties(PropertiesType.model_fields.values())
+        _recursive_count_properties(list(PropertiesType.model_fields.values()))
 
         if (
             len(
