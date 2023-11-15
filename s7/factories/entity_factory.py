@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 from pydantic import AnyUrl, ConfigDict, Field, create_model
 
@@ -63,12 +63,12 @@ def create_entity(
     _, _, name = parse_identity(entity.identity)
 
     # Create the entity model's dimensions
-    dimensions: dict[str, tuple[type[int], Any]] = (
+    dimensions: dict[str, tuple[type[int | None] | object, Any]] = (
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
             dimension_name: (
-                int,
+                Optional[int],
                 Field(description=dimension_description),
             )
             for dimension_name, dimension_description in entity.dimensions.items()
@@ -96,11 +96,11 @@ def create_entity(
     }
 
     # Create the entity model's properties
-    properties: dict[str, tuple[type[ListPropertyType], Any]] = {
+    properties: dict[str, tuple[type[ListPropertyType | None] | object, Any]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
-            property_types[property_name],
+            Optional[property_types[property_name]],
             Field(
                 description=property_value.description or "",
                 title=property_name.replace(" ", "_"),

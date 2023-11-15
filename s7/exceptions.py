@@ -28,3 +28,11 @@ class InvalidOrMissingSession(S7OTEAPIPluginError):
 
 class SOFT7FunctionError(S7OTEAPIPluginError):
     """Base class for all JSON to SOFT7 Entity OTEAPI parse strategy exceptions."""
+
+
+class InsufficientData(SOFT7FunctionError, ValueError):
+    """Raised when the data is insufficient to generate a SOFT7 entity."""
+
+
+class InvalidMapping(SOFT7FunctionError, ValueError):
+    """Raised when the mapping is invalid."""

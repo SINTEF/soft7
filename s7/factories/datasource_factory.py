@@ -183,9 +183,6 @@ def create_datasource(
     entity = parse_input_entity(entity)
     configs = parse_input_configs(configs)
 
-    if getattr(configs["function"].configuration, "entity_identity", None) is None:
-        configs["function"].configuration.entity_identity = entity.identity
-
     # Split the identity into its parts
     namespace, version, name = parse_identity(entity.identity)
 

@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Optional
-from typing import cast as type_cast
+from typing import TYPE_CHECKING, ClassVar, Optional, cast, get_args
 
 import httpx
 import yaml
@@ -44,6 +43,7 @@ if TYPE_CHECKING:  # pragma: no cover
         ListPropertyType,
         PropertyType,
         SOFT7EntityProperty,
+        UnshapedPropertyType,
     )
 
     class SOFT7InstanceDict(TypedDict):
@@ -81,7 +81,7 @@ class SOFT7EntityInstance(BaseModel):
     # Will not be part of fields on the instance
     entity: ClassVar[SOFT7Entity]
 
-    dimensions: Optional[BaseModel]
+    dimensions: Optional[BaseModel] = None
     properties: BaseModel
 
     @model_validator(mode="after")
@@ -109,12 +109,38 @@ class SOFT7EntityInstance(BaseModel):
                     "are defined"
                 ) from exc
 
-            if TYPE_CHECKING:  # pragma: no cover
-                property_type: type[PropertyType] | type[list[object]]
+            # Get the inner most (non-list) Python type/class
+            property_type = properties.model_fields[property_name].annotation
+            while isinstance(property_type, list):
+                property_type = next(iter(get_args(property_type)), None)
 
-            property_type = map_soft_to_py_types[
-                getattr(self.entity.properties, property_name).type_
-            ]
+            if property_type is None:
+                raise TypeError(
+                    "Could not determine the inner most Python type for property"
+                    f"{property_name!r}"
+                )
+
+            # Sanity checks
+            if not issubclass(property_type, BaseModel):
+                # Ensure the property type matches the property type defined in the
+                # entity.
+                try:
+                    entity_property_type = map_soft_to_py_types[
+                        self.entity.properties[property_name].type_  # type: ignore[index]
+                    ]
+                except KeyError as exc:
+                    raise ValueError(
+                        f"Property {property_name!r} is a shaped, non-referenced type "
+                        "property, but the given SOFT property type could not be "
+                        "mapped to a Python type."
+                    ) from exc
+
+                if property_type != entity_property_type:
+                    raise ValueError(
+                        f"Property {property_name!r} is a shaped, non-referenced type "
+                        "property, but the inner most Python type does not match the "
+                        "expected Python type given from the entity property's `type`."
+                    )
 
             # Go through the dimensions in reversed order and nest the property type in
             # on itself.
@@ -426,7 +452,7 @@ def generate_properties_docstring(
 
     attributes = []
     for property_name, property_value in entity.properties.items():
-        property_type = type_cast("str", property_types[property_name])
+        property_type = cast("str", property_types[property_name])
 
         attributes.append(
             f"{property_name} ({property_type}): " f"{property_value.description}\n"
@@ -463,7 +489,7 @@ def generate_model_docstring(
 
     properties = []
     for property_name, property_value in entity.properties.items():
-        property_type = type_cast("str", property_types[property_name].__name__)
+        property_type = cast("str", property_types[property_name].__name__)
 
         properties.append(
             f"{property_name} ({property_type}): " f"{property_value.description}\n"
@@ -491,11 +517,20 @@ def generate_property_type(
     value: SOFT7EntityProperty, dimensions: Model
 ) -> type[PropertyType]:
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
-    if TYPE_CHECKING:  # pragma: no cover
-        property_type: type[PropertyType]
+    from s7.factories.entity_factory import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type = map_soft_to_py_types[value.type_]
+    property_type: type[
+        UnshapedPropertyType
+    ] | SOFT7IdentityURI = map_soft_to_py_types.get(
+        value.type_, value.type_  # type: ignore[arg-type]
+    )
+
+    if isinstance(property_type, AnyUrl):
+        # If the property type is a SOFT7IdentityURI, it means it should be a
+        # SOFT7 Entity instance, NOT a SOFT7 Data source. Highlander rules apply:
+        # There can be only one Data source per generated data source.
+        property_type: type[SOFT7EntityInstance] = create_entity(value.type_)  # type: ignore[no-redef]
 
     if value.shape:
         # Go through the dimensions in reversed order and nest the property type in on
@@ -515,9 +550,9 @@ def generate_property_type(
                 )
 
             # The dimension defines the number of times the property type is repeated.
-            property_type = tuple[(property_type,) * dimension]  # type: ignore[misc]
+            property_type: type[PropertyType] = tuple[(property_type,) * dimension]  # type: ignore[misc,no-redef]
 
-    return property_type
+    return property_type  # type: ignore[return-value]
 
 
 def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListPropertyType]:
@@ -529,23 +564,22 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     """
     from s7.factories.entity_factory import create_entity
 
-    if TYPE_CHECKING:  # pragma: no cover
-        property_type: type[ListPropertyType]
-
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type = map_soft_to_py_types[value.type_]
+    property_type: type[
+        UnshapedPropertyType
+    ] | SOFT7IdentityURI = map_soft_to_py_types.get(
+        value.type_, value.type_  # type: ignore[arg-type]
+    )
 
-    if value.type_ == "ref":
-        if TYPE_CHECKING:  # pragma: no cover
-            assert value.ref is not None  # nosec
-
-        # If the property type is a BaseModel, it's a SOFT7 entity instance.
+    if isinstance(value.type_, AnyUrl):
+        # If the property type is a SOFT7IdentityURI, it means it should be another
+        # SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
-        property_type = create_entity(value.ref)
+        property_type: type[SOFT7EntityInstance] = create_entity(value.type_)  # type: ignore[no-redef]
 
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.
         for _ in range(len(value.shape)):
-            property_type = list[property_type]  # type: ignore[valid-type]
+            property_type: type[ListPropertyType] = list[property_type]  # type: ignore[valid-type,no-redef]
 
-    return property_type
+    return property_type  # type: ignore[return-value]

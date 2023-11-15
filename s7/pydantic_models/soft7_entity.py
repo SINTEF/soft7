@@ -1,6 +1,7 @@
 """Pydantic data models for SOFT7 entities/data models."""
 from __future__ import annotations
 
+import json
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -8,18 +9,25 @@ from typing import (
     Literal,
     Optional,
     Protocol,
+    Union,
     runtime_checkable,
 )
 
-from pydantic import AliasChoices, AnyUrl, BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import (
+    AliasChoices,
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+)
 from pydantic.functional_serializers import model_serializer
 from pydantic.functional_validators import field_validator, model_validator
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Union
-
     from pydantic import SerializerFunctionWrapHandler
 
     UnshapedPropertyType = Union[
@@ -54,17 +62,19 @@ class GetData(Protocol):
         ...
 
 
-SOFT7EntityPropertyType = Literal[
-    "string",
-    "str",
-    "float",
-    "int",
-    "complex",
-    "dict",
-    "boolean",
-    "bytes",
-    "bytearray",
-    "ref",
+SOFT7EntityPropertyType = Union[
+    SOFT7IdentityURI,
+    Literal[
+        "string",
+        "str",
+        "float",
+        "int",
+        "complex",
+        "dict",
+        "boolean",
+        "bytes",
+        "bytearray",
+    ],
 ]
 map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
     "string": str,
@@ -76,8 +86,8 @@ map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
     "boolean": bool,
     "bytes": bytes,
     "bytearray": bytearray,
-    "ref": BaseModel,
 }
+"""Use this with a fallback default of returning the lookup value."""
 
 
 def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, str | None, str]:
@@ -257,11 +267,6 @@ class SOFT7EntityProperty(BaseModel):
         ),
     ]
 
-    ref: Annotated[
-        Optional[SOFT7IdentityURI],
-        Field(description="A reference to another SOFT7 entity.", alias="$ref"),
-    ] = None
-
     shape: Annotated[
         Optional[list[str]],
         Field(description="List of dimensions making up the shape of the property."),
@@ -282,21 +287,121 @@ class SOFT7EntityProperty(BaseModel):
         ),
     ] = None
 
-    @model_validator(mode="after")
-    def validate_ref(self) -> SOFT7EntityProperty:
-        """Validate the reference.
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_ref_type_from_dlite(cls, data: Any) -> Any:
+        """Handle the `type_` field being a reference type.
 
-        1. If `type` is `ref`, `ref` must be defined.
-        2. If `type` is not `ref`, `ref` must not be defined.
+        This is a quirk of DLite, which adds a special `$ref` field if `type` is "ref".
+        The value of `$ref` is then an Entity URI, which is what we want to use as the
+        type.
+
+        Parameters:
+            data: The raw input which is often a `dict[str, Any]` but could also be an
+                instance of the model itself (e.g. if
+                `UserModel.model_validate(UserModel.construct(...))` is called) or
+                anything else since you can pass arbitrary objects into
+                `model_validate`.
 
         """
-        if self.type_ == "ref" and not self.ref:
-            raise ValueError("type is 'ref', but ref is not defined.")
+        if isinstance(data, (bytes, bytearray)):
+            try:
+                data = data.decode()
+            except ValueError:
+                # If we cannot decode the bytes, we give up and let pydantic handle it.
+                return data
 
-        if self.type_ != "ref" and self.ref:
-            raise ValueError("type is not 'ref', but ref is defined.")
+        if isinstance(data, str):
+            # Expect the string to be a JSON string, since this is pydantic, supporting
+            # either Python or JSON validation/serialization.
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                # If we cannot decode the string, we give up and let pydantic handle it.
+                return data
 
-        return self
+        if isinstance(data, cls):
+            # If we get an instance of the model itself, we dump it as minimalistically
+            # as possible.
+            data = data.model_dump(exclude_defaults=True, exclude_unset=True)
+
+        # At this point, we expect the data to be a dict.
+        # If it is not, we give up and let pydantic handle it.
+        if not isinstance(data, dict):
+            return data
+
+        # If the `type` field is not "ref" or `$ref` is not present, we return the data
+        # as is to let pydantic do its thing.
+        # Note, while `$ref` should technically only ever be present if `type` is "ref",
+        # we will not assume this is the case and will deal with both cases.
+        type_ = data.get("type", data.get("type_"))
+
+        if isinstance(type_, (bytes, bytearray)):
+            try:
+                type_ = type_.decode()
+            except ValueError:
+                # If we cannot decode the bytes, we give up and let pydantic handle it.
+                return data
+
+        if not isinstance(type_, str):
+            # If `type` is not a string, we give up and let pydantic handle it.
+            return data
+
+        if type_ != "ref" and "$ref" not in data:
+            # Seemingly standard data - let pydantic handle it.
+            return data
+
+        if type_ == "ref" and "$ref" not in data:
+            # Bad data. We can try to see if `ref` is present and assume that is equal
+            # to `$ref`. If it is, we will use it as the type.
+            # Otherwise, we will assume this is a mistake for the `type` field and let
+            # pydantic handle it.
+            if "ref" in data:
+                # Update data and handle it in the next if-block.
+                data["$ref"] = data.pop("ref")
+            else:
+                return data
+
+        if (type_ != "ref" and "$ref" in data) or (type_ == "ref" and "$ref" in data):
+            # If `type` is not "ref" but `$ref` is present, this is not standard DLite
+            # data, but it is not a reference type either.
+            # We will assume this is a mistake for the `type` field use the `$ref` value
+            # if it's valid.
+            # Otherwise, if `type` is "ref" and `$ref` is present, this is standard
+            # DLite data, and we will use the `$ref` value as the type.
+            ref = data.pop("$ref")
+
+            if isinstance(ref, (bytes, bytearray)):
+                try:
+                    ref = ref.decode()
+                except ValueError:
+                    # If we cannot decode the bytes, we give up and let pydantic handle
+                    # it.
+                    return data
+
+            if isinstance(ref, AnyUrl):
+                new_type = ref
+            elif isinstance(ref, str):
+                try:
+                    new_type = SOFT7IdentityURI(ref)
+                except ValidationError as exc:
+                    raise ValueError(
+                        f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
+                    ) from exc
+            else:
+                raise ValueError(
+                    f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
+                )
+
+            if "type" in data:
+                data["type"] = new_type
+            elif "type_" in data:
+                data["type_"] = new_type
+
+        # If we get here, we have either succeeded or failed.
+        # If we failed, we have no idea what is going on, so we let pydantic handle it.
+        # In any case, the result is the same:
+        return data
 
 
 class SOFT7Entity(BaseModel):
