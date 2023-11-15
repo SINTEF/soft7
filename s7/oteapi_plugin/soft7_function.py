@@ -21,7 +21,7 @@ from s7.exceptions import (
     InvalidOrMissingSession,
     SOFT7FunctionError,
 )
-from s7.factories import create_entity
+from s7.factories import create_entity_instance
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, SOFT7IdentityURI
 
@@ -53,7 +53,23 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class SOFT7Generator:
-    """SOFT7 Generator function strategy for OTEAPI."""
+    """SOFT7 Generator function strategy for OTEAPI.
+
+    The strategy expects the following to be present in the session:
+        - Mapping triples
+        - Parsed data
+
+    This means that it expects to be part of a pipeline like:
+
+        DataResource >> Mapping >> SOFT7 Generator
+
+    The strategy will use the mapping triples to transform the parsed data into a SOFT7
+    Entity instance.
+
+    Since the SOFT7 Generator function strategy is a core part of retrieving data in a
+    Data Source factory, it expects to parse the data into a single Entity instance.
+
+    """
 
     function_config: Annotated[
         SOFT7FunctionConfig, Field(description=SOFT7FunctionConfig.__doc__)
@@ -79,13 +95,14 @@ class SOFT7Generator:
         # Parse the mapping triples
         graph = self._parse_mapping(mapping_session)
 
+        # Create local variable for easier access
+        EntityInstance = self.function_config.configuration.entity
+
         # Retrieve mapping structure of identity to SOFT7 Entity class
         entities = self._retrieve_entities(graph)
 
         # Retrieve the parsed data
         parsed_data = self._retrieve_parsed_data(session)
-
-        ##### TODO : Rejig code from here on to better handle nested properties #####
 
         # Generate the reversed data dict to SOFT7 Entity mapping.
         # I.e., mapping for SOFT7 Entity to data dict for easier entity creation.
@@ -150,7 +167,7 @@ class SOFT7Generator:
         }
 
         return {
-            entity_identity: create_entity(entity_identity)
+            entity_identity: create_entity_instance(entity_identity)
             for entity_identity in entities
         }
 
@@ -410,62 +427,77 @@ class SOFT7Generator:
     def _get_parsed_datum(
         self, parsed_data: dict, data_path: str, dimension: bool = False
     ) -> Any:
-        """Get the parsed data from the parsed data dict."""
+        """Get the parsed data from the parsed data dict.
+
+        Currently, we only expect the parsed data to come from the JSON or CSV parser,
+        meaning, we only expect the types: dict, list, str, int, float, bool, None.
+        """
         data_path_parts = data_path.split(".")
 
         current_data = deepcopy(parsed_data)
 
         for depth in range(len(data_path_parts)):
-            if data_path_parts[depth] not in current_data:
-                # Check if the data path is a list index
+            # Handle the case of the current_data being a list
+            if isinstance(current_data, list):
+                # TODO: Consider supporting other than list indexes, e.g., slices, etc.
+
+                # Check if the data path part is a list index
                 try:
                     int(data_path_parts[depth])
-                except (ValueError, TypeError):
-                    pass
-                else:
-                    if isinstance(current_data, list):
-                        try:
-                            current_data = current_data[int(data_path_parts[depth])]
-                        except IndexError as exc:
-                            raise ValueError(
-                                f"Data path {data_path!r} is missing from the parsed "
-                                f"data. Index {int(data_path_parts[depth])} out of "
-                                "range."
-                            ) from exc
-                        else:
-                            continue
-                    else:
-                        raise ValueError(
-                            f"Data path {data_path!r} is missing from the parsed "
-                            "data. Got a list index, but the current data is not a "
-                            "list."
-                        )
-
-                # Check if the current data is a list, and if so, if it contains a dict
-                # with the data path as a key
-                if isinstance(current_data, list):
+                except (ValueError, TypeError) as exc:
                     if dimension:
                         # If the current data is a list, and the data path is mapped to
                         # a dimension, then we expect the length of the list to be the
                         # value of the dimension
+
+                        # First, we ensure this is the last level/data path part
+                        if depth != len(data_path_parts) - 1:
+                            raise ValueError(
+                                "Data path is mapped to a dimension, but the data path "
+                                "is not the last level of the data path. "
+                                "Hint: Possibly add a list index to the data path."
+                            ) from exc
+
                         return len(current_data)
 
-                    try:
-                        # Use index 0 always
-                        current_data = current_data[0][data_path_parts[depth]]
-                    except (IndexError, KeyError) as exc:
-                        raise ValueError(
-                            f"Data path {data_path!r} is missing from the parsed data. "
-                            "Got a list, but the current data does not contain a dict "
-                            "with the data path as a key."
-                        ) from exc
-                    else:
-                        continue
+                    raise ValueError(
+                        f"Data path {data_path!r} is missing from the parsed "
+                        "data. Got a list, but no list index was given in the data "
+                        "path."
+                    ) from exc
 
+                # The current data path part _is_ a list index
+                try:
+                    current_data = current_data[int(data_path_parts[depth])]
+                except IndexError as exc:
+                    raise ValueError(
+                        f"Data path {data_path!r} is missing from the parsed "
+                        f"data. Index {int(data_path_parts[depth])} out of "
+                        "range."
+                    ) from exc
+
+            elif isinstance(current_data, dict):
+                if data_path_parts[depth] not in current_data:
+                    # The data path part cannot be found in current data dict.
+                    previous_data_path_part = (
+                        data_path_parts[depth - 1] if (depth - 1) >= 0 else "/"
+                    )
+                    raise ValueError(
+                        f"Data path {data_path!r} is either invalid or missing from "
+                        "the parsed data. Specifically, the data path part "
+                        f"{data_path_parts[depth]!r} could not be found in the "
+                        f"{previous_data_path_part!r} dict."
+                    )
+
+                current_data = current_data[data_path_parts[depth]]
+
+            else:
+                # We do not expect other container types than dict and list (for now),
+                # so we raise an error - expecting the given data path to either be
+                # invalid or missing from the parsed data.
                 raise ValueError(
-                    f"Data path {data_path!r} is missing from the parsed data."
+                    f"Data path {data_path!r} is either invalid or missing from the "
+                    "parsed data."
                 )
-
-            current_data = current_data[data_path_parts[depth]]
 
         return current_data

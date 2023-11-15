@@ -34,7 +34,7 @@ from s7.pydantic_models.soft7_entity import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, TypedDict
+    from typing import Any, Literal, TypedDict
 
     from oteapi.models import GenericConfig
     from pydantic.main import Model
@@ -258,9 +258,15 @@ def parse_input_configs(
     | Path
     | AnyUrl
     | str,
+    entity: type[SOFT7EntityInstance] | None = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
-    name_to_config_type_mapping = {
+    name_to_config_type_mapping: dict[
+        str,
+        type[HashableFunctionConfig]
+        | type[HashableMappingConfig]
+        | type[HashableFunctionConfig],
+    ] = {
         "dataresource": HashableResourceConfig,
         "mapping": HashableMappingConfig,
         "function": HashableFunctionConfig,
@@ -334,6 +340,9 @@ def parse_input_configs(
                 f"Valid config names are: {', '.join(name_to_config_type_mapping)}"
             )
 
+        if TYPE_CHECKING:  # pragma: no cover
+            name = cast(Literal["dataresource", "mapping", "function"], name)
+
         # Handle the case of the config being a string or URL.
         if isinstance(config, (str, AnyUrl)):
             # Expect it to be either:
@@ -387,7 +396,7 @@ def parse_input_configs(
         # or Hashable*Config instances.
         if isinstance(config, (dict, BaseModel)):
             try:
-                configs[name] = name_to_config_type_mapping[name](  # type: ignore[literal-required]
+                configs[name] = name_to_config_type_mapping[name](
                     **(config if isinstance(config, dict) else config.model_dump())
                 )
             except ValidationError as exc:
@@ -399,7 +408,12 @@ def parse_input_configs(
         # Allow function to be None, as it has a default value.
         # Otherwise, raise.
         elif name == "function" and config is None:
-            configs[name] = default_soft7_ote_function_config()  # type: ignore[literal-required]
+            if entity is None:
+                raise EntityNotFound(
+                    "The entity must be provided if the function config is not "
+                    "provided."
+                )
+            configs[name] = default_soft7_ote_function_config(entity=entity)
         else:
             raise TypeError(
                 f"The {name!r} configuration provided is not a valid OTEAPI "
@@ -414,9 +428,16 @@ def parse_input_configs(
 
     # Set default values if necessary
     if "function" not in configs:
-        configs["function"] = default_soft7_ote_function_config()
+        if entity is None:
+            raise EntityNotFound(
+                "The entity must be provided if the function config is not provided."
+            )
+        configs["function"] = default_soft7_ote_function_config(entity=entity)
 
-    return configs  # type: ignore[return-value]
+    if TYPE_CHECKING:  # pragma: no cover
+        configs = cast(GetDataConfigDict, configs)
+
+    return configs
 
 
 def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
@@ -517,7 +538,7 @@ def generate_property_type(
     value: SOFT7EntityProperty, dimensions: Model
 ) -> type[PropertyType]:
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
-    from s7.factories.entity_factory import create_entity
+    from s7.factories.entity_factory import create_entity_instance
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: type[
@@ -530,7 +551,7 @@ def generate_property_type(
         # If the property type is a SOFT7IdentityURI, it means it should be a
         # SOFT7 Entity instance, NOT a SOFT7 Data source. Highlander rules apply:
         # There can be only one Data source per generated data source.
-        property_type: type[SOFT7EntityInstance] = create_entity(value.type_)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type_)  # type: ignore[no-redef]
 
     if value.shape:
         # Go through the dimensions in reversed order and nest the property type in on
@@ -562,7 +583,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     This makes it unnecessary to retrieve the actual dimension values, as they are not
     needed.
     """
-    from s7.factories.entity_factory import create_entity
+    from s7.factories.entity_factory import create_entity_instance
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: type[
@@ -575,7 +596,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
         # If the property type is a SOFT7IdentityURI, it means it should be another
         # SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
-        property_type: type[SOFT7EntityInstance] = create_entity(value.type_)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type_)  # type: ignore[no-redef]
 
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.

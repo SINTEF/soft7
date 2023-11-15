@@ -5,9 +5,11 @@ from collections.abc import Hashable
 from typing import TYPE_CHECKING
 
 from oteapi.models import FunctionConfig, GenericConfig, MappingConfig, ResourceConfig
+from pydantic import AnyUrl
 
 if TYPE_CHECKING:  # pragma: no cover
-    from s7.pydantic_models.soft7_instance import SOFT7IdentityURI
+    from s7.pydantic_models.soft7_entity import SOFT7IdentityURI
+    from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 
 class HashableMixin:
@@ -42,13 +44,17 @@ class HashableFunctionConfig(FunctionConfig, HashableMixin):
 
 
 def default_soft7_ote_function_config(
-    entity_identity: SOFT7IdentityURI | str | None = None,
+    entity: type[SOFT7EntityInstance] | SOFT7IdentityURI | str,
 ) -> HashableFunctionConfig:
     """Create a default SOFT7 OTEAPI Function strategy configuration."""
     return HashableFunctionConfig(
         description="SOFT7 OTEAPI Function configuration.",
         functionType="SOFT7",
-        configuration={"entity_identity": SOFT7IdentityURI(str(entity_identity))}
-        if entity_identity
-        else {},
+        configuration={
+            "entity": (
+                SOFT7IdentityURI(str(entity))
+                if entity and isinstance(entity, (AnyUrl, str))
+                else entity
+            )
+        },
     )

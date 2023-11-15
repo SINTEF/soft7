@@ -1,16 +1,24 @@
 """Pydantic data models for the SOFT7 OTEAPI plugin."""
 from __future__ import annotations
 
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
 from oteapi.models import AttrDict, DataCacheConfig
-from pydantic import Field
+from pydantic import Field, field_validator
 
+from s7.exceptions import EntityNotFound
+from s7.factories.entity_factory import create_entity_instance
 from s7.pydantic_models.oteapi import HashableFunctionConfig
+from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
 
 
 class SOFT7GeneratorConfig(AttrDict):
     """SOFT7 Generator strategy-specific configuration."""
+
+    entity: Annotated[
+        type[SOFT7EntityInstance],
+        Field(description="The SOFT7 entity to be used for the generator."),
+    ]
 
     datacache_config: Annotated[
         Optional[DataCacheConfig],
@@ -21,6 +29,25 @@ class SOFT7GeneratorConfig(AttrDict):
             ),
         ),
     ] = None
+
+    @field_validator("entity", mode="before")
+    @classmethod
+    def ensure_entity_is_cls(cls, value: Any) -> type[SOFT7EntityInstance]:
+        """Ensure the given entity is a SOFT7EntityInstance class."""
+        if isinstance(value, type) and issubclass(value, SOFT7EntityInstance):
+            # The entity is already a SOFT7EntityInstance (or subclass) type.
+            return value
+
+        # The entity is not a SOFT7EntityInstance (or subclass) type.
+        # Try to parse it as a SOFT7 Entity.
+        try:
+            entity = parse_input_entity(value)
+        except (TypeError, EntityNotFound) as exc:
+            raise ValueError(
+                f"Invalid value for entity field ({value!r}) for SOFT7GeneratorConfig."
+            ) from exc
+
+        return create_entity_instance(entity)
 
 
 class SOFT7FunctionConfig(HashableFunctionConfig):
@@ -35,4 +62,4 @@ class SOFT7FunctionConfig(HashableFunctionConfig):
 
     configuration: Annotated[
         SOFT7GeneratorConfig, Field(description=SOFT7GeneratorConfig.__doc__)
-    ] = SOFT7GeneratorConfig()
+    ]
