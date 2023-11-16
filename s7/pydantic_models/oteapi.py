@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from oteapi.models import FunctionConfig, GenericConfig, MappingConfig, ResourceConfig
 from pydantic import AnyUrl
 
-from s7.pydantic_models.soft7_entity import SOFT7IdentityURI
+from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 
 if TYPE_CHECKING:  # pragma: no cover
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
@@ -45,7 +45,7 @@ class HashableFunctionConfig(FunctionConfig, HashableMixin):
 
 
 def default_soft7_ote_function_config(
-    entity: type[SOFT7EntityInstance] | SOFT7IdentityURI | str,
+    entity: type[SOFT7EntityInstance] | SOFT7IdentityURIType | str,
 ) -> HashableFunctionConfig:
     """Create a default SOFT7 OTEAPI Function strategy configuration."""
     return HashableFunctionConfig(

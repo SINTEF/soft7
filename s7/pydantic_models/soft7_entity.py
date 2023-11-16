@@ -23,7 +23,10 @@ from pydantic import (
     ValidationError,
 )
 from pydantic.functional_serializers import model_serializer
-from pydantic.functional_validators import field_validator, model_validator
+from pydantic.functional_validators import (
+    field_validator,
+    model_validator,
+)
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
 
@@ -40,9 +43,33 @@ if TYPE_CHECKING:  # pragma: no cover
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
 
 
-SOFT7IdentityURI = Annotated[
+SOFT7IdentityURIType = Annotated[
     Url, UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True)
 ]
+
+
+def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
+    """SOFT7 Identity URI.
+
+    This is a URL with the following constraints:
+    - The scheme must be either `http`, `https` or `file`.
+    - The host must be present.
+
+    Parameters:
+        url: The URL to validate.
+
+    Returns:
+        The validated URL.
+
+    Raises:
+        ValidationError: If the URL does not meet the constraints.
+
+    """
+    if isinstance(url, str):
+        url = url.split("#", maxsplit=1)[0].split("?", maxsplit=1)[0]
+        return SOFT7IdentityURIType(url)
+
+    raise TypeError(f"Expected str or Url, got {type(url)}")
 
 
 @runtime_checkable
@@ -63,7 +90,7 @@ class GetData(Protocol):
 
 
 SOFT7EntityPropertyType = Union[
-    SOFT7IdentityURI,
+    SOFT7IdentityURIType,
     Literal[
         "string",
         "str",
@@ -408,7 +435,7 @@ class SOFT7Entity(BaseModel):
     """A SOFT7 Entity."""
 
     identity: Annotated[
-        SOFT7IdentityURI,
+        SOFT7IdentityURIType,
         Field(
             description="The semantic reference for the entity.",
             validation_alias=AliasChoices("identity", "uri"),

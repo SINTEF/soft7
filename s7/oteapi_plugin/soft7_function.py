@@ -15,14 +15,17 @@ from pydantic.dataclasses import dataclass
 
 # from pydantic.dataclasses import dataclass
 from s7.exceptions import (
-    InsufficientData,
     InvalidMapping,
     InvalidOrMissingSession,
     SOFT7FunctionError,
 )
 from s7.factories import create_entity_instance
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
-from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, parse_identity
+from s7.pydantic_models.soft7_entity import (
+    SOFT7IdentityURI,
+    SOFT7IdentityURIType,
+    parse_identity,
+)
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -41,7 +44,7 @@ if TYPE_CHECKING:  # pragma: no cover
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
 
-        namespace: Union[AnyUrl, str]
+        namespace: Union[SOFT7IdentityURIType, str]
         concept: str
 
 
@@ -56,7 +59,7 @@ class RDFTriple(NamedTuple):
 LOGGER = logging.getLogger(__name__)
 
 
-def entity_lookup(identity: SOFT7IdentityURI | str) -> type[SOFT7EntityInstance]:
+def entity_lookup(identity: SOFT7IdentityURIType | str) -> type[SOFT7EntityInstance]:
     """Lookup and return a SOFT7 Entity Instance class."""
     import s7.factories.generated_classes as cls_module
 
@@ -147,11 +150,9 @@ class SOFT7Generator:
         # separated path to the attribute/field within the SOFT7 Entity.
         # For example: "properties.name" -> "person.name"
         self._data_mapping = self._generate_data_mapping()
-        print(self._data_mapping)
 
         # Create mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes
         self._entities = self._generate_entities_mapping()
-        print(self._entities)
 
         # Validate data mapping
         self._validate_data_mapping()
@@ -167,7 +168,7 @@ class SOFT7Generator:
         )
 
     @property
-    def entities(self) -> dict[SOFT7IdentityURI, type[SOFT7EntityInstance]]:
+    def entities(self) -> dict[SOFT7IdentityURIType, type[SOFT7EntityInstance]]:
         """Return the mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes."""
         if not hasattr(self, "_entities"):
             raise SOFT7FunctionError(
@@ -197,7 +198,7 @@ class SOFT7Generator:
         return self._parsed_data
 
     @property
-    def data_mapping(self) -> dict[SOFT7IdentityURI, dict[str, str]]:
+    def data_mapping(self) -> dict[SOFT7IdentityURIType, dict[str, str]]:
         """Return the reversed data dict to SOFT7 Entity mapping."""
         if not hasattr(self, "_data_mapping"):
             raise SOFT7FunctionError(
@@ -231,7 +232,7 @@ class SOFT7Generator:
 
         return parsed_data
 
-    def _generate_data_mapping(self) -> dict[SOFT7IdentityURI, dict[str, str]]:
+    def _generate_data_mapping(self) -> dict[SOFT7IdentityURIType, dict[str, str]]:
         """Generate the reversed data dict to SOFT7 Entity mapping.
 
         I.e., mapping for SOFT7 Entity to data dict for easier entity creation.
@@ -244,7 +245,7 @@ class SOFT7Generator:
         TODO: This should be replaced by some graph work instead
 
         """
-        data_mapping: dict[SOFT7IdentityURI, dict[str, str]] = {}
+        data_mapping: dict[SOFT7IdentityURIType, dict[str, str]] = {}
 
         for triple in self.graph:
             if not isinstance(triple.object["namespace"], AnyUrl):
@@ -260,7 +261,7 @@ class SOFT7Generator:
 
     def _generate_entities_mapping(
         self,
-    ) -> dict[SOFT7IdentityURI, type[SOFT7EntityInstance]]:
+    ) -> dict[SOFT7IdentityURIType, type[SOFT7EntityInstance]]:
         """Generate a mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes.
 
         This is done by looking up the SOFT7 Entity Instance class from the generated
@@ -275,7 +276,7 @@ class SOFT7Generator:
             A mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes.
 
         """
-        mapping: dict[SOFT7IdentityURI, type[SOFT7EntityInstance]] = {}
+        mapping: dict[SOFT7IdentityURIType, type[SOFT7EntityInstance]] = {}
 
         for entity_identity in self.data_mapping:
             try:
@@ -304,7 +305,7 @@ class SOFT7Generator:
                     namespace, concept = part.split(":", maxsplit=1)
                     flat_triple.append(
                         {
-                            "namespace": AnyUrl(mapping.prefixes[namespace]),
+                            "namespace": SOFT7IdentityURI(mapping.prefixes[namespace]),
                             "concept": concept,
                         }
                     )
@@ -320,7 +321,7 @@ class SOFT7Generator:
                         ) from exc
 
                     flat_triple.append(
-                        {"namespace": AnyUrl(f"{namespace}#"), "concept": concept}
+                        {"namespace": SOFT7IdentityURI(namespace), "concept": concept}
                     )
 
             flat_mapping.append(RDFTriple(*flat_triple))
@@ -332,47 +333,32 @@ class SOFT7Generator:
 
         TODO: This should be possible in a different way using the graph, I suspect?
         """
-        refs: set[SOFT7IdentityURI] = set()
+        refs: set[SOFT7IdentityURIType] = set()
         for entity_identity, entity in self.entities.items():
-            print("entity_identity", entity_identity)
-            print("entity", entity)
-            print("entity.entity", entity.entity)
-            print(f"self.data_mapping[{entity_identity}]", self.data_mapping[entity_identity])
             refs.update(
                 self._validate_data_mapping_for_entity(
                     self.data_mapping[entity_identity], entity
                 )
             )
 
-        # Create a list of entity identities without hashes (#)
-        ref_equal_entities = [
-            entity_identity.__class__(str(entity_identity).split("#", maxsplit=1)[0])
-            for entity_identity in self.entities
-        ]
-
         while refs:
-            ref = refs.pop()
+            ref = refs.pop()  # noqa: F841
 
-            # Ignore any hashes (#)
-            # This should already be the case, but it does not have to be,
-            # so we do it anyway.
-            ref = ref.__class__(str(ref).split("#", maxsplit=1)[0])
-
-            if ref not in ref_equal_entities:
-                raise InsufficientData(
-                    f"SOFT7 Entity identity {ref} is missing from the data mapping."
-                )
+            # if ref not in self.entities:
+            #     raise InsufficientData(
+            #         f"SOFT7 Entity identity {ref} is missing from the data mapping."
+            #     )
 
     def _validate_data_mapping_for_entity(
         self, data_mapping: dict[str, str], entity: type[SOFT7EntityInstance]
-    ) -> set[SOFT7IdentityURI]:
+    ) -> set[SOFT7IdentityURIType]:
         """Validate the data mapping for a specific entity.
 
         Data mapping is reversed, i.e., mapping from SOFT7 Entity to parsed data dict.
 
         Ignore all refs, returning them instead as a set.
         """
-        refs: set[SOFT7IdentityURI] = set()
+        refs: set[SOFT7IdentityURIType] = set()
 
         # Validate dimensions:
         #  - Ensure there are no nested dimensions
@@ -425,9 +411,12 @@ class SOFT7Generator:
         return refs
 
     def _generate_entity_instance(
-        self, entity_cls: type[SOFT7EntityInstance]
+        self, entity_cls: type[SOFT7EntityInstance], data_path: str | None = None
     ) -> SOFT7EntityInstance:
         """(Recursively) Generate the SOFT7 Entity instance.
+
+        Note: If a dimension or property is not found in the data mapping, it will be
+        skipped.
 
         Parameters:
             entity_cls: The SOFT7 Entity instance class to generate.
@@ -438,106 +427,107 @@ class SOFT7Generator:
         """
         data_mapping = self.data_mapping[entity_cls.entity.identity]
 
+        if data_path:
+            no_index_data_path = ".".join(data_path.split(".")[:-1])
+
         # Dimensions
-        entity_dimensions: dict[str, int | None] = {
-            dimension: self._get_parsed_datum(
-                data_mapping[f"dimensions.{dimension}"], dimension=True
-            )
-            for dimension in entity_cls.entity.dimensions or {}
-        }
+        entity_dimensions: dict[str, int] = {}
 
-        # Non-entity instance properties
-        entity_properties = {
-            property_name: self._conform_to_shape(
-                value=self._get_parsed_datum(
-                    data_mapping[f"properties.{property_name}"]
-                ),
-                shape=property_value.shape,
-                dimensions=entity_dimensions,
-            )
-            for property_name, property_value in entity_cls.entity.properties.items()
-            if not isinstance(property_value.type_, AnyUrl)
-        }
+        for dimension in entity_cls.entity.dimensions or {}:
+            if f"dimensions.{dimension}" not in data_mapping:
+                # Dimension is not in the data mapping, skip it
+                continue
 
-        # Entity instance properties
-        entity_properties.update(
-            {
-                property_name: self._conform_to_shape(
-                    value=self._generate_entity_instance(
-                        self.entities[property_value.type_]
-                    ),
-                    shape=property_value.shape,
-                    dimensions=entity_dimensions,
-                    check_value_type=False,
+            indexed_data_path = (
+                data_mapping[f"dimensions.{dimension}"].replace(
+                    no_index_data_path, data_path
                 )
-                for property_name, property_value in (
-                    entity_cls.entity.properties.items()
+                if data_path
+                else data_mapping[f"dimensions.{dimension}"]
+            )
+
+            parsed_dimension_value = self._get_parsed_datum(
+                indexed_data_path, dimension=True
+            )
+            if parsed_dimension_value is not None:
+                entity_dimensions[dimension] = parsed_dimension_value
+
+        # Properties
+        entity_properties: dict[str, ParsedDataType] = {}
+
+        for property_name, property_value in entity_cls.entity.properties.items():
+            if f"properties.{property_name}" not in data_mapping:
+                # Property is not in the data mapping, skip it
+                continue
+
+            if not isinstance(property_value.type_, AnyUrl):
+                # Non-entity instance properties
+
+                # Use the data path if given, otherwise use the data mapping.
+                # The data path here is only given if this is a shaped Entity instance
+                # property. In which case this will be the data path to the entity
+                # instance with an added list index.
+                indexed_data_path = (
+                    data_mapping[f"properties.{property_name}"].replace(
+                        no_index_data_path, data_path
+                    )
+                    if data_path
+                    else data_mapping[f"properties.{property_name}"]
                 )
-                if isinstance(property_value.type_, AnyUrl)
-            }
-        )
+
+                parsed_property_value = self._get_parsed_datum(indexed_data_path)
+
+            # Entity instance properties
+
+            # There should be no list index in the mapping for these, so we need to
+            # add them if this is a shaped property.
+
+            # Shaped Entity instance property
+            elif property_value.shape:
+                # At this point we only accept a 1-dimensional list shape for Entity
+                # instance properties.
+                #
+                # TODO: This should be fixed, most likely using NumPy arrays.
+                if len(property_value.shape) != 1:
+                    raise NotImplementedError(
+                        "Only 1-dimensional list shape is supported for Entity "
+                        "instance properties."
+                    )
+
+                parsed_property_value = []
+
+                dimension_value = entity_dimensions[property_value.shape[0]]
+
+                for list_index in range(dimension_value):
+                    indexed_data_path = (
+                        data_mapping[f"properties.{property_name}"].replace(
+                            no_index_data_path, data_path
+                        )
+                        if data_path
+                        else data_mapping[f"properties.{property_name}"]
+                    )
+
+                    indexed_data_path += f".{list_index}"
+
+                    parsed_property_value.append(
+                        self._generate_entity_instance(
+                            self.entities[property_value.type_],
+                            data_path=indexed_data_path,
+                        )
+                    )
+
+            # Non-shaped Entity instance property
+            else:
+                parsed_property_value = self._generate_entity_instance(
+                    self.entities[property_value.type_],
+                    data_path=data_path,
+                )
+
+            if parsed_property_value is not None:
+                entity_properties[property_name] = parsed_property_value
 
         # Create the SOFT7 Entity instance
         return entity_cls(dimensions=entity_dimensions, properties=entity_properties)
-
-    def _conform_to_shape(
-        self,
-        value: Any,
-        shape: list[str] | None,
-        dimensions: dict[str, int | None],
-        check_value_type: bool = True,
-    ) -> Any | list[Any]:
-        """Wrap a value in lists, conforming to a property shape.
-
-        If shape is None, the value is returned as is.
-
-        Parameters:
-            valuey: The value to potentially wrap in lists.
-            shape: The shape to conform to.
-            dimensions: A mapping of shape dimensions to their int values.
-            check_value_type: Whether to perform a sanity check on the type of the
-                value before wrapping it. If this is False, the value is always wrapped.
-
-        Returns:
-            The potentially wrapped value.
-
-        """
-        if not shape:
-            # No shape (empty list or None): return value as is
-            return value
-
-        if check_value_type and isinstance(value, list):
-            # If the value is a list, we expect it to match with the shape already
-            # and return it.
-            #
-            # TODO: Consider comparing with the specified property type here instead.
-            #       A special case would need to be implemented if the property type
-            #       is a list, since we would need to check the shape of the given value
-            #       against the given shape.
-            return value
-
-        # Iterate over the shape in reverse order and wrap the value in lists
-        # accordingly
-        for dimension in reversed(shape):
-            try:
-                dimension_value = dimensions[dimension]
-            except KeyError as exc:
-                raise ValueError(
-                    f"Dimension {dimension!r} is missing from the parsed dimensions."
-                ) from exc
-
-            if not isinstance(dimension_value, int):
-                try:
-                    dimension_value = int(dimension_value)  # type: ignore[call-overload]
-                except (ValueError, TypeError) as exc:
-                    raise TypeError(
-                        f"Dimension {dimension!r} is not an integer. Got "
-                        f"{dimension_value!r}."
-                    ) from exc
-
-            value = [value] * dimension_value
-
-        return value
 
     def _get_parsed_datum(
         self, data_path: str, dimension: bool = False
@@ -556,7 +546,17 @@ class SOFT7Generator:
             ParsedDataType | ParsedDataPropertyType | dict[str, ParsedDataPropertyType]
         ):
             """Recursively get the parsed data from the parsed data dict."""
-            next_part = data_path_parts[depth]
+            try:
+                next_part = data_path_parts[depth]
+            except IndexError:
+                # We have reached the end of the data path parts
+                if isinstance(data, list) and dimension:
+                    # If the current data is a list, and the data path is mapped to
+                    # a dimension, then we expect the length of the list to be the
+                    # value of the dimension
+                    return len(data)
+
+                return data
 
             # Handle the case of the data being a list
             if isinstance(data, list):

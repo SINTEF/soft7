@@ -17,6 +17,7 @@ from pydantic import (
     conlist,
     model_validator,
 )
+from pydantic._internal._repr import PlainRepr, display_as_type
 
 from s7.exceptions import ConfigsNotFound, EntityNotFound, S7EntityError
 from s7.pydantic_models.oteapi import (
@@ -29,6 +30,7 @@ from s7.pydantic_models.soft7_entity import (
     CallableAttributesMixin,
     SOFT7Entity,
     SOFT7IdentityURI,
+    SOFT7IdentityURIType,
     map_soft_to_py_types,
     parse_identity,
 )
@@ -99,6 +101,10 @@ class SOFT7EntityInstance(BaseModel):
         for property_name, shape in shaped_properties.items():
             property_value = getattr(properties, property_name)
 
+            # Let us ignore None valued properties
+            if property_value is None:
+                continue
+
             # Retrieve the dimension values for dimensions in the shape
             try:
                 literal_dimensions = [
@@ -121,16 +127,18 @@ class SOFT7EntityInstance(BaseModel):
 
             # Get the inner most (non-list) Python type/class
             property_type = properties.model_fields[property_name].annotation
-            while issubclass(property_type, list):
-                property_type = next(iter(get_args(property_type)), None)
+
+            while True:
+                _temp = property_type
+                property_type = next(iter(get_args(property_type)), property_type)
+                if property_type == _temp:
+                    break
 
             if property_type is None:
                 raise TypeError(
                     "Could not determine the inner most Python type for property"
                     f"{property_name!r}"
                 )
-
-
 
             # Sanity checks
             if not issubclass(property_type, BaseModel):
@@ -270,7 +278,10 @@ def parse_input_configs(
     | Path
     | AnyUrl
     | str,
-    entity_instance: type[SOFT7EntityInstance] | SOFT7IdentityURI | str | None = None,
+    entity_instance: type[SOFT7EntityInstance]
+    | SOFT7IdentityURIType
+    | str
+    | None = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
@@ -485,10 +496,11 @@ def generate_properties_docstring(
 
     attributes = []
     for property_name, property_value in entity.properties.items():
-        property_type = cast("str", property_types[property_name])
+        property_type_repr = PlainRepr(display_as_type(property_types[property_name]))
 
         attributes.append(
-            f"{property_name} ({property_type}): " f"{property_value.description}\n"
+            f"{property_name} ({property_type_repr}): "
+            f"{property_value.description}\n"
         )
 
     return f"""{name.replace(' ', '')}Properties
@@ -522,10 +534,11 @@ def generate_model_docstring(
 
     properties = []
     for property_name, property_value in entity.properties.items():
-        property_type = cast("str", property_types[property_name].__name__)
+        property_type_repr = PlainRepr(display_as_type(property_types[property_name]))
 
         properties.append(
-            f"{property_name} ({property_type}): " f"{property_value.description}\n"
+            f"{property_name} ({property_type_repr}): "
+            f"{property_value.description}\n"
         )
 
     return f"""{name}
@@ -555,7 +568,7 @@ def generate_property_type(
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: type[
         UnshapedPropertyType
-    ] | SOFT7IdentityURI = map_soft_to_py_types.get(
+    ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
         value.type_, value.type_  # type: ignore[arg-type]
     )
 
@@ -600,7 +613,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: type[
         UnshapedPropertyType
-    ] | SOFT7IdentityURI = map_soft_to_py_types.get(
+    ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
         value.type_, value.type_  # type: ignore[arg-type]
     )
 
