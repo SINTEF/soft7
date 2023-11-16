@@ -9,6 +9,7 @@ from pydantic import Field, field_validator
 from s7.exceptions import EntityNotFound
 from s7.factories.entity_factory import create_entity_instance
 from s7.pydantic_models.oteapi import HashableFunctionConfig
+from s7.pydantic_models.soft7_entity import parse_identity
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
 
 
@@ -47,7 +48,17 @@ class SOFT7GeneratorConfig(AttrDict):
                 f"Invalid value for entity field ({value!r}) for SOFT7GeneratorConfig."
             ) from exc
 
-        return create_entity_instance(entity)
+        # Try to retrieve the SOFT7EntityInstance class from the generated_classes
+        # module. If unsuccessful, we create it.
+        _, _, name = parse_identity(entity.identity)
+        name = name.replace(" ", "")
+
+        try:
+            import s7.factories.generated_classes as lookup_module
+
+            return getattr(lookup_module, name)
+        except AttributeError:
+            return create_entity_instance(entity)
 
 
 class SOFT7FunctionConfig(HashableFunctionConfig):

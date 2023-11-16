@@ -99,6 +99,7 @@ class SOFT7EntityInstance(BaseModel):
         for property_name, shape in shaped_properties.items():
             property_value = getattr(properties, property_name)
 
+            # Retrieve the dimension values for dimensions in the shape
             try:
                 literal_dimensions = [
                     getattr(dimensions, dimension_name) for dimension_name in shape
@@ -109,9 +110,18 @@ class SOFT7EntityInstance(BaseModel):
                     "are defined"
                 ) from exc
 
+            if not all(isinstance(_, int) for _ in literal_dimensions):
+                raise TypeError(
+                    f"Property {property_name!r} is shaped, but not all the dimensions "
+                    "are integers for its shape."
+                )
+
+            if TYPE_CHECKING:  # pragma: no cover
+                literal_dimensions = cast(list[int], literal_dimensions)
+
             # Get the inner most (non-list) Python type/class
             property_type = properties.model_fields[property_name].annotation
-            while isinstance(property_type, list):
+            while issubclass(property_type, list):
                 property_type = next(iter(get_args(property_type)), None)
 
             if property_type is None:
@@ -119,6 +129,8 @@ class SOFT7EntityInstance(BaseModel):
                     "Could not determine the inner most Python type for property"
                     f"{property_name!r}"
                 )
+
+
 
             # Sanity checks
             if not issubclass(property_type, BaseModel):
@@ -258,7 +270,7 @@ def parse_input_configs(
     | Path
     | AnyUrl
     | str,
-    entity: type[SOFT7EntityInstance] | None = None,
+    entity_instance: type[SOFT7EntityInstance] | SOFT7IdentityURI | str | None = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
@@ -408,12 +420,12 @@ def parse_input_configs(
         # Allow function to be None, as it has a default value.
         # Otherwise, raise.
         elif name == "function" and config is None:
-            if entity is None:
+            if entity_instance is None:
                 raise EntityNotFound(
                     "The entity must be provided if the function config is not "
                     "provided."
                 )
-            configs[name] = default_soft7_ote_function_config(entity=entity)
+            configs[name] = default_soft7_ote_function_config(entity=entity_instance)
         else:
             raise TypeError(
                 f"The {name!r} configuration provided is not a valid OTEAPI "
@@ -428,11 +440,11 @@ def parse_input_configs(
 
     # Set default values if necessary
     if "function" not in configs:
-        if entity is None:
+        if entity_instance is None:
             raise EntityNotFound(
                 "The entity must be provided if the function config is not provided."
             )
-        configs["function"] = default_soft7_ote_function_config(entity=entity)
+        configs["function"] = default_soft7_ote_function_config(entity=entity_instance)
 
     if TYPE_CHECKING:  # pragma: no cover
         configs = cast(GetDataConfigDict, configs)

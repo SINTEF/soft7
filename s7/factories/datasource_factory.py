@@ -181,7 +181,7 @@ def create_datasource(
 
     """
     entity = parse_input_entity(entity)
-    configs = parse_input_configs(configs)
+    configs = parse_input_configs(configs, entity_instance=entity.identity)
 
     # Split the identity into its parts
     namespace, version, name = parse_identity(entity.identity)

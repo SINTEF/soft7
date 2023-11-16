@@ -57,6 +57,9 @@ def create_entity_instance(
         A SOFT7 entity as a pydantic model.
 
     """
+    import s7.factories.generated_classes as module_namespace
+
+    # Parse the input entity
     entity = parse_input_entity(entity)
 
     # Split the identity into its parts
@@ -69,7 +72,7 @@ def create_entity_instance(
         {
             dimension_name: (
                 Optional[int],
-                Field(description=dimension_description),
+                Field(None, description=dimension_description),
             )
             for dimension_name, dimension_description in entity.dimensions.items()
         }
@@ -83,7 +86,7 @@ def create_entity_instance(
             __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
             __doc__=generate_dimensions_docstring(entity),
             __base__=None,
-            __module__=__name__,
+            __module__=module_namespace.__name__,
             __validators__=None,
             __cls_kwargs__=None,
             **dimensions,
@@ -102,6 +105,7 @@ def create_entity_instance(
         property_name: (
             Optional[property_types[property_name]],
             Field(
+                None,
                 description=property_value.description or "",
                 title=property_name.replace(" ", "_"),
                 json_schema_extra={
@@ -122,7 +126,7 @@ def create_entity_instance(
         __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
         __doc__=generate_properties_docstring(entity, property_types),
         __base__=None,
-        __module__=__name__,
+        __module__=module_namespace.__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **properties,
@@ -143,18 +147,24 @@ def create_entity_instance(
             Field(description=f"The {name} SOFT7 entity dimensions."),
         )
 
-    # Set the entity class variable
-    SOFT7EntityInstance.entity = entity
-
     EntityInstance = create_model(
         name.replace(" ", ""),
         __config__=None,
         __doc__=generate_model_docstring(entity, property_types),
         __base__=SOFT7EntityInstance,
-        __module__=__name__,
+        __module__=module_namespace.__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **fields_definitions,
     )
+
+    # Set the entity class variable
+    EntityInstance.entity = entity
+
+    # Register the classes with the generated_classes globals
+    if dimensions:
+        module_namespace.register_class(Dimensions)
+    module_namespace.register_class(Properties)
+    module_namespace.register_class(EntityInstance)
 
     return EntityInstance

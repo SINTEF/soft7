@@ -36,6 +36,7 @@ dependencies = [
     "pymongo",
     "pyyaml",
     "rdflib",
+    "typing-extensions~=4.8; python_version < '3.12'",
 ]
 
 [project.optional-dependencies]
