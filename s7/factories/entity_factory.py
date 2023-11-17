@@ -82,7 +82,7 @@ def create_entity_instance(
 
     if dimensions:
         Dimensions = create_model(
-            f"{name.replace(' ', '')}Dimensions",
+            f"{name.replace(' ', '')}EntityDimensions",
             __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
             __doc__=generate_dimensions_docstring(entity),
             __base__=None,
@@ -122,7 +122,7 @@ def create_entity_instance(
     }
 
     Properties = create_model(
-        f"{name.replace(' ', '')}Properties",
+        f"{name.replace(' ', '')}EntityProperties",
         __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
         __doc__=generate_properties_docstring(entity, property_types),
         __base__=None,
@@ -148,7 +148,7 @@ def create_entity_instance(
         )
 
     EntityInstance = create_model(
-        name.replace(" ", ""),
+        f"{name.replace(' ', '')}Entity",
         __config__=None,
         __doc__=generate_model_docstring(entity, property_types),
         __base__=SOFT7EntityInstance,

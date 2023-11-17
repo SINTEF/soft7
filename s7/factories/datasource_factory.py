@@ -180,6 +180,8 @@ def create_datasource(
         A SOFT7 entity class wrapped as a pydantic data model.
 
     """
+    import s7.factories.generated_classes as module_namespace
+
     entity = parse_input_entity(entity)
     configs = parse_input_configs(configs, entity_instance=entity.identity)
 
@@ -207,18 +209,18 @@ def create_datasource(
         else {}
     )
 
-    dimensions_model = create_model(
-        f"{name.replace(' ', '')}Dimensions",
+    DataSourceDimensionsModel = create_model(
+        f"{name.replace(' ', '')}DataSourceDimensions",
         __config__=None,
         __doc__=generate_dimensions_docstring(entity),
         __base__=DataSourceDimensions,
-        __module__=__name__,
+        __module__=module_namespace.__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **dimensions,
     )
 
-    dimensions_model_instance = dimensions_model()
+    data_source_dimensions = DataSourceDimensionsModel()
 
     # Create the SOFT7 metadata fields for the data source model
     # All of these fields will be excluded from the data source model representation as
@@ -227,8 +229,8 @@ def create_datasource(
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         "dimensions": (
-            dimensions_model,
-            Field(dimensions_model_instance, repr=False, exclude=True),
+            DataSourceDimensionsModel,
+            Field(data_source_dimensions, repr=False, exclude=True),
         ),
         "identity": (
             entity.model_fields["identity"].rebuild_annotation(),
@@ -241,12 +243,12 @@ def create_datasource(
 
     # Pre-calculate property types
     property_types: dict[str, type[PropertyType]] = {
-        property_name: generate_property_type(property_value, dimensions_model_instance)
+        property_name: generate_property_type(property_value, data_source_dimensions)
         for property_name, property_value in entity.properties.items()
     }
 
     # Create the data source model's properties
-    field_definitions: dict[str, tuple[type[PropertyType], GetData]] = {
+    properties: dict[str, tuple[type[PropertyType], GetData]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
@@ -271,26 +273,30 @@ def create_datasource(
     # Ensure there is no overlap between the SOFT7 metadata fields and the data source
     # model properties and the data source model properties are not trying to hack the
     # attribute retrieval mechanism.
-    if any(field.startswith("soft7___") for field in field_definitions):
+    if any(field.startswith("soft7___") for field in properties):
         raise ValueError(
             "The data model properties are not allowed to overwrite or mock SOFT7 "
             "metadata fields."
         )
 
     DataSourceModel = create_model(
-        name.replace(" ", ""),
+        f"{name.replace(' ', '')}DataSource",
         __config__=None,
         __doc__=generate_model_docstring(entity, property_types),
         __base__=SOFT7DataSource,
-        __module__=__name__,
+        __module__=module_namespace.__name__,
         __validators__=None,
         __cls_kwargs__=None,
         **{
             # SOFT7 metadata fields
             **{f"soft7___{name}": value for name, value in soft7_metadata.items()},
             # Data source properties
-            **field_definitions,
+            **properties,
         },
     )
+
+    # Register the classes with the generated_classes globals
+    module_namespace.register_class(DataSourceDimensionsModel)
+    module_namespace.register_class(DataSourceModel)
 
     return DataSourceModel()  # type: ignore[call-arg]
