@@ -120,8 +120,8 @@ def _get_data(
             pipeline_result = CACHE[id(ote_pipeline)]
 
         # TODO: Use variable from SOFT7 OTEAPI Function configuration instead of
-        # 'soft7_entity_data'. Maybe even consider parsing `pipeline_result` as the
-        # eventual Session model.
+        # 'soft7_entity_data'. Maybe even consider parsing `pipeline_result` into the
+        # eventual Session model to thereby validate the desired keys are present.
         if "soft7_entity_data" not in pipeline_result:
             error_message = (
                 "The OTEAPI pipeline did not return the expected data structure."

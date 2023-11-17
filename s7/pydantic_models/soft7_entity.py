@@ -216,9 +216,17 @@ class CallableAttributesMixin:
                     ].rebuild_annotation()
                 ).validate_python(resolved_attr_value)
 
+            # Non-SOFT7 attribute
             return attr_value
+
+        except ValidationError as exc:
+            raise AttributeError(
+                f"Could not type and shape validate attribute {name!r} from the data "
+                "source."
+            ) from exc
+
         except Exception as exc:  # noqa: BLE001
-            raise AttributeError from exc
+            raise AttributeError(f"Could not retrieve attribute {name!r}.") from exc
 
     @model_serializer(mode="wrap", when_used="always")
     def _serialize_callable_attributes(  # type: ignore[misc]
