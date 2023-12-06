@@ -3,39 +3,78 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 if TYPE_CHECKING:
+    from pathlib import Path
     from typing import Any
 
+    from pytest_httpx import HTTPXMock
     from requests_mock import Mocker
 
 
 def test_create_datasource(
     soft_entity_init: dict[str, str | dict],
     soft_datasource_init: dict[str, Any],
-    generic_resource_config: dict[str, str | dict],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
     requests_mock: Mocker,
+    httpx_mock: HTTPXMock,
+    static_folder: Path,
 ) -> None:
     """Test a straight forward call to create_datasource()."""
     import json
 
+    import yaml
     from otelib.settings import Settings
 
     from s7.factories.datasource_factory import create_datasource
+    from s7.oteapi_plugin.soft7_function import SOFT7Generator
 
     default_oteapi_url = "http://localhost:8080"
     rest_api_prefix = Settings().prefix
 
     oteapi_url = f"{default_oteapi_url}{rest_api_prefix}"
 
-    # Creating the data resource
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        text=yaml.safe_dump(soft_entity_init),
+    )
+
+    # Run SOFT7Generator
+    # Mock the session data content for the
+    # pipeline = dataresource >> mapping >> function
+    session_data = {}
+    session_data.update(soft_datasource_entity_mapping_init)
+    session_data.update({"content": soft_datasource_init})
+    function_get_content = SOFT7Generator(
+        {
+            "functionType": "SOFT7",
+            "configuration": {"entity": soft_entity_init["identity"]},
+        }
+    ).get(session=session_data)
+
+    # Creating strategies
+    # The data resource
     requests_mock.post(
         f"{oteapi_url}/dataresource",
         json={"resource_id": "1234"},
     )
 
-    # Getting the data resource
+    # The mapping
+    requests_mock.post(
+        f"{oteapi_url}/mapping",
+        json={"mapping_id": "1234"},
+    )
+
+    # The function
+    requests_mock.post(
+        f"{oteapi_url}/function",
+        json={"function_id": "1234"},
+    )
+
+    # Getting the OTE pipeline = dataresource >> mapping >> function
     # Create session
     requests_mock.post(
         f"{oteapi_url}/session",
@@ -44,6 +83,16 @@ def test_create_datasource(
 
     # Initialize
     requests_mock.post(
+        f"{oteapi_url}/function/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/mapping/1234/initialize",
+        content=json.dumps(soft_datasource_entity_mapping_init).encode(
+            encoding="utf-8"
+        ),
+    )
+    requests_mock.post(
         f"{oteapi_url}/dataresource/1234/initialize",
         content=json.dumps({}).encode(encoding="utf-8"),
     )
@@ -51,26 +100,68 @@ def test_create_datasource(
     # Fetch
     requests_mock.get(
         f"{oteapi_url}/dataresource/1234",
-        content=json.dumps(soft_datasource_init).encode(encoding="utf-8"),
+        content=json.dumps({"content": soft_datasource_init}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/mapping/1234",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/function/1234",
+        content=function_get_content.model_dump_json().encode(encoding="utf-8"),
     )
 
-    create_datasource(entity=soft_entity_init, resource_config=generic_resource_config)
+    mapping_config = {"mappingType": "triples"}
+    mapping_config.update(soft_datasource_entity_mapping_init)
+    create_datasource(
+        entity=soft_entity_init["identity"],
+        configs={
+            "dataresource": {
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "mapping": mapping_config,
+        },
+    )
 
 
-@pytest.mark.usefixtures("load_test_strategies")
 def test_inspect_created_datasource(
     soft_entity_init: dict[str, str | dict],
-    generic_resource_config: dict[str, str | dict],
+    static_folder: Path,
     soft_datasource_init: dict[str, Any],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    httpx_mock: HTTPXMock,
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
+    import yaml
     from pydantic import AnyUrl, BaseModel
 
     from s7.factories.datasource_factory import create_datasource
 
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        text=yaml.safe_dump(soft_entity_init),
+    )
+
+    mapping_config = {"mappingType": "triples"}
+    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
-        resource_config=generic_resource_config,
+        configs={
+            "dataresource": {
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "mapping": mapping_config,
+        },
         oteapi_url="python",
     )
 
@@ -82,16 +173,16 @@ def test_inspect_created_datasource(
     # in the sense of dimensionality.
     assert (
         datasource.__doc__
-        == """temperature
+        == """MolecularSpecies
 
     A bare-bones entity for testing.
 
     SOFT7 Entity Metadata:
-        Identity: https://onto-ns.com/s7/0.1.0/temperature
+        Identity: http://onto-ns.com/s7/0.1.0/MolecularSpecies
 
-        Namespace: https://onto-ns.com/s7
+        Namespace: http://onto-ns.com/s7
         Version: 0.1.0
-        Name: temperature
+        Name: MolecularSpecies
 
     Dimensions:
         N (int): Number of elements.
@@ -144,11 +235,11 @@ def test_inspect_created_datasource(
     assert (
         str(datasource.soft7___identity)
         == soft_entity_init["identity"]
-        == "https://onto-ns.com/s7/0.1.0/temperature"
+        == "http://onto-ns.com/s7/0.1.0/MolecularSpecies"
     )
-    assert datasource.soft7___namespace == AnyUrl("https://onto-ns.com/s7")
+    assert datasource.soft7___namespace == AnyUrl("http://onto-ns.com/s7")
     assert datasource.soft7___version == "0.1.0"
-    assert datasource.soft7___name == "temperature"
+    assert datasource.soft7___name == "MolecularSpecies"
     checked_metadata_names.update({"identity", "namespace", "version", "name"})
 
     # dimensions
@@ -162,11 +253,11 @@ def test_inspect_created_datasource(
     # The type of the dimensions is always `int`.
     assert (
         dimensions_metadata.__doc__
-        == """temperatureDimensions
+        == """MolecularSpeciesDimensions
 
-    Dimensions for the temperature SOFT7 data source.
+    Dimensions for the MolecularSpecies SOFT7 data source.
 
-    SOFT7 Entity: https://onto-ns.com/s7/0.1.0/temperature
+    SOFT7 Entity: http://onto-ns.com/s7/0.1.0/MolecularSpecies
 
     Attributes:
         N (int): Number of elements.
@@ -209,18 +300,30 @@ def test_inspect_created_datasource(
         )
 
 
-@pytest.mark.usefixtures("load_test_strategies")
 def test_serialize_python_datasource(
     soft_entity_init: dict[str, str | dict],
     soft_datasource_init: dict[str, Any],
-    generic_resource_config: dict[str, str | dict],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    static_folder: Path,
 ) -> None:
     """Check the data source contents when serialized to a Python dict."""
     from s7.factories.datasource_factory import create_datasource
 
+    mapping_config = {"mappingType": "triples"}
+    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
-        resource_config=generic_resource_config,
+        configs={
+            "dataresource": {
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "mapping": mapping_config,
+        },
         oteapi_url="python",
     )
 
@@ -229,20 +332,32 @@ def test_serialize_python_datasource(
     assert python_serialized == soft_datasource_init["properties"]
 
 
-@pytest.mark.usefixtures("load_test_strategies")
 def test_serialize_json_datasource(
     soft_entity_init: dict[str, str | dict],
     soft_datasource_init: dict[str, Any],
-    generic_resource_config: dict[str, str | dict],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    static_folder: Path,
 ) -> None:
     """Check the data source contents when serialized to JSON."""
     import json
 
     from s7.factories.datasource_factory import create_datasource
 
+    mapping_config = {"mappingType": "triples"}
+    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
-        resource_config=generic_resource_config,
+        configs={
+            "dataresource": {
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "mapping": mapping_config,
+        },
         oteapi_url="python",
     )
 
@@ -253,34 +368,46 @@ def test_serialize_json_datasource(
     )
 
 
-@pytest.mark.usefixtures("load_test_strategies")
 def test_datasource_json_schema(
     soft_entity_init: dict[str, str | dict],
-    generic_resource_config: dict[str, str | dict],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    static_folder: Path,
 ) -> None:
     """Check the generated JSON Schema for the data source."""
     from s7.factories.datasource_factory import create_datasource
 
+    mapping_config = {"mappingType": "triples"}
+    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
-        resource_config=generic_resource_config,
+        configs={
+            "dataresource": {
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "mapping": mapping_config,
+        },
         oteapi_url="python",
     )
 
     json_schema = datasource.model_json_schema()
 
     assert json_schema == {
-        "title": "temperature",
-        "description": """temperature
+        "title": "MolecularSpeciesDataSource",
+        "description": """MolecularSpecies
 
 A bare-bones entity for testing.
 
 SOFT7 Entity Metadata:
-    Identity: https://onto-ns.com/s7/0.1.0/temperature
+    Identity: http://onto-ns.com/s7/0.1.0/MolecularSpecies
 
-    Namespace: https://onto-ns.com/s7
+    Namespace: http://onto-ns.com/s7
     Version: 0.1.0
-    Name: temperature
+    Name: MolecularSpecies
 
 Dimensions:
     N (int): Number of elements.
@@ -355,7 +482,7 @@ Attributes:
                 "x-soft7-unit": "Å",
             },
             "soft7___dimensions": {
-                "allOf": [{"$ref": "#/$defs/temperatureDimensions"}],
+                "allOf": [{"$ref": "#/$defs/MolecularSpeciesDataSourceDimensions"}],
                 "default": {"N": 5},
             },
             "soft7___identity": {
@@ -363,14 +490,14 @@ Attributes:
                 "type": "string",
                 "format": "uri",
                 "minLength": 1,
-                "default": "https://onto-ns.com/s7/0.1.0/temperature",
+                "default": "http://onto-ns.com/s7/0.1.0/MolecularSpecies",
             },
             "soft7___namespace": {
                 "title": "Soft7   Namespace",
                 "type": "string",
                 "format": "uri",
                 "minLength": 1,
-                "default": "https://onto-ns.com/s7",
+                "default": "http://onto-ns.com/s7",
             },
             "soft7___version": {
                 "title": "Soft7   Version",
@@ -379,18 +506,18 @@ Attributes:
             },
             "soft7___name": {
                 "title": "Soft7   Name",
-                "default": "temperature",
+                "default": "MolecularSpecies",
                 "type": "string",
             },
         },
         "$defs": {
-            "temperatureDimensions": {
-                "title": "temperatureDimensions",
-                "description": """temperatureDimensions
+            "MolecularSpeciesDataSourceDimensions": {
+                "title": "MolecularSpeciesDataSourceDimensions",
+                "description": """MolecularSpeciesDimensions
 
-Dimensions for the temperature SOFT7 data source.
+Dimensions for the MolecularSpecies SOFT7 data source.
 
-SOFT7 Entity: https://onto-ns.com/s7/0.1.0/temperature
+SOFT7 Entity: http://onto-ns.com/s7/0.1.0/MolecularSpecies
 
 Attributes:
     N (int): Number of elements.""",

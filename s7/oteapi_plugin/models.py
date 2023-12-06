@@ -45,7 +45,8 @@ class SOFT7GeneratorConfig(AttrDict):
             entity = parse_input_entity(value)
         except (TypeError, EntityNotFound) as exc:
             raise ValueError(
-                f"Invalid value for entity field ({value!r}) for SOFT7GeneratorConfig."
+                f"Invalid value {value!r} for the 'entity' field in "
+                "SOFT7GeneratorConfig."
             ) from exc
 
         # Try to retrieve the SOFT7EntityInstance class from the generated_classes

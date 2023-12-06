@@ -10,47 +10,59 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-@pytest.fixture
 def static_folder() -> Path:
     """Path to the 'static' folder."""
     from pathlib import Path
 
     path = Path(__file__).resolve().parent.resolve() / "static"
+    return path
+
+
+@pytest.fixture(name="static_folder")
+def static_folder_fixture() -> Path:
+    """Path to the 'static' folder."""
+    path = static_folder()
     assert path.exists() and path.is_dir()
     return path
 
 
 @pytest.fixture
-def soft_entity_init() -> dict[str, str | dict]:
+def soft_entity_init(static_folder: Path) -> dict[str, str | dict]:
     """A dict for initializing a `SOFT7Entity`."""
+    import yaml
+
+    entity_path = static_folder / "soft_datasource_entity.yaml"
+    assert entity_path.exists()
+    entity = yaml.safe_load(entity_path.read_text(encoding="utf-8"))
+
+    # entity should be parsed as a dict.
+    assert isinstance(entity, dict)
+
+    return entity
+
+
+@pytest.fixture
+def soft_datasource_entity_mapping_init(
+    static_folder: Path,
+) -> dict[str, dict[str, str] | list[tuple[str, str, str]]]:
+    """A dict representing a mapping used for a SOFT7DataSource based on the
+    `SOFT7Entity` given in the `soft_entity_init()` fixture."""
     return {
-        "identity": "https://onto-ns.com/s7/0.1.0/temperature",
-        "description": "A bare-bones entity for testing.",
-        "dimensions": {"N": "Number of elements."},
-        "properties": {
-            "atom": {
-                "type": "string",
-                "shape": ["N"],
-                "description": "An atom.",
-            },
-            "electrons": {
-                "type": "int",
-                "shape": ["N"],
-                "description": "Number of electrons.",
-            },
-            "mass": {
-                "type": "float",
-                "shape": ["N"],
-                "description": "Atomic mass.",
-                "unit": "amu",
-            },
-            "radius": {
-                "type": "float",
-                "shape": ["N"],
-                "description": "Atomic radius.",
-                "unit": "Å",
-            },
+        "prefixes": {
+            "data_source": (
+                f"{(static_folder / 'soft_datasource_content.yaml').as_uri()}#"
+            ),
+            "s7_entity": "http://onto-ns.com/s7/0.1.0/MolecularSpecies#",
         },
+        "triples": [
+            # Properties
+            ("data_source:properties.atom", "", "s7_entity:properties.atom"),
+            ("data_source:properties.electrons", "", "s7_entity:properties.electrons"),
+            ("data_source:properties.mass", "", "s7_entity:properties.mass"),
+            ("data_source:properties.radius", "", "s7_entity:properties.radius"),
+            # Dimensions
+            ("data_source:dimensions.N", "", "s7_entity:dimensions.N"),
+        ],
     }
 
 

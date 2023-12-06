@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import traceback
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -32,6 +34,7 @@ from pydantic_core import Url
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
+    from pydantic.fields import FieldInfo
 
     UnshapedPropertyType = Union[
         str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
@@ -46,6 +49,9 @@ if TYPE_CHECKING:  # pragma: no cover
 SOFT7IdentityURIType = Annotated[
     Url, UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True)
 ]
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
@@ -182,6 +188,8 @@ def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, str | None, str]:
 class CallableAttributesMixin:
     """Mixin to call and resolve attributes if they are SOFT7 properties."""
 
+    _resolved_fields: dict[str, PropertyType] = {}  # noqa: RUF012
+
     def __getattribute__(self, name: str) -> Any:
         """Get an attribute.
 
@@ -196,6 +204,8 @@ class CallableAttributesMixin:
         is not a SOFT7 metadata attribute, i.e., starts with `soft7___`.
 
         """
+        resolved_attr_value = "NOT SET"
+
         try:
             attr_value: Any | GetData = object.__getattribute__(self, name)
 
@@ -203,34 +213,58 @@ class CallableAttributesMixin:
             if name.startswith("soft7___"):
                 return attr_value
 
-            # SOFT7 property
+            ## SOFT7 property
+            # Retrieve from "cache"
+            if name in object.__getattribute__(self, "_resolved_fields"):
+                # If the field has already been resolved, use the resolved value.
+                return object.__getattribute__(self, "_resolved_fields")[name]
+
+            # Retrieve from data source
             if name in object.__getattribute__(self, "model_fields"):
                 resolved_attr_value = attr_value(soft7_property=name)
 
                 # Use TypeAdapter to return and validate the value against the
                 # generated type. This effectively validates the shape and
                 # dimensionality of the value, as well as the inner most expected type.
-                return TypeAdapter(
-                    object.__getattribute__(self, "model_fields")[
-                        name
-                    ].rebuild_annotation()
+                field_info: FieldInfo = object.__getattribute__(self, "model_fields")[
+                    name
+                ]
+                self._resolved_fields[name] = TypeAdapter(
+                    field_info.rebuild_annotation()
                 ).validate_python(resolved_attr_value)
+
+                return self._resolved_fields[name]
 
             # Non-SOFT7 attribute
             return attr_value
 
         except ValidationError as exc:
+            LOGGER.error(
+                "Attribute: %s. Data: %r\n%s: %s\nTraceback:\n%s",
+                name,
+                resolved_attr_value,
+                exc.__class__.__name__,
+                exc,
+                "".join(traceback.format_tb(exc.__traceback__)),
+            )
             raise AttributeError(
                 f"Could not type and shape validate attribute {name!r} from the data "
                 "source."
             ) from exc
 
         except Exception as exc:  # noqa: BLE001
+            LOGGER.error(
+                "An error occurred during attribute resolution:\n%s: %s\n"
+                "Traceback:\n%s",
+                exc.__class__.__name__,
+                exc,
+                "".join(traceback.format_tb(exc.__traceback__)),
+            )
             raise AttributeError(f"Could not retrieve attribute {name!r}.") from exc
 
     @model_serializer(mode="wrap", when_used="always")
-    def _serialize_callable_attributes(  # type: ignore[misc]
-        self: BaseModel, handler: SerializerFunctionWrapHandler
+    def _serialize_callable_attributes(
+        self, handler: SerializerFunctionWrapHandler
     ) -> Any:
         """Serialize all "lazy" SOFT7 property values.
 
@@ -240,19 +274,26 @@ class CallableAttributesMixin:
 
         The copy of the model is returned through the SerializerFunctionWrapHandler.
         """
-        resolved_fields: dict[str, PropertyType] = {}
+        if not isinstance(self, BaseModel):
+            raise TypeError(
+                "This mixin class may only be used with pydantic.BaseModel subclasses."
+            )
 
         # This iteration works, due to how BaseModel yields fields (from __dict__ +
         # __pydantic__extras__).
         for field_name, field_value in self:
+            if field_name in self._resolved_fields:
+                # If the field has already been resolved, use the resolved value.
+                continue
+
             if isinstance(field_value, GetData):
                 # Call the function via self.__getattribute__ to ensure proper type
                 # validation and store the returned value for later use.
-                resolved_fields[field_name] = getattr(self, field_name)
+                self._resolved_fields[field_name] = getattr(self, field_name)
 
             # Else: The value is not a GetData, so use it as-is, i.e., no changes.
 
-        return handler(self.model_copy(update=resolved_fields))
+        return handler(self.model_copy(update=self._resolved_fields))
 
 
 class SOFT7DataSource(BaseModel, CallableAttributesMixin):
@@ -294,11 +335,10 @@ class SOFT7DataSource(BaseModel, CallableAttributesMixin):
 class SOFT7EntityProperty(BaseModel):
     """A SOFT7 Entity property."""
 
-    type_: Annotated[
+    type: Annotated[
         SOFT7EntityPropertyType,
         Field(
             description="A valid property type.",
-            alias="type",
         ),
     ]
 
@@ -325,7 +365,7 @@ class SOFT7EntityProperty(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _handle_ref_type_from_dlite(cls, data: Any) -> Any:
-        """Handle the `type_` field being a reference type.
+        """Handle the `type` field being a reference type.
 
         This is a quirk of DLite, which adds a special `$ref` field if `type` is "ref".
         The value of `$ref` is then an Entity URI, which is what we want to use as the
@@ -369,7 +409,7 @@ class SOFT7EntityProperty(BaseModel):
         # as is to let pydantic do its thing.
         # Note, while `$ref` should technically only ever be present if `type` is "ref",
         # we will not assume this is the case and will deal with both cases.
-        type_ = data.get("type", data.get("type_"))
+        type_ = data.get("type", None)
 
         if isinstance(type_, (bytes, bytearray)):
             try:
@@ -430,8 +470,6 @@ class SOFT7EntityProperty(BaseModel):
 
             if "type" in data:
                 data["type"] = new_type
-            elif "type_" in data:
-                data["type_"] = new_type
 
         # If we get here, we have either succeeded or failed.
         # If we failed, we have no idea what is going on, so we let pydantic handle it.

@@ -304,7 +304,7 @@ def create_outer_entity(
 
     field_definitions = {
         property_name: Annotated[
-            map_soft_to_py_types.get(property_value.type_, str),  # type: ignore[arg-type]
+            map_soft_to_py_types.get(property_value.type, str),  # type: ignore[arg-type]
             Field(
                 default_factory=lambda: _get_property_local(
                     local_graph, inner_entities
@@ -316,7 +316,7 @@ def create_outer_entity(
                     f"x-{field}": getattr(property_value, field)
                     for field in property_value.model_fields
                     if (
-                        field not in ("description", "type_", "shape")
+                        field not in ("description", "type", "shape")
                         and getattr(property_value, field)
                     )
                 },

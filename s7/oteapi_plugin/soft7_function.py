@@ -398,8 +398,8 @@ class SOFT7Generator:
         # Properties - Ensure all properties are present in the data mapping, foregoing
         # entity types
         for property_name, property_value in entity.entity.properties.items():
-            if isinstance(property_value.type_, AnyUrl):
-                refs.add(property_value.type_)
+            if isinstance(property_value.type, AnyUrl):
+                refs.add(property_value.type)
                 continue
 
             if f"properties.{property_name}" not in data_mapping:
@@ -460,7 +460,7 @@ class SOFT7Generator:
                 # Property is not in the data mapping, skip it
                 continue
 
-            if not isinstance(property_value.type_, AnyUrl):
+            if not isinstance(property_value.type, AnyUrl):
                 # Non-entity instance properties
 
                 # Use the data path if given, otherwise use the data mapping.
@@ -511,7 +511,7 @@ class SOFT7Generator:
 
                     parsed_property_value.append(
                         self._generate_entity_instance(
-                            self.entities[property_value.type_],
+                            self.entities[property_value.type],
                             data_path=indexed_data_path,
                         )
                     )
@@ -519,7 +519,7 @@ class SOFT7Generator:
             # Non-shaped Entity instance property
             else:
                 parsed_property_value = self._generate_entity_instance(
-                    self.entities[property_value.type_],
+                    self.entities[property_value.type],
                     data_path=data_path,
                 )
 

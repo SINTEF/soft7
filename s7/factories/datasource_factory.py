@@ -112,12 +112,19 @@ def _get_data(
             The value of the SOFT7 data resource (property or dimension).
 
         """
+        LOGGER.debug("soft7_property: %r", soft7_property)
+
         if id(ote_pipeline) not in CACHE:
+            LOGGER.debug("Running OTEAPI pipeline: %r", ote_pipeline)
             # Should only run once per pipeline - after that we retrieve from the cache
             pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
+            LOGGER.debug("OTEAPI pipeline result: %r", pipeline_result)
             CACHE[id(ote_pipeline)] = pipeline_result
         else:
             pipeline_result = CACHE[id(ote_pipeline)]
+
+        print("pipeline_result:", pipeline_result)
+        LOGGER.debug("Pipeline result: %r", pipeline_result)
 
         # TODO: Use variable from SOFT7 OTEAPI Function configuration instead of
         # 'soft7_entity_data'. Maybe even consider parsing `pipeline_result` into the
@@ -261,7 +268,7 @@ def create_datasource(
                     f"x-soft7-{field}": getattr(property_value, field)
                     for field in property_value.model_fields
                     if (
-                        field not in ("description", "type_")
+                        field not in ("description", "type")
                         and getattr(property_value, field)
                     )
                 },

@@ -112,7 +112,7 @@ def create_entity_instance(
                     f"x-soft7-{field}": getattr(property_value, field)
                     for field in property_value.model_fields
                     if (
-                        field not in ("description", "type_")
+                        field not in ("description", "type")
                         and getattr(property_value, field)
                     )
                 },

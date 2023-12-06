@@ -146,7 +146,7 @@ class SOFT7EntityInstance(BaseModel):
                 # entity.
                 try:
                     entity_property_type = map_soft_to_py_types[
-                        self.entity.properties[property_name].type_  # type: ignore[index]
+                        self.entity.properties[property_name].type  # type: ignore[index]
                     ]
                 except KeyError as exc:
                     raise ValueError(
@@ -569,30 +569,31 @@ def generate_property_type(
     property_type: type[
         UnshapedPropertyType
     ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
-        value.type_, value.type_  # type: ignore[arg-type]
+        value.type, value.type  # type: ignore[arg-type]
     )
 
     if isinstance(property_type, AnyUrl):
         # If the property type is a SOFT7IdentityURI, it means it should be a
         # SOFT7 Entity instance, NOT a SOFT7 Data source. Highlander rules apply:
         # There can be only one Data source per generated data source.
-        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type_)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type)  # type: ignore[no-redef]
 
     if value.shape:
         # Go through the dimensions in reversed order and nest the property type in on
         # itself.
         for dimension_name in reversed(value.shape):
-            if not hasattr(dimensions, dimension_name):
-                raise ValueError(
-                    f"Dimension {dimension_name!r} is not defined in the data model"
-                )
+            dimension: Optional[int] = getattr(dimensions, dimension_name, None)
 
-            dimension: int = getattr(dimensions, dimension_name)
+            if dimension is None:
+                raise ValueError(
+                    f"Dimension {dimension_name!r} is not defined in the data model "
+                    "or cannot be resolved."
+                )
 
             if not isinstance(dimension, int):
                 raise TypeError(
                     f"Dimension values must be integers, got {type(dimension)} for "
-                    f"{dimension_name!r}"
+                    f"{dimension_name!r}."
                 )
 
             # The dimension defines the number of times the property type is repeated.
@@ -614,14 +615,14 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     property_type: type[
         UnshapedPropertyType
     ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
-        value.type_, value.type_  # type: ignore[arg-type]
+        value.type, value.type  # type: ignore[arg-type]
     )
 
-    if isinstance(value.type_, AnyUrl):
+    if isinstance(value.type, AnyUrl):
         # If the property type is a SOFT7IdentityURI, it means it should be another
         # SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
-        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type_)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type)  # type: ignore[no-redef]
 
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.
