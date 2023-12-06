@@ -1,6 +1,8 @@
 """
 RDF (Turtle) serialization of S7 entities
 """
+from __future__ import annotations
+
 import uuid
 
 from jinja2 import Template

@@ -1,4 +1,6 @@
 """Entity store."""
+from __future__ import annotations
+
 import os
 from urllib.parse import quote_plus
 
