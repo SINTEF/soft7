@@ -87,6 +87,9 @@ minversion = "7.4"
 addopts = "-rs --cov=s7 --cov-report=term-missing"
 filterwarnings = [
     "error",  # Fail on any warning
+
+    # Ignore deprecation warnings from importlib.metadata (used by oteapi-core)
+    "ignore:SelectableGroups dict interface is deprecated.*:DeprecationWarning",
 ]
 
 [tool.ruff.lint]
