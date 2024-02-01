@@ -28,7 +28,6 @@ from s7.pydantic_models.oteapi import (
     default_soft7_ote_function_config,
 )
 from s7.pydantic_models.soft7_entity import (
-    CallableAttributesMixin,
     SOFT7Entity,
     SOFT7IdentityURI,
     SOFT7IdentityURIType,
@@ -184,25 +183,6 @@ class SOFT7EntityInstance(BaseModel):
                 ) from exc
 
         return self
-
-
-class DataSourceDimensions(BaseModel, CallableAttributesMixin):
-    """Dimensions for the SOFT7 data source.
-
-    This doc-string will/should be overridden in the `create_datasource()` function.
-
-    The configuration options:
-    - `extra="forbid"`: Ensures an exception is raised if the instantiated data source
-      tries to specify undefined properties.
-    - `frozen=True`: Ensures an exception is raised if the instantiated data source
-      tries to modify any properties, i.e., manually set an attribute value.
-    - `validate_default=False`: Set explicitly (`False` is the default) to avoid a
-      ValidationError when instantiating the data source. This is due to the properties
-      being lazily retrieved from the data source.
-
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
 
 
 def parse_input_entity(
