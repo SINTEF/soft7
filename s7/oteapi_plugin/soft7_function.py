@@ -3,6 +3,7 @@
 It expects mappings to be present in the session, and will use them to transform
 the parsed data source into a SOFT7 Entity instance.
 """
+
 from __future__ import annotations
 
 import logging

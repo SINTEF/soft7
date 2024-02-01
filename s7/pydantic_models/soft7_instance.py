@@ -1,4 +1,5 @@
 """Pydantic model for the SOFT7 data source instance."""
+
 from __future__ import annotations
 
 import logging
@@ -273,15 +274,16 @@ def parse_input_entity(
 
 
 def parse_input_configs(
-    configs: GetDataConfigDict
-    | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
-    | Path
-    | AnyUrl
-    | str,
-    entity_instance: type[SOFT7EntityInstance]
-    | SOFT7IdentityURIType
-    | str
-    | None = None,
+    configs: (
+        GetDataConfigDict
+        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
+        | Path
+        | AnyUrl
+        | str
+    ),
+    entity_instance: (
+        type[SOFT7EntityInstance] | SOFT7IdentityURIType | str | None
+    ) = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
@@ -566,9 +568,9 @@ def generate_property_type(
     from s7.factories.entity_factory import create_entity_instance
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: type[
-        UnshapedPropertyType
-    ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
+    property_type: (
+        type[UnshapedPropertyType] | SOFT7IdentityURIType
+    ) = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
@@ -612,9 +614,9 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     from s7.factories.entity_factory import create_entity_instance
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: type[
-        UnshapedPropertyType
-    ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
+    property_type: (
+        type[UnshapedPropertyType] | SOFT7IdentityURIType
+    ) = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 

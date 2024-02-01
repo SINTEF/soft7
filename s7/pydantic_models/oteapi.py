@@ -1,4 +1,5 @@
 """Customized OTEAPI pydantic models."""
+
 from __future__ import annotations
 
 from collections.abc import Hashable
@@ -21,9 +22,11 @@ class HashableMixin:
         if isinstance(self, GenericConfig):
             return hash(
                 tuple(
-                    (field_name, field_value)
-                    if (isinstance(field_value, Hashable) or field_value is None)
-                    else (field_name, None)
+                    (
+                        (field_name, field_value)
+                        if (isinstance(field_value, Hashable) or field_value is None)
+                        else (field_name, None)
+                    )
                     for field_name, field_value in self
                 )
             )

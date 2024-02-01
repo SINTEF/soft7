@@ -1,4 +1,5 @@
 """Pydantic data models for the SOFT7 OTEAPI plugin."""
+
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Optional

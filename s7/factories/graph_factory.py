@@ -5,6 +5,7 @@
 3. Internal data source SOFT7 entity.
 
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -70,10 +71,14 @@ class HashableResourceConfig(ResourceConfig):
     def __hash__(self) -> int:
         return hash(
             tuple(
-                (field_name, field_value)
-                if isinstance(field_value, (str, bytes, tuple, frozenset, int, float))
-                or field_value is None
-                else (field_name, None)
+                (
+                    (field_name, field_value)
+                    if isinstance(
+                        field_value, (str, bytes, tuple, frozenset, int, float)
+                    )
+                    or field_value is None
+                    else (field_name, None)
+                )
                 for field_name, field_value in self.__dict__.items()
             )
         )

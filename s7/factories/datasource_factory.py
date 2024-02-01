@@ -10,6 +10,7 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
+
 from __future__ import annotations
 
 import json
@@ -167,11 +168,13 @@ def _get_data(
 
 def create_datasource(
     entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
-    configs: GetDataConfigDict
-    | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
-    | Path
-    | AnyUrl
-    | str,
+    configs: (
+        GetDataConfigDict
+        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
+        | Path
+        | AnyUrl
+        | str
+    ),
     oteapi_url: str | None = None,
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.

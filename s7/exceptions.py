@@ -1,4 +1,5 @@
 """SOFT7 exceptions."""
+
 from __future__ import annotations
 
 

@@ -1,4 +1,5 @@
 """Database document."""
+
 from __future__ import annotations
 
 

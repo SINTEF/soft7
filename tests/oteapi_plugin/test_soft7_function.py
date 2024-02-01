@@ -1,4 +1,5 @@
 """Test the soft7 OTEAPI function strategy."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -118,20 +119,18 @@ def test__flatten_mapping() -> None:
     assert not expected_flat_mapping
 
 
-def _generate_entity_test_cases() -> (
-    tuple[
-        list[str],
-        list[
-            str,
-            AnyUrl,
-            SOFT7Entity,
-            str,
-            dict[str, Any],
-            Path,
-            type[SOFT7EntityInstance],
-        ],
-    ]
-):
+def _generate_entity_test_cases() -> tuple[
+    list[str],
+    list[
+        str,
+        AnyUrl,
+        SOFT7Entity,
+        str,
+        dict[str, Any],
+        Path,
+        type[SOFT7EntityInstance],
+    ],
+]:
     """Generate test cases for the `test_dataclass_validation()` test."""
     import yaml
     from pydantic import AnyUrl
@@ -169,12 +168,9 @@ def _generate_entity_test_cases() -> (
 )
 def test_dataclass_validation(
     functionType: str,
-    entity: str
-    | type[SOFT7EntityInstance]
-    | dict[str, Any]
-    | Path
-    | AnyUrl
-    | SOFT7Entity,
+    entity: (
+        str | type[SOFT7EntityInstance] | dict[str, Any] | Path | AnyUrl | SOFT7Entity
+    ),
     httpx_mock: HTTPXMock,
     soft_entity_init: dict[str, str | dict],
 ) -> None:

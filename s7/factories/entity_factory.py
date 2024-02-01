@@ -1,4 +1,5 @@
 """Generate SOFT7 entities, wrapped as pydantic data models."""
+
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,5 @@
 """Pydantic data models for SOFT7 entities/data models."""
+
 from __future__ import annotations
 
 import json

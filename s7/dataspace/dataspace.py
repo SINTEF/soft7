@@ -1,6 +1,7 @@
 """
 Soft7 dataspace
 """
+
 from __future__ import annotations
 
 from s7.dataspace.database import Database

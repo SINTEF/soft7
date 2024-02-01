@@ -1,6 +1,7 @@
 """
 Soft7 factory
 """
+
 from __future__ import annotations
 
 
@@ -23,13 +24,17 @@ def __class_factory(name, meta):
 
     def gen_getset(key):
         return lambda: property(
-            lambda self: self.properties[key]["value"]
-            if "value" in self.properties[key]
-            else None,
+            lambda self: (
+                self.properties[key]["value"]
+                if "value" in self.properties[key]
+                else None
+            ),
             lambda self, value: self.properties[key].update({"value": value}),
-            doc=meta["properties"][key]["description"]
-            if "description" in meta["properties"][key]
-            else None,
+            doc=(
+                meta["properties"][key]["description"]
+                if "description" in meta["properties"][key]
+                else None
+            ),
         )
 
     for key in meta["properties"]:
@@ -56,13 +61,17 @@ def __dataspace_class_factory(name, meta, dataspace):
 
     def gen_dataspace_getset(database):
         return lambda key: lambda: property(
-            lambda self: database.document(self.id).data[key]
-            if key in database.document(self.id).data
-            else None,
+            lambda self: (
+                database.document(self.id).data[key]
+                if key in database.document(self.id).data
+                else None
+            ),
             lambda self, value: database.document(self.id).update({key: value}),
-            doc=meta["properties"][key]["description"]
-            if "description" in meta["properties"][key]
-            else None,
+            doc=(
+                meta["properties"][key]["description"]
+                if "description" in meta["properties"][key]
+                else None
+            ),
         )
 
     gen_getset = gen_dataspace_getset(database)

@@ -1,6 +1,7 @@
 """
 RDF (Turtle) serialization of S7 entities
 """
+
 from __future__ import annotations
 
 import uuid
