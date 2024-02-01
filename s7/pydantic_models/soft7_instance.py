@@ -71,6 +71,10 @@ if TYPE_CHECKING:  # pragma: no cover
         function: HashableFunctionConfig
 
 
+# Remove in Python 3.10+
+OptionalBaseModel = Optional[BaseModel]
+OptionalInt = Optional[int]
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -83,7 +87,7 @@ class SOFT7EntityInstance(BaseModel):
     # Will not be part of fields on the instance
     entity: ClassVar[SOFT7Entity]
 
-    dimensions: Optional[BaseModel] = None
+    dimensions: OptionalBaseModel = None
     properties: BaseModel
 
     @model_validator(mode="after")
@@ -564,7 +568,7 @@ def generate_property_type(
         # Go through the dimensions in reversed order and nest the property type in on
         # itself.
         for dimension_name in reversed(value.shape):
-            dimension: Optional[int] = getattr(dimensions, dimension_name, None)
+            dimension: OptionalInt = getattr(dimensions, dimension_name, None)
 
             if dimension is None:
                 raise ValueError(

@@ -50,6 +50,11 @@ SOFT7IdentityURIType = Annotated[
     Url, UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True)
 ]
 
+# Remove in Python 3.10+
+OptionalListStr = Optional[list[str]]
+OptionalStr = Optional[str]
+OptionalDictStrStr = Optional[dict[str, str]]
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -307,16 +312,16 @@ class SOFT7EntityProperty(BaseModel):
     ]
 
     shape: Annotated[
-        Optional[list[str]],
+        OptionalListStr,
         Field(description="List of dimensions making up the shape of the property."),
     ] = None
 
     description: Annotated[
-        Optional[str], Field(description="A human description of the property.")
+        OptionalStr, Field(description="A human description of the property.")
     ] = None
 
     unit: Annotated[
-        Optional[str],
+        OptionalStr,
         Field(
             description=(
                 "The unit of the property. Would typically refer to other ontologies, "
@@ -455,7 +460,7 @@ class SOFT7Entity(BaseModel):
     description: Annotated[str, Field(description="A description of the entity.")] = ""
 
     dimensions: Annotated[
-        Optional[dict[str, str]],
+        OptionalDictStrStr,
         Field(
             description=(
                 "A dictionary or model of dimension names (key) and descriptions "

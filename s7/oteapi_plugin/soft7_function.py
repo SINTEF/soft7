@@ -42,10 +42,13 @@ if TYPE_CHECKING:  # pragma: no cover
 
     ParsedDataPropertyType = Union[ParsedDataType, ListParsedDataType]
 
+    # Revert in Python 3.10+
+    SOFT7IdentityURITypeOrStr = Union[SOFT7IdentityURIType, str]
+
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
 
-        namespace: Union[SOFT7IdentityURIType, str]
+        namespace: SOFT7IdentityURITypeOrStr
         concept: str
 
 
