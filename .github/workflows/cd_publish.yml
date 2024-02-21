@@ -8,7 +8,7 @@ on:
 jobs:
   publish:
     name: External
-    uses: SINTEF/ci-cd/.github/workflows/cd_release.yml@v2.5.1
+    uses: SINTEF/ci-cd/.github/workflows/cd_release.yml@v2.7.3
     if: github.repository == 'SINTEF/soft7' && startsWith(github.ref, 'refs/tags/v')
     with:
       # General
@@ -18,7 +18,7 @@ jobs:
 
       # PyPI
       python_package: true
-      python_version_build: '3.9'
+      python_version_build: '3.10'
       install_extras: '[dev]'
       package_dirs: s7
       build_libs: flit
