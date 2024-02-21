@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Optional, cast, get_args
+from typing import TYPE_CHECKING, ClassVar, cast, get_args
 
 import httpx
 import yaml
@@ -71,10 +71,6 @@ if TYPE_CHECKING:  # pragma: no cover
         function: HashableFunctionConfig
 
 
-# Remove in Python 3.10+
-OptionalBaseModel = Optional[BaseModel]
-OptionalInt = Optional[int]
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -87,7 +83,7 @@ class SOFT7EntityInstance(BaseModel):
     # Will not be part of fields on the instance
     entity: ClassVar[SOFT7Entity]
 
-    dimensions: OptionalBaseModel = None
+    dimensions: BaseModel | None = None
     properties: BaseModel
 
     @model_validator(mode="after")
@@ -194,7 +190,7 @@ def parse_input_entity(
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
     # Handle the case of the entity being a string or a URL
-    if isinstance(entity, (str, AnyUrl)):
+    if isinstance(entity, AnyUrl | str):
         # If it's a string or URL, we expect to either be:
         # - A path to a YAML file.
         # - A SOFT7 entity identity.
@@ -272,9 +268,7 @@ def parse_input_configs(
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
         str,
-        type[HashableFunctionConfig]
-        | type[HashableMappingConfig]
-        | type[HashableFunctionConfig],
+        type[HashableResourceConfig | HashableFunctionConfig | HashableMappingConfig],
     ] = {
         "dataresource": HashableResourceConfig,
         "mapping": HashableMappingConfig,
@@ -282,7 +276,7 @@ def parse_input_configs(
     }
 
     # Handle the case of configs being a string or URL.
-    if isinstance(configs, (str, AnyUrl)):
+    if isinstance(configs, AnyUrl | str):
         # Expect it to be either:
         # - A URL to a JSON/YAML resource online.
         # - A path to a JSON/YAML resource file.
@@ -353,7 +347,7 @@ def parse_input_configs(
             name = cast(Literal["dataresource", "mapping", "function"], name)
 
         # Handle the case of the config being a string or URL.
-        if isinstance(config, (str, AnyUrl)):
+        if isinstance(config, AnyUrl | str):
             # Expect it to be either:
             # - A URL to a JSON/YAML config online.
             # - A path to a JSON/YAML config file.
@@ -403,7 +397,7 @@ def parse_input_configs(
 
         # Ensure all values are Hashable*Config instances if they are dictionaries
         # or Hashable*Config instances.
-        if isinstance(config, (dict, BaseModel)):
+        if isinstance(config, BaseModel | dict):
             try:
                 configs[name] = name_to_config_type_mapping[name](
                     **(config if isinstance(config, dict) else config.model_dump())
@@ -568,7 +562,7 @@ def generate_property_type(
         # Go through the dimensions in reversed order and nest the property type in on
         # itself.
         for dimension_name in reversed(value.shape):
-            dimension: OptionalInt = getattr(dimensions, dimension_name, None)
+            dimension: int | None = getattr(dimensions, dimension_name, None)
 
             if dimension is None:
                 raise ValueError(

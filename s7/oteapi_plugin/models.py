@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal
 
-from oteapi.models import AttrDict, DataCacheConfig
+from oteapi.strategies.mapping.mapping import MappingStrategyConfig
 from pydantic import Field, field_validator
 
 from s7.exceptions import EntityNotFound
@@ -14,23 +14,25 @@ from s7.pydantic_models.soft7_entity import parse_identity
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
 
 
-class SOFT7GeneratorConfig(AttrDict):
-    """SOFT7 Generator strategy-specific configuration."""
+class SOFT7GeneratorConfig(MappingStrategyConfig):
+    """SOFT7 Generator strategy-specific configuration.
+
+    Inherit from the MappingStrategyConfig to include the prefixes and triples fields,
+    as well as any connected validation or serialization functionality that may be part
+    of the MappingStrategyConfig.
+    """
 
     entity: Annotated[
         type[SOFT7EntityInstance],
         Field(description="The SOFT7 entity to be used for the generator."),
     ]
 
-    datacache_config: Annotated[
-        Optional[DataCacheConfig],
-        Field(
-            description=(
-                "Configurations for the data cache for storing the downloaded file "
-                "content."
-            ),
-        ),
-    ] = None
+    # Parsed data content
+    # Field added from a parser strategy.
+    content: Annotated[
+        dict,
+        Field(description="The parsed data content to be used for the generator."),
+    ]
 
     @field_validator("entity", mode="before")
     @classmethod

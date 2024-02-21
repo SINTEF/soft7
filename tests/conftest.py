@@ -11,22 +11,28 @@ if TYPE_CHECKING:
 
 
 def static_folder() -> Path:
-    """Path to the 'static' folder."""
+    """Path to the 'static' folder.
+
+    This is here to support _generate_entity_test_cases() in
+    tests/oteapi_plugin/test_soft7_function.py.
+    """
     from pathlib import Path
 
-    path = Path(__file__).resolve().parent.resolve() / "static"
-    return path
+    return Path(__file__).resolve().parent.resolve() / "static"
 
 
 @pytest.fixture(name="static_folder")
 def static_folder_fixture() -> Path:
     """Path to the 'static' folder."""
     path = static_folder()
-    assert path.exists() and path.is_dir()
+
+    assert path.exists()
+    assert path.is_dir()
+
     return path
 
 
-@pytest.fixture
+@pytest.fixture()
 def soft_entity_init(static_folder: Path) -> dict[str, str | dict]:
     """A dict for initializing a `SOFT7Entity`."""
     import yaml

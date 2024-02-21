@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
-
 
 def test_entity_shapes_and_dimensions(
     soft_entity_init: dict[str, str | dict],
@@ -33,12 +28,11 @@ def test_entity_shapes_and_dimensions(
         },
     }
 
-    assert soft_entity_init["dimensions"] and isinstance(
-        soft_entity_init["dimensions"], dict
-    )
-    assert soft_entity_init["properties"] and isinstance(
-        soft_entity_init["properties"], dict
-    )
+    assert soft_entity_init["dimensions"]
+    assert isinstance(soft_entity_init["dimensions"], dict)
+
+    assert soft_entity_init["properties"]
+    assert isinstance(soft_entity_init["properties"], dict)
 
     soft_entity_init["dimensions"].update(additional_dimensions)
     soft_entity_init["properties"].update(additional_properties)

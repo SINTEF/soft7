@@ -181,7 +181,7 @@ def test_dataclass_validation(
     from s7.oteapi_plugin.soft7_function import SOFT7Generator
     from s7.pydantic_models.soft7_entity import SOFT7IdentityURI
 
-    if isinstance(entity, (str, AnyUrl)):
+    if isinstance(entity, AnyUrl | str):
         try:
             SOFT7IdentityURI(str(entity))
         except ValidationError:

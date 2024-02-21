@@ -2,24 +2,21 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Literal, Optional, Union
+from typing import Annotated, Literal
 
 import yaml
 from oteapi.datacache import DataCache
-from oteapi.models import AttrDict, DataCacheConfig, ResourceConfig, SessionUpdate
+from oteapi.models import AttrDict, DataCacheConfig, ResourceConfig
 from oteapi.plugins import create_strategy
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-
-if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
 
 
 class YAMLConfig(AttrDict):
     """YAML parse-specific Configuration Data Model."""
 
     datacache_config: Annotated[
-        Optional[DataCacheConfig],
+        DataCacheConfig | None,
         Field(
             description=(
                 "Configurations for the data cache for storing the downloaded file "
@@ -53,11 +50,11 @@ class YAMLResourceConfig(ResourceConfig):
     ] = YAMLConfig()
 
 
-class SessionUpdateYAMLParse(SessionUpdate):
+class YAMLParseResult(AttrDict):
     """Class for returning values from YAML Parse."""
 
     content: Annotated[
-        Union[dict, list[dict]], Field(description="Content of the YAML document.")
+        dict | list[dict], Field(description="Content of the YAML document.")
     ]
 
 
@@ -74,22 +71,22 @@ class YAMLDataParseStrategy:
 
     parse_config: YAMLResourceConfig
 
-    def initialize(self, session: Optional[dict[str, Any]] = None) -> SessionUpdate:
+    def initialize(self) -> AttrDict:
         """Initialize."""
-        return SessionUpdate()
+        return AttrDict()
 
-    def get(self, session: Optional[dict[str, Any]] = None) -> SessionUpdateYAMLParse:
+    def get(self) -> YAMLParseResult:
         """Parse YAML."""
         downloader = create_strategy("download", self.parse_config)
         output = downloader.get()
         cache = DataCache(self.parse_config.configuration.datacache_config)
         content = cache.get(output["key"])
 
-        if isinstance(content, (dict, list)):
-            return SessionUpdateYAMLParse(content=content)
+        if isinstance(content, dict | list):
+            return YAMLParseResult(content=content)
 
         parsed_content = list(yaml.safe_load_all(content))
         if len(parsed_content) == 1:
             parsed_content = parsed_content[0]
 
-        return SessionUpdateYAMLParse(content=parsed_content)
+        return YAMLParseResult(content=parsed_content)

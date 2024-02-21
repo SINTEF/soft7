@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 from pydantic import AnyUrl, ConfigDict, Field, create_model
 
@@ -72,7 +72,7 @@ def create_entity(
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
             dimension_name: (
-                Optional[int],
+                int | None,
                 Field(None, description=dimension_description),
             )
             for dimension_name, dimension_description in entity.dimensions.items()
@@ -104,7 +104,7 @@ def create_entity(
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
-            Optional[property_types[property_name]],
+            property_types[property_name] | None,
             Field(
                 None,
                 description=property_value.description or "",

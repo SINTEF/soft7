@@ -57,7 +57,7 @@ def default_soft7_ote_function_config(
         configuration={
             "entity": (
                 SOFT7IdentityURI(str(entity))
-                if entity and isinstance(entity, (AnyUrl, str))
+                if entity and isinstance(entity, AnyUrl | str)
                 else entity
             )
         },
