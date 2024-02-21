@@ -549,7 +549,7 @@ def generate_property_type(
     value: SOFT7EntityProperty, dimensions: Model
 ) -> type[PropertyType]:
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
-    from s7.factories.entity_factory import create_entity_instance
+    from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: (
@@ -562,7 +562,7 @@ def generate_property_type(
         # If the property type is a SOFT7IdentityURI, it means it should be a
         # SOFT7 Entity instance, NOT a SOFT7 Data source. Highlander rules apply:
         # There can be only one Data source per generated data source.
-        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity(value.type)  # type: ignore[no-redef]
 
     if value.shape:
         # Go through the dimensions in reversed order and nest the property type in on
@@ -595,7 +595,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     This makes it unnecessary to retrieve the actual dimension values, as they are not
     needed.
     """
-    from s7.factories.entity_factory import create_entity_instance
+    from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: (
@@ -608,7 +608,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
         # If the property type is a SOFT7IdentityURI, it means it should be another
         # SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
-        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity(value.type)  # type: ignore[no-redef]
 
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.

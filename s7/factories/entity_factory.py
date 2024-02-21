@@ -45,7 +45,7 @@ if TYPE_CHECKING:  # pragma: no cover
 LOGGER = logging.getLogger(__name__)
 
 
-def create_entity_instance(
+def create_entity(
     entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
 ) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.

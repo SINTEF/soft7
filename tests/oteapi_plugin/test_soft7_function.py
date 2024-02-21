@@ -135,7 +135,7 @@ def _generate_entity_test_cases() -> tuple[
     import yaml
     from pydantic import AnyUrl
 
-    from s7.factories.entity_factory import create_entity_instance
+    from s7.factories.entity_factory import create_entity
     from s7.pydantic_models.soft7_entity import SOFT7Entity
     from tests.conftest import static_folder
 
@@ -157,7 +157,7 @@ def _generate_entity_test_cases() -> tuple[
         # Path to a YAML file containing the Entity
         test_data_entity_path,
         # Entity as a SOFT7EntityInstance class
-        create_entity_instance(test_entity),
+        create_entity(test_entity),
     ]
     return ["identity", "url", "instance", "json", "dict", "path", "class"], test_cases
 

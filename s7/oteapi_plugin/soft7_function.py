@@ -20,7 +20,7 @@ from s7.exceptions import (
     InvalidOrMissingSession,
     SOFT7FunctionError,
 )
-from s7.factories import create_entity_instance
+from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_entity import (
     SOFT7IdentityURI,
@@ -287,7 +287,7 @@ class SOFT7Generator:
                 entity_cls = entity_lookup(identity=entity_identity)
             except ValueError:
                 # Entity not found in generated classes module, create it
-                entity_cls = create_entity_instance(entity_identity)
+                entity_cls = create_entity(entity_identity)
 
             mapping[entity_identity] = entity_cls
 

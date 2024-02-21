@@ -8,7 +8,7 @@ from oteapi.models import AttrDict, DataCacheConfig
 from pydantic import Field, field_validator
 
 from s7.exceptions import EntityNotFound
-from s7.factories.entity_factory import create_entity_instance
+from s7.factories import create_entity
 from s7.pydantic_models.oteapi import HashableFunctionConfig
 from s7.pydantic_models.soft7_entity import parse_identity
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
@@ -60,7 +60,7 @@ class SOFT7GeneratorConfig(AttrDict):
 
             return getattr(lookup_module, name)
         except AttributeError:
-            return create_entity_instance(entity)
+            return create_entity(entity)
 
 
 class SOFT7FunctionConfig(HashableFunctionConfig):
