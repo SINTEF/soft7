@@ -8,6 +8,7 @@ import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Union
 
 
 def static_folder() -> Path:
@@ -33,7 +34,7 @@ def static_folder_fixture() -> Path:
 
 
 @pytest.fixture()
-def soft_entity_init(static_folder: Path) -> dict[str, str | dict]:
+def soft_entity_init(static_folder: Path) -> dict[str, Union[str, dict]]:
     """A dict for initializing a `SOFT7Entity`."""
     import yaml
 

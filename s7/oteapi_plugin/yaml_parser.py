@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+import sys
+from typing import Annotated, Optional, Union
+
+if sys.version_info >= (3, 10):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 import yaml
 from oteapi.datacache import DataCache
@@ -16,7 +22,7 @@ class YAMLConfig(AttrDict):
     """YAML parse-specific Configuration Data Model."""
 
     datacache_config: Annotated[
-        DataCacheConfig | None,
+        Optional[DataCacheConfig],
         Field(
             description=(
                 "Configurations for the data cache for storing the downloaded file "
@@ -54,7 +60,7 @@ class YAMLParseResult(AttrDict):
     """Class for returning values from YAML Parse."""
 
     content: Annotated[
-        dict | list[dict], Field(description="Content of the YAML document.")
+        Union[dict, list[dict]], Field(description="Content of the YAML document.")
     ]
 
 
@@ -82,7 +88,7 @@ class YAMLDataParseStrategy:
         cache = DataCache(self.parse_config.configuration.datacache_config)
         content = cache.get(output["key"])
 
-        if isinstance(content, dict | list):
+        if isinstance(content, (dict, list)):
             return YAMLParseResult(content=content)
 
         parsed_content = list(yaml.safe_load_all(content))

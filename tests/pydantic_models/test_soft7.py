@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Union
+
 
 def test_entity_shapes_and_dimensions(
-    soft_entity_init: dict[str, str | dict],
+    soft_entity_init: dict[str, Union[str, dict]],
 ) -> None:
     """Ensure the validator `shapes_and_dimensions` enforces the desired rules."""
     from s7.pydantic_models.soft7_entity import SOFT7Entity

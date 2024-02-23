@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+import sys
+from typing import Annotated, Any, Optional
+
+if sys.version_info >= (3, 10):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 from oteapi.models import AttrDict
 from oteapi.strategies.mapping.mapping import MappingStrategyConfig
@@ -34,18 +40,18 @@ class SOFT7GeneratorConfig(AttrDict):
     # Data mapping information
     # Field added from a mapping strategy.
     prefixes: Annotated[
-        PrefixesType | None,
+        Optional[PrefixesType],
         Field(description=MappingStrategyConfig.model_fields["prefixes"].description),
     ] = None
     triples: Annotated[
-        TriplesType | None,
+        Optional[TriplesType],
         Field(description=MappingStrategyConfig.model_fields["triples"].description),
     ] = None
 
     # Parsed data content
     # Field added from a parser strategy.
     content: Annotated[
-        dict | None,
+        Optional[dict],
         Field(description="The parsed data content to be used for the generator."),
     ] = None
 

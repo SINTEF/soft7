@@ -4,15 +4,22 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import traceback
 from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Literal,
+    Optional,
     Protocol,
+    Union,
     runtime_checkable,
 )
+
+if sys.version_info >= (3, 10):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 from pydantic import (
     AliasChoices,
@@ -34,14 +41,14 @@ if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
     from pydantic.fields import FieldInfo
 
-    UnshapedPropertyType = (
-        str | float | int | complex | dict | bool | bytes | bytearray | BaseModel
-    )
-    ShapedPropertyType = tuple["ShapedPropertyType" | UnshapedPropertyType, ...]
-    ShapedListPropertyType = list["ShapedListPropertyType" | UnshapedPropertyType]
+    UnshapedPropertyType = Union[
+        str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
+    ]
+    ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
+    ShapedListPropertyType = list[Union["ShapedListPropertyType", UnshapedPropertyType]]
 
-    PropertyType = UnshapedPropertyType | ShapedPropertyType
-    ListPropertyType = UnshapedPropertyType | ShapedListPropertyType
+    PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
+    ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
 
 
 SOFT7IdentityURIType = Annotated[
@@ -93,9 +100,9 @@ class GetData(Protocol):
         ...
 
 
-SOFT7EntityPropertyType = (
-    SOFT7IdentityURIType
-    | Literal[
+SOFT7EntityPropertyType = Union[
+    SOFT7IdentityURIType,
+    Literal[
         "string",
         "str",
         "float",
@@ -105,8 +112,8 @@ SOFT7EntityPropertyType = (
         "boolean",
         "bytes",
         "bytearray",
-    ]
-)
+    ],
+]
 map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
     "string": str,
     "str": str,
@@ -121,7 +128,7 @@ map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
 """Use this with a fallback default of returning the lookup value."""
 
 
-def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, str | None, str]:
+def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, Optional[str], str]:
     """Parse the identity into a tuple of (namespace, version, name).
 
     The identity is a URI of the form: `<namespace>/<version>/<name>`.
@@ -205,7 +212,7 @@ class CallableAttributesMixin:
         resolved_attr_value = "NOT SET"
 
         try:
-            attr_value: Any | GetData = object.__getattribute__(self, name)
+            attr_value: Union[Any, GetData] = object.__getattribute__(self, name)
 
             # SOFT7 metadata
             if name.startswith("soft7___"):
@@ -305,16 +312,16 @@ class SOFT7EntityProperty(BaseModel):
     ]
 
     shape: Annotated[
-        list[str] | None,
+        Optional[list[str]],
         Field(description="List of dimensions making up the shape of the property."),
     ] = None
 
     description: Annotated[
-        str | None, Field(description="A human description of the property.")
+        Optional[str], Field(description="A human description of the property.")
     ] = None
 
     unit: Annotated[
-        str | None,
+        Optional[str],
         Field(
             description=(
                 "The unit of the property. Would typically refer to other ontologies, "
@@ -341,7 +348,7 @@ class SOFT7EntityProperty(BaseModel):
                 `model_validate`.
 
         """
-        if isinstance(data, bytes | bytearray):
+        if isinstance(data, (bytes, bytearray)):
             try:
                 data = data.decode()
             except ValueError:
@@ -373,7 +380,7 @@ class SOFT7EntityProperty(BaseModel):
         # we will not assume this is the case and will deal with both cases.
         type_ = data.get("type", None)
 
-        if isinstance(type_, bytes | bytearray):
+        if isinstance(type_, (bytes, bytearray)):
             try:
                 type_ = type_.decode()
             except ValueError:
@@ -408,7 +415,7 @@ class SOFT7EntityProperty(BaseModel):
             # DLite data, and we will use the `$ref` value as the type.
             ref = data.pop("$ref")
 
-            if isinstance(ref, bytes | bytearray):
+            if isinstance(ref, (bytes, bytearray)):
                 try:
                     ref = ref.decode()
                 except ValueError:
@@ -453,7 +460,7 @@ class SOFT7Entity(BaseModel):
     description: Annotated[str, Field(description="A description of the entity.")] = ""
 
     dimensions: Annotated[
-        dict[str, str] | None,
+        Optional[dict[str, str]],
         Field(
             description=(
                 "A dictionary or model of dimension names (key) and descriptions "

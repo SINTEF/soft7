@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 from pydantic import AnyUrl, ConfigDict, Field, create_model
 
@@ -27,7 +27,7 @@ from s7.pydantic_models.soft7_instance import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
+    from typing import Any, Union
 
     from s7.pydantic_models.soft7_entity import (
         ListPropertyType,
@@ -46,7 +46,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_entity(
-    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
+    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
 ) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.
 
@@ -67,12 +67,12 @@ def create_entity(
     _, _, name = parse_identity(entity.identity)
 
     # Create the entity model's dimensions
-    dimensions: dict[str, tuple[type[int | None] | object, Any]] = (
+    dimensions: dict[str, tuple[Union[type[Optional[int]], object], Any]] = (
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
             dimension_name: (
-                int | None,
+                Optional[int],
                 Field(None, description=dimension_description),
             )
             for dimension_name, dimension_description in entity.dimensions.items()
@@ -100,11 +100,13 @@ def create_entity(
     }
 
     # Create the entity model's properties
-    properties: dict[str, tuple[type[ListPropertyType | None] | object, Any]] = {
+    properties: dict[
+        str, tuple[Union[type[Optional[ListPropertyType]], object], Any]
+    ] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
-            property_types[property_name] | None,
+            Optional[property_types[property_name]],
             Field(
                 None,
                 description=property_value.description or "",

@@ -25,6 +25,7 @@ from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 if TYPE_CHECKING:  # pragma: no cover
     import sys
+    from typing import Optional, Union
 
     if sys.version_info < (3, 12):
         from typing_extensions import TypedDict
@@ -34,11 +35,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from oteapi.strategies.mapping.mapping import MappingStrategyConfig
 
     ParsedDataType = Any
-    ListParsedDataType = list["ListParsedDataType" | ParsedDataType]
+    ListParsedDataType = list[Union["ListParsedDataType", ParsedDataType]]
 
-    ParsedDataPropertyType = ParsedDataType | ListParsedDataType
+    ParsedDataPropertyType = Union[ParsedDataType, ListParsedDataType]
 
-    SOFT7IdentityURITypeOrStr = SOFT7IdentityURIType | str
+    SOFT7IdentityURITypeOrStr = Union[SOFT7IdentityURIType, str]
 
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
@@ -58,7 +59,9 @@ class RDFTriple(NamedTuple):
 LOGGER = logging.getLogger(__name__)
 
 
-def entity_lookup(identity: SOFT7IdentityURIType | str) -> type[SOFT7EntityInstance]:
+def entity_lookup(
+    identity: Union[SOFT7IdentityURIType, str]
+) -> type[SOFT7EntityInstance]:
     """Lookup and return a SOFT7 Entity Instance class."""
     import s7.factories.generated_classes as cls_module
 
@@ -399,7 +402,7 @@ class SOFT7Generator:
         return refs
 
     def _generate_entity_instance(
-        self, entity_cls: type[SOFT7EntityInstance], data_path: str | None = None
+        self, entity_cls: type[SOFT7EntityInstance], data_path: Optional[str] = None
     ) -> SOFT7EntityInstance:
         """(Recursively) Generate the SOFT7 Entity instance.
 
@@ -528,11 +531,11 @@ class SOFT7Generator:
         data_path_parts = data_path.split(".")
 
         def __recursively_get_parsed_datum(
-            data: ParsedDataPropertyType | dict[str, ParsedDataPropertyType],
+            data: Union[ParsedDataPropertyType, dict[str, ParsedDataPropertyType]],
             depth: int = 0,
-        ) -> (
-            ParsedDataType | ParsedDataPropertyType | dict[str, ParsedDataPropertyType]
-        ):
+        ) -> Union[
+            ParsedDataType, ParsedDataPropertyType, dict[str, ParsedDataPropertyType]
+        ]:
             """Recursively get the parsed data from the parsed data dict."""
             try:
                 next_part = data_path_parts[depth]

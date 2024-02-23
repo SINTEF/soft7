@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast, get_args
+from typing import TYPE_CHECKING, ClassVar, Optional, cast, get_args
 
 import httpx
 import yaml
@@ -36,7 +36,13 @@ from s7.pydantic_models.soft7_entity import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Literal, TypedDict
+    import sys
+    from typing import Any, TypedDict, Union
+
+    if sys.version_info >= (3, 10):
+        from typing import Literal
+    else:
+        from typing_extensions import Literal
 
     from oteapi.models import GenericConfig
     from pydantic.main import Model
@@ -51,7 +57,7 @@ if TYPE_CHECKING:  # pragma: no cover
     class SOFT7InstanceDict(TypedDict):
         """A dictionary representation of a SOFT7 instance."""
 
-        dimensions: dict[str, int] | None
+        dimensions: Optional[dict[str, int]]
         properties: dict[str, Any]
 
     class GetDataOptionalMapping(TypedDict, total=False):
@@ -83,7 +89,7 @@ class SOFT7EntityInstance(BaseModel):
     # Will not be part of fields on the instance
     entity: ClassVar[SOFT7Entity]
 
-    dimensions: BaseModel | None = None
+    dimensions: Optional[BaseModel] = None
     properties: BaseModel
 
     @model_validator(mode="after")
@@ -186,11 +192,11 @@ class SOFT7EntityInstance(BaseModel):
 
 
 def parse_input_entity(
-    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
+    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
     # Handle the case of the entity being a string or a URL
-    if isinstance(entity, AnyUrl | str):
+    if isinstance(entity, (AnyUrl, str)):
         # If it's a string or URL, we expect to either be:
         # - A path to a YAML file.
         # - A SOFT7 entity identity.
@@ -254,21 +260,23 @@ def parse_input_entity(
 
 
 def parse_input_configs(
-    configs: (
-        GetDataConfigDict
-        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
-        | Path
-        | AnyUrl
-        | str
-    ),
-    entity_instance: (
-        type[SOFT7EntityInstance] | SOFT7IdentityURIType | str | None
-    ) = None,
+    configs: Union[
+        GetDataConfigDict,
+        dict[str, Union[GenericConfig, dict[str, Any], Path, AnyUrl, str]],
+        Path,
+        AnyUrl,
+        str,
+    ],
+    entity_instance: Optional[
+        Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]
+    ] = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
         str,
-        type[HashableResourceConfig | HashableFunctionConfig | HashableMappingConfig],
+        type[
+            Union[HashableResourceConfig, HashableFunctionConfig, HashableMappingConfig]
+        ],
     ] = {
         "dataresource": HashableResourceConfig,
         "mapping": HashableMappingConfig,
@@ -276,7 +284,7 @@ def parse_input_configs(
     }
 
     # Handle the case of configs being a string or URL.
-    if isinstance(configs, AnyUrl | str):
+    if isinstance(configs, (AnyUrl, str)):
         # Expect it to be either:
         # - A URL to a JSON/YAML resource online.
         # - A path to a JSON/YAML resource file.
@@ -347,7 +355,7 @@ def parse_input_configs(
             name = cast(Literal["dataresource", "mapping", "function"], name)
 
         # Handle the case of the config being a string or URL.
-        if isinstance(config, AnyUrl | str):
+        if isinstance(config, (AnyUrl, str)):
             # Expect it to be either:
             # - A URL to a JSON/YAML config online.
             # - A path to a JSON/YAML config file.
@@ -397,7 +405,7 @@ def parse_input_configs(
 
         # Ensure all values are Hashable*Config instances if they are dictionaries
         # or Hashable*Config instances.
-        if isinstance(config, BaseModel | dict):
+        if isinstance(config, (BaseModel, dict)):
             try:
                 configs[name] = name_to_config_type_mapping[name](
                     **(config if isinstance(config, dict) else config.model_dump())
@@ -469,7 +477,9 @@ def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
 
 def generate_properties_docstring(
     entity: SOFT7Entity,
-    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
+    property_types: Union[
+        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
+    ],
 ) -> str:
     """Generated a docstring for the properties model."""
     _, _, name = parse_identity(entity.identity)
@@ -496,7 +506,9 @@ def generate_properties_docstring(
 
 def generate_model_docstring(
     entity: SOFT7Entity,
-    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
+    property_types: Union[
+        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
+    ],
 ) -> str:
     """Generated a docstring for the data source model."""
     namespace, version, name = parse_identity(entity.identity)
@@ -546,9 +558,9 @@ def generate_property_type(
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: (
-        type[UnshapedPropertyType] | SOFT7IdentityURIType
-    ) = map_soft_to_py_types.get(
+    property_type: Union[
+        type[UnshapedPropertyType], SOFT7IdentityURIType
+    ] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
@@ -562,7 +574,7 @@ def generate_property_type(
         # Go through the dimensions in reversed order and nest the property type in on
         # itself.
         for dimension_name in reversed(value.shape):
-            dimension: int | None = getattr(dimensions, dimension_name, None)
+            dimension: Optional[int] = getattr(dimensions, dimension_name, None)
 
             if dimension is None:
                 raise ValueError(
@@ -592,9 +604,9 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: (
-        type[UnshapedPropertyType] | SOFT7IdentityURIType
-    ) = map_soft_to_py_types.get(
+    property_type: Union[
+        type[UnshapedPropertyType], SOFT7IdentityURIType
+    ] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 

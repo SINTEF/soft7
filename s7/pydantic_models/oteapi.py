@@ -11,6 +11,8 @@ from pydantic import AnyUrl
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 
 if TYPE_CHECKING:  # pragma: no cover
+    from typing import Union
+
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 
@@ -48,7 +50,7 @@ class HashableFunctionConfig(FunctionConfig, HashableMixin):
 
 
 def default_soft7_ote_function_config(
-    entity: type[SOFT7EntityInstance] | SOFT7IdentityURIType | str,
+    entity: Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str],
 ) -> HashableFunctionConfig:
     """Create a default SOFT7 OTEAPI Function strategy configuration."""
     return HashableFunctionConfig(
@@ -57,7 +59,7 @@ def default_soft7_ote_function_config(
         configuration={
             "entity": (
                 SOFT7IdentityURI(str(entity))
-                if entity and isinstance(entity, AnyUrl | str)
+                if entity and isinstance(entity, (AnyUrl, str))
                 else entity
             )
         },

@@ -16,16 +16,16 @@ jobs:
 
       # pre-commit
       run_pre-commit: true
-      python_version_pre-commit: '3.10'
+      python_version_pre-commit: '3.9'
 
       # pylint & safety
-      python_version_pylint_safety: '3.10'
+      python_version_pylint_safety: '3.9'
       run_pylint: false
       run_safety: true
 
       # Build Python package
       run_build_package: true
-      python_version_package: '3.10'
+      python_version_package: '3.9'
       build_libs: flit
       build_cmd: flit build
 
@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         # Supported Python versions (according to pyproject.toml)
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
     - name: Checkout repository
