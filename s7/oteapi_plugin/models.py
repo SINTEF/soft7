@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
+from oteapi.models import AttrDict
 from oteapi.strategies.mapping.mapping import MappingStrategyConfig
 from pydantic import Field, field_validator
 
@@ -13,8 +14,11 @@ from s7.pydantic_models.oteapi import HashableFunctionConfig
 from s7.pydantic_models.soft7_entity import parse_identity
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
 
+PrefixesType: Any = MappingStrategyConfig.model_fields["prefixes"].rebuild_annotation()
+TriplesType: Any = MappingStrategyConfig.model_fields["triples"].rebuild_annotation()
 
-class SOFT7GeneratorConfig(MappingStrategyConfig):
+
+class SOFT7GeneratorConfig(AttrDict):
     """SOFT7 Generator strategy-specific configuration.
 
     Inherit from the MappingStrategyConfig to include the prefixes and triples fields,
@@ -27,12 +31,23 @@ class SOFT7GeneratorConfig(MappingStrategyConfig):
         Field(description="The SOFT7 entity to be used for the generator."),
     ]
 
+    # Data mapping information
+    # Field added from a mapping strategy.
+    prefixes: Annotated[
+        PrefixesType | None,
+        Field(description=MappingStrategyConfig.model_fields["prefixes"].description),
+    ] = None
+    triples: Annotated[
+        TriplesType | None,
+        Field(description=MappingStrategyConfig.model_fields["triples"].description),
+    ] = None
+
     # Parsed data content
     # Field added from a parser strategy.
     content: Annotated[
-        dict,
+        dict | None,
         Field(description="The parsed data content to be used for the generator."),
-    ]
+    ] = None
 
     @field_validator("entity", mode="before")
     @classmethod

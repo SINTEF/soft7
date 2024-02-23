@@ -1,8 +1,4 @@
-"""The SOFT7 OTEAPI Function strategy.
-
-It expects mappings to be present in the session, and will use them to transform
-the parsed data source into a SOFT7 Entity instance.
-"""
+"""The SOFT7 OTEAPI Function strategy."""
 
 from __future__ import annotations
 
@@ -103,13 +99,12 @@ def entity_lookup(identity: SOFT7IdentityURIType | str) -> type[SOFT7EntityInsta
 class SOFT7Generator:
     """SOFT7 Generator function strategy for OTEAPI.
 
-    The strategy expects the following to be present in the session:
-        - Mapping triples
-        - Parsed data
-
-    This means that it expects to be part of a pipeline like:
+    The strategy expects to be part of a pipeline like:
 
         DataResource >> Mapping >> SOFT7 Generator
+
+    This means, it expects certain configuration settings to be set by the other
+    strategies in the pipeline.
 
     The strategy will use the mapping triples to transform the parsed data into a SOFT7
     Entity instance.
@@ -130,6 +125,24 @@ class SOFT7Generator:
     def get(self) -> AttrDict:
         """Execute the SOFT7 Generator function strategy."""
         # Expect the mapping strategy "triples" to have run already.
+        # Expect the parser strategy to have run already.
+        if any(
+            config_value is None
+            for config_value in (
+                # mapping
+                self.function_config.configuration.prefixes,
+                self.function_config.configuration.triples,
+                # parsed data resource
+                self.function_config.configuration.content,
+            )
+        ):
+            raise SOFT7FunctionError(
+                "The SOFT7 Generator function strategy expects the 'prefixes', "
+                "'triples', and 'content' fields to be set in the "
+                "SOFT7FunctionConfig.\n"
+                "Hint: Ensure the Mapping strategy and a DataResource or a Parser "
+                "strategies are run before the SOFT7 Generator strategy."
+            )
 
         # Parse the mapping triples
         self._graph = self._parse_mapping()
@@ -321,6 +334,17 @@ class SOFT7Generator:
         Data mapping is reversed, i.e., mapping from SOFT7 Entity to parsed data dict.
 
         Ignore all refs, returning them instead as a set.
+
+        ### Validation
+
+        The dimensions are validated with the following rules:
+        - Ensure there are no nested dimensions
+        - Ensure all dimensions in the entity are present in the data mapping
+
+        The properties are validated with the following rules:
+        - Ensure there are no nested properties
+        - Ensure all properties are present in the data mapping, foregoing entity types
+
         """
         refs: set[SOFT7IdentityURIType] = set()
 
