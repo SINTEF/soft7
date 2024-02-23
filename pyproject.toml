@@ -30,7 +30,7 @@ dynamic = ["version"]
 dependencies = [
     "httpx~=0.26.0",
     # "oteapi-core>=0.6.1,<1",
-    "oteapi-core @ git+https://github.com/EMMC-ASBL/oteapi-core@major/410-session-removal",
+    "oteapi-core @ git+https://github.com/EMMC-ASBL/oteapi-core@master",
     "pyyaml~=6.0",
     "typing-extensions~=4.9; python_version < '3.12'",
 ]
