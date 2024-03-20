@@ -113,13 +113,10 @@ class SOFT7EntityInstance(BaseModel):
 
             # Retrieve the dimension values for dimensions in the shape
             try:
-                literal_dimensions = [
-                    getattr(dimensions, dimension_name) for dimension_name in shape
-                ]
+                literal_dimensions = [getattr(dimensions, dimension_name) for dimension_name in shape]
             except AttributeError as exc:
                 raise ValueError(
-                    f"Property {property_name!r} is shaped, but not all the dimensions "
-                    "are defined"
+                    f"Property {property_name!r} is shaped, but not all the dimensions " "are defined"
                 ) from exc
 
             if not all(isinstance(_, int) for _ in literal_dimensions):
@@ -142,8 +139,7 @@ class SOFT7EntityInstance(BaseModel):
 
             if property_type is None:
                 raise TypeError(
-                    "Could not determine the inner most Python type for property"
-                    f"{property_name!r}"
+                    "Could not determine the inner most Python type for property" f"{property_name!r}"
                 )
 
             # Sanity checks
@@ -221,17 +217,13 @@ def parse_input_entity(
         else:
             # If it is a URL, assume it's a SOFT7 entity identity.
             with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(entity), headers={"Accept": "application/yaml"}
-                )
+                response = client.get(str(entity), headers={"Accept": "application/yaml"})
 
             if not response.is_success:
                 try:
                     response.raise_for_status()
                 except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity}"
-                    ) from error
+                    raise EntityNotFound(f"Could not retrieve SOFT7 entity online from {entity}") from error
 
             # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
             # JSON is a subset of YAML.
@@ -252,9 +244,7 @@ def parse_input_entity(
         entity = SOFT7Entity(**entity)
 
     if not isinstance(entity, SOFT7Entity):
-        raise TypeError(
-            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
-        )
+        raise TypeError(f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}")
 
     return entity
 
@@ -267,16 +257,12 @@ def parse_input_configs(
         AnyUrl,
         str,
     ],
-    entity_instance: Optional[
-        Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]
-    ] = None,
+    entity_instance: Optional[Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]] = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
         str,
-        type[
-            Union[HashableResourceConfig, HashableFunctionConfig, HashableMappingConfig]
-        ],
+        type[Union[HashableResourceConfig, HashableFunctionConfig, HashableMappingConfig]],
     ] = {
         "dataresource": HashableResourceConfig,
         "mapping": HashableMappingConfig,
@@ -310,9 +296,7 @@ def parse_input_configs(
         else:
             # If it is a URL, assume it's a URL to a JSON/YAML resource online.
             with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(configs), headers={"Accept": "application/yaml"}
-                )
+                response = client.get(str(configs), headers={"Accept": "application/yaml"})
 
             if not response.is_success:
                 try:
@@ -331,9 +315,7 @@ def parse_input_configs(
         configs_path = configs.resolve()
 
         if not configs_path.exists():
-            raise ConfigsNotFound(
-                f"Could not find a configs YAML file at {configs_path}"
-            )
+            raise ConfigsNotFound(f"Could not find a configs YAML file at {configs_path}")
 
         configs = yaml.safe_load(configs_path.read_text(encoding="utf8"))
 
@@ -366,9 +348,7 @@ def parse_input_configs(
                 AnyHttpUrl(str(config))
             except ValidationError as exc:
                 if not isinstance(config, str):
-                    raise TypeError(
-                        "Expected config to be a str at this point"
-                    ) from exc
+                    raise TypeError("Expected config to be a str at this point") from exc
 
                 # If it's not a URL, check whether it is a path to an (existing)
                 # file.
@@ -377,9 +357,7 @@ def parse_input_configs(
                 if config_path.exists():
                     # If it's a path to an existing file, assume it's a JSON/YAML
                     # file.
-                    config = yaml.safe_load(  # noqa: PLW2901
-                        config_path.read_text(encoding="utf8")
-                    )
+                    config = yaml.safe_load(config_path.read_text(encoding="utf8"))  # noqa: PLW2901
                 else:
                     # If it's not a path to an existing file, assume it's a
                     # parseable JSON/YAML
@@ -387,9 +365,7 @@ def parse_input_configs(
             else:
                 # If it is a URL, assume it's a URL to a JSON/YAML resource online.
                 with httpx.Client(follow_redirects=True) as client:
-                    response = client.get(
-                        str(config), headers={"Accept": "application/yaml"}
-                    )
+                    response = client.get(str(config), headers={"Accept": "application/yaml"})
 
                 if not response.is_success:
                     try:
@@ -421,8 +397,7 @@ def parse_input_configs(
         elif name == "function" and config is None:
             if entity_instance is None:
                 raise EntityNotFound(
-                    "The entity must be provided if the function config is not "
-                    "provided."
+                    "The entity must be provided if the function config is not " "provided."
                 )
             configs[name] = default_soft7_ote_function_config(entity=entity_instance)
         else:
@@ -433,16 +408,12 @@ def parse_input_configs(
 
     # Ensure all required configs are present
     if "dataresource" not in configs:
-        raise S7EntityError(
-            "The configs provided must contain a Resource configuration"
-        )
+        raise S7EntityError("The configs provided must contain a Resource configuration")
 
     # Set default values if necessary
     if "function" not in configs:
         if entity_instance is None:
-            raise EntityNotFound(
-                "The entity must be provided if the function config is not provided."
-            )
+            raise EntityNotFound("The entity must be provided if the function config is not provided.")
         configs["function"] = default_soft7_ote_function_config(entity=entity_instance)
 
     if TYPE_CHECKING:  # pragma: no cover
@@ -477,9 +448,7 @@ def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
 
 def generate_properties_docstring(
     entity: SOFT7Entity,
-    property_types: Union[
-        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
-    ],
+    property_types: Union[dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]],
 ) -> str:
     """Generated a docstring for the properties model."""
     _, _, name = parse_identity(entity.identity)
@@ -488,10 +457,7 @@ def generate_properties_docstring(
     for property_name, property_value in entity.properties.items():
         property_type_repr = PlainRepr(display_as_type(property_types[property_name]))
 
-        attributes.append(
-            f"{property_name} ({property_type_repr}): "
-            f"{property_value.description}\n"
-        )
+        attributes.append(f"{property_name} ({property_type_repr}): " f"{property_value.description}\n")
 
     return f"""{name.replace(' ', '')}Properties
 
@@ -506,9 +472,7 @@ def generate_properties_docstring(
 
 def generate_model_docstring(
     entity: SOFT7Entity,
-    property_types: Union[
-        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
-    ],
+    property_types: Union[dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]],
 ) -> str:
     """Generated a docstring for the data source model."""
     namespace, version, name = parse_identity(entity.identity)
@@ -528,10 +492,7 @@ def generate_model_docstring(
     for property_name, property_value in entity.properties.items():
         property_type_repr = PlainRepr(display_as_type(property_types[property_name]))
 
-        properties.append(
-            f"{property_name} ({property_type_repr}): "
-            f"{property_value.description}\n"
-        )
+        properties.append(f"{property_name} ({property_type_repr}): " f"{property_value.description}\n")
 
     return f"""{name}
 
@@ -551,16 +512,12 @@ def generate_model_docstring(
     """
 
 
-def generate_property_type(
-    value: SOFT7EntityProperty, dimensions: Model
-) -> type[PropertyType]:
+def generate_property_type(value: SOFT7EntityProperty, dimensions: Model) -> type[PropertyType]:
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
-    ] = map_soft_to_py_types.get(
+    property_type: Union[type[UnshapedPropertyType], SOFT7IdentityURIType] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
@@ -584,8 +541,7 @@ def generate_property_type(
 
             if not isinstance(dimension, int):
                 raise TypeError(
-                    f"Dimension values must be integers, got {type(dimension)} for "
-                    f"{dimension_name!r}."
+                    f"Dimension values must be integers, got {type(dimension)} for " f"{dimension_name!r}."
                 )
 
             # The dimension defines the number of times the property type is repeated.
@@ -604,9 +560,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
-    ] = map_soft_to_py_types.get(
+    property_type: Union[type[UnshapedPropertyType], SOFT7IdentityURIType] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 

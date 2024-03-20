@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sys
 import traceback
+from collections.abc import Generator
+from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -36,14 +39,16 @@ from pydantic.functional_validators import (
 )
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
+from rdflib import Literal, URIRef
+from rdflib.namespace import RDF, XSD
+
+from s7.pydantic_models.ontologization import SOFT
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
     from pydantic.fields import FieldInfo
 
-    UnshapedPropertyType = Union[
-        str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
-    ]
+    UnshapedPropertyType = Union[str, float, int, complex, dict, bool, bytes, bytearray, BaseModel]
     ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
     ShapedListPropertyType = list[Union["ShapedListPropertyType", UnshapedPropertyType]]
 
@@ -126,6 +131,20 @@ map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
     "bytearray": bytearray,
 }
 """Use this with a fallback default of returning the lookup value."""
+
+map_soft_to_ontology_types: dict[str, URIRef] = {
+    "string": SOFT.String,
+    "str": SOFT.String,
+    "float": SOFT.Float,
+    "int": SOFT.Integer,
+    "complex": SOFT.Float,
+    "dict": SOFT.Blob,
+    "boolean": SOFT.Bool,
+    "bytes": SOFT.Blob,
+    "bytearray": SOFT.Blob,
+}
+"""Use this with a fallback default of returning SOFT.Reference or the lookup value
+itself."""
 
 
 def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, Optional[str], str]:
@@ -231,12 +250,10 @@ class CallableAttributesMixin:
                 # Use TypeAdapter to return and validate the value against the
                 # generated type. This effectively validates the shape and
                 # dimensionality of the value, as well as the inner most expected type.
-                field_info: FieldInfo = object.__getattribute__(self, "model_fields")[
-                    name
-                ]
-                self._resolved_fields[name] = TypeAdapter(
-                    field_info.rebuild_annotation()
-                ).validate_python(resolved_attr_value)
+                field_info: FieldInfo = object.__getattribute__(self, "model_fields")[name]
+                self._resolved_fields[name] = TypeAdapter(field_info.rebuild_annotation()).validate_python(
+                    resolved_attr_value
+                )
 
                 return self._resolved_fields[name]
 
@@ -253,14 +270,12 @@ class CallableAttributesMixin:
                 "".join(traceback.format_tb(exc.__traceback__)),
             )
             raise AttributeError(
-                f"Could not type and shape validate attribute {name!r} from the data "
-                "source."
+                f"Could not type and shape validate attribute {name!r} from the data " "source."
             ) from exc
 
         except Exception as exc:  # noqa: BLE001
             LOGGER.error(
-                "An error occurred during attribute resolution:\n%s: %s\n"
-                "Traceback:\n%s",
+                "An error occurred during attribute resolution:\n%s: %s\n" "Traceback:\n%s",
                 exc.__class__.__name__,
                 exc,
                 "".join(traceback.format_tb(exc.__traceback__)),
@@ -268,9 +283,7 @@ class CallableAttributesMixin:
             raise AttributeError(f"Could not retrieve attribute {name!r}.") from exc
 
     @model_serializer(mode="wrap", when_used="always")
-    def _serialize_callable_attributes(
-        self, handler: SerializerFunctionWrapHandler
-    ) -> Any:
+    def _serialize_callable_attributes(self, handler: SerializerFunctionWrapHandler) -> Any:
         """Serialize all "lazy" SOFT7 property values.
 
         If the value matches the GetData protocol, i.e., it's a callable function with
@@ -280,9 +293,7 @@ class CallableAttributesMixin:
         The copy of the model is returned through the SerializerFunctionWrapHandler.
         """
         if not isinstance(self, BaseModel):
-            raise TypeError(
-                "This mixin class may only be used with pydantic.BaseModel subclasses."
-            )
+            raise TypeError("This mixin class may only be used with pydantic.BaseModel subclasses.")
 
         # This iteration works, due to how BaseModel yields fields (from __dict__ +
         # __pydantic__extras__).
@@ -316,9 +327,7 @@ class SOFT7EntityProperty(BaseModel):
         Field(description="List of dimensions making up the shape of the property."),
     ] = None
 
-    description: Annotated[
-        Optional[str], Field(description="A human description of the property.")
-    ] = None
+    description: Annotated[Optional[str], Field(description="A human description of the property.")] = None
 
     unit: Annotated[
         Optional[str],
@@ -433,9 +442,7 @@ class SOFT7EntityProperty(BaseModel):
                         f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
                     ) from exc
             else:
-                raise ValueError(
-                    f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
-                )
+                raise ValueError(f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'")
 
             if "type" in data:
                 data["type"] = new_type
@@ -462,16 +469,11 @@ class SOFT7Entity(BaseModel):
     dimensions: Annotated[
         Optional[dict[str, str]],
         Field(
-            description=(
-                "A dictionary or model of dimension names (key) and descriptions "
-                "(value)."
-            ),
+            description=("A dictionary or model of dimension names (key) and descriptions " "(value)."),
         ),
     ] = None
 
-    properties: Annotated[
-        dict[str, SOFT7EntityProperty], Field(description="A dictionary of properties.")
-    ]
+    properties: Annotated[dict[str, SOFT7EntityProperty], Field(description="A dictionary of properties.")]
 
     @field_validator("properties", mode="after")
     @classmethod
@@ -489,10 +491,7 @@ class SOFT7Entity(BaseModel):
             raise ValueError("properties must not be empty.")
 
         if any(property_name.startswith("_") for property_name in properties):
-            raise ValueError(
-                "property names may not be 'private', i.e., start with an underscore "
-                "(_)"
-            )
+            raise ValueError("property names may not be 'private', i.e., start with an underscore " "(_)")
 
         return properties
 
@@ -507,9 +506,7 @@ class SOFT7Entity(BaseModel):
                     dimension in self.dimensions for dimension in property_value.shape
                 ):
                     wrong_dimensions = [
-                        dimension
-                        for dimension in property_value.shape
-                        if dimension not in self.dimensions
+                        dimension for dimension in property_value.shape if dimension not in self.dimensions
                     ]
                     errors.append(
                         (
@@ -535,3 +532,89 @@ class SOFT7Entity(BaseModel):
             )
 
         return self
+
+    def to_rdf(self) -> Generator[tuple[URIRef, str, Any], None, None]:
+        """Convert the entity to RDF triples."""
+        # Create the entity node
+        entity_uri = URIRef(str(self.identity).rstrip("/"))
+        yield entity_uri, RDF.type, SOFT.Entity
+        yield entity_uri, SOFT.hasDescription, Literal(self.description, lang="en", datatype=XSD.string)
+        yield entity_uri, SOFT.hasURI, Literal(str(self.identity), datatype=XSD.anyURI)
+
+        # Create dimensions
+        dimension_labels = {}
+        if self.dimensions:
+            for name, description in self.dimensions.items():
+                dimension_labels[name] = Literal(name, lang="en", datatype=XSD.string)
+
+                dimension_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}")
+
+                yield dimension_uri, RDF.type, SOFT.Dimension
+                yield dimension_uri, SOFT.hasLabel, dimension_labels[name]
+                yield dimension_uri, SOFT.hasDescription, Literal(
+                    description, lang="en", datatype=XSD.string
+                )
+
+                yield entity_uri, SOFT.hasDimension, dimension_uri
+
+        # Create properties
+        for name, property_model in self.properties.items():
+            property_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}")
+
+            yield property_uri, RDF.type, SOFT.Property
+
+            # Required property values
+            yield property_uri, SOFT.hasLabel, Literal(name, lang="en", datatype=XSD.string)
+
+            ontology_type = map_soft_to_ontology_types.get(property_model.type, property_model.type)
+            if isinstance(ontology_type, URIRef):
+                yield property_uri, SOFT.hasType, ontology_type
+            elif isinstance(ontology_type, Url):
+                yield property_uri, SOFT.hasType, SOFT.Relation
+            else:
+                raise ValueError(f"Unknown ontology type: {ontology_type}")
+
+            # Optional property values
+            if property_model.unit:
+                unit_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}.unit")
+
+                yield unit_uri, RDF.type, SOFT.Unit
+                yield unit_uri, SOFT.hasUnitSymbol, Literal(
+                    property_model.unit, lang="en", datatype=XSD.string
+                )
+
+                yield property_uri, SOFT.hasUnit, unit_uri
+
+            if property_model.description:
+                yield property_uri, SOFT.hasDescription, Literal(
+                    property_model.description, lang="en", datatype=XSD.string
+                )
+
+            if property_model.shape:
+                previous_shape_uri = None
+
+                for index, shape in enumerate(property_model.shape):
+                    shape_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}.shape[{index}]")
+
+                    yield shape_uri, RDF.type, SOFT.DimensionExpression
+
+                    yield shape_uri, SOFT.hasExpressionString, Literal(
+                        shape, lang="en", datatype=XSD.string
+                    )
+
+                    matching_dimension = False
+                    for dimension in dimension_labels:
+                        if re.search(rf"[^a-zA-Z]*{re.escape(dimension)}[^a-zA-Z]*", shape):
+                            yield shape_uri, SOFT.hasDimensionRef, dimension_labels[shape]
+                            matching_dimension = True
+
+                    if not matching_dimension:
+                        raise ValueError(f"No matching dimension found for shape: {shape}")
+
+                    if index > 0:
+                        if previous_shape_uri is None:
+                            raise ValueError(f"Previous shape URI not set for shape: {shape}")
+
+                        yield previous_shape_uri, SOFT.hasNextShape, shape_uri
+
+                    previous_shape_uri = deepcopy(shape_uri)

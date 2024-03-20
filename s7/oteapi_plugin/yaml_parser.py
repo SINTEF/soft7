@@ -24,10 +24,7 @@ class YAMLConfig(AttrDict):
     datacache_config: Annotated[
         Optional[DataCacheConfig],
         Field(
-            description=(
-                "Configurations for the data cache for storing the downloaded file "
-                "content."
-            ),
+            description=("Configurations for the data cache for storing the downloaded file " "content."),
         ),
     ] = None
 
@@ -59,9 +56,7 @@ class YAMLResourceConfig(ResourceConfig):
 class YAMLParseResult(AttrDict):
     """Class for returning values from YAML Parse."""
 
-    content: Annotated[
-        Union[dict, list[dict]], Field(description="Content of the YAML document.")
-    ]
+    content: Annotated[Union[dict, list[dict]], Field(description="Content of the YAML document.")]
 
 
 @dataclass

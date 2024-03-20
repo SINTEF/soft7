@@ -229,7 +229,7 @@ The `hasDimensionRef` restrictions relates to the dimension reference variables.
                           ] ,
                           [ rdf:type owl:Restriction ;
                             owl:onProperty :hasUnit ;
-                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
                             owl:onClass :Unit
                           ] ,
                           [ rdf:type owl:Restriction ;

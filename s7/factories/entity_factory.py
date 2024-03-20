@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, TypedDict
 
-from pydantic import AnyUrl, ConfigDict, Field, create_model
+from pydantic import AnyUrl, ConfigDict, Field, ValidationError, create_model
 
 from s7.pydantic_models.oteapi import (
     HashableFunctionConfig,
@@ -15,6 +15,7 @@ from s7.pydantic_models.oteapi import (
 )
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
+    SOFT7IdentityURI,
     parse_identity,
 )
 from s7.pydantic_models.soft7_instance import (
@@ -31,6 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from s7.pydantic_models.soft7_entity import (
         ListPropertyType,
+        SOFT7IdentityURIType,
     )
 
     class GetDataConfigDict(TypedDict):
@@ -100,9 +102,7 @@ def create_entity(
     }
 
     # Create the entity model's properties
-    properties: dict[
-        str, tuple[Union[type[Optional[ListPropertyType]], object], Any]
-    ] = {
+    properties: dict[str, tuple[Union[type[Optional[ListPropertyType]], object], Any]] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
@@ -114,10 +114,7 @@ def create_entity(
                 json_schema_extra={
                     f"x-soft7-{field}": getattr(property_value, field)
                     for field in property_value.model_fields
-                    if (
-                        field not in ("description", "type")
-                        and getattr(property_value, field)
-                    )
+                    if (field not in ("description", "type") and getattr(property_value, field))
                 },
             ),
         )
@@ -171,3 +168,39 @@ def create_entity(
     module_namespace.register_class(EntityInstance)
 
     return EntityInstance
+
+
+def entity_lookup(identity: Union[SOFT7IdentityURIType, str]) -> type[SOFT7EntityInstance]:
+    """Lookup and return a SOFT7 Entity Instance class."""
+    import s7.factories.generated_classes as cls_module
+
+    # Extract the name from the identity
+    if not isinstance(identity, AnyUrl):
+        try:
+            identity = SOFT7IdentityURI(identity)
+        except (ValidationError, TypeError) as exc:
+            raise TypeError(
+                f"identity must be a valid SOFT7 Identity URI. Got {identity!r} with "
+                f"type {type(identity)}."
+            ) from exc
+
+    _, _, entity_name = parse_identity(identity)
+    entity_name = entity_name.replace(" ", "")
+
+    # Lookup the entity instance class
+    try:
+        cls = getattr(cls_module, entity_name)
+    except AttributeError as exc:
+        raise ValueError(
+            f"Unable to find class with name {entity_name!r} in " f"{cls_module.__name__!r}."
+        ) from exc
+
+    if not isinstance(cls, type) and not issubclass(cls, SOFT7EntityInstance):
+        error_message = (
+            f"Class {entity_name!r} in {cls_module.__name__!r} is not a "
+            f"{'subclass of ' if entity_name != 'SOFT7EntityInstance' else ''}"
+            f"SOFT7EntityInstance."
+        )
+        raise ValueError(error_message)
+
+    return cls

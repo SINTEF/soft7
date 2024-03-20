@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from .entity_factory import create_entity
+from .entity_factory import create_entity, entity_lookup
 
-__all__ = ("create_entity",)
+__all__ = ("create_entity", "entity_lookup")

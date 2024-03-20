@@ -32,9 +32,7 @@ class HashableMixin:
                     for field_name, field_value in self
                 )
             )
-        raise NotImplementedError(
-            f"Hashing of {self.__class__.__name__} is not implemented."
-        )
+        raise NotImplementedError(f"Hashing of {self.__class__.__name__} is not implemented.")
 
 
 class HashableResourceConfig(ResourceConfig, HashableMixin):
@@ -58,9 +56,7 @@ def default_soft7_ote_function_config(
         functionType="SOFT7",
         configuration={
             "entity": (
-                SOFT7IdentityURI(str(entity))
-                if entity and isinstance(entity, (AnyUrl, str))
-                else entity
+                SOFT7IdentityURI(str(entity)) if entity and isinstance(entity, (AnyUrl, str)) else entity
             )
         },
     )

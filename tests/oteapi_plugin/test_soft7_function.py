@@ -47,23 +47,17 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
     httpx_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructureAttributes",
         method="GET",
-        json=json.loads(
-            (static_folder / "onto-ns_OPTIMADEStructureAttributes.json").read_text()
-        ),
+        json=json.loads((static_folder / "onto-ns_OPTIMADEStructureAttributes.json").read_text()),
     )
     httpx_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructureSpecies",
         method="GET",
-        json=json.loads(
-            (static_folder / "onto-ns_OPTIMADEStructureSpecies.json").read_text()
-        ),
+        json=json.loads((static_folder / "onto-ns_OPTIMADEStructureSpecies.json").read_text()),
     )
     httpx_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructureAssembly",
         method="GET",
-        json=json.loads(
-            (static_folder / "onto-ns_OPTIMADEStructureAssembly.json").read_text()
-        ),
+        json=json.loads((static_folder / "onto-ns_OPTIMADEStructureAssembly.json").read_text()),
     )
 
     # Test with a simple mapping
@@ -79,24 +73,15 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
             ("optimade:data.attributes", "", "soft7:properties.attributes"),
         },
     )
-    generator_config = default_soft7_ote_function_config(
-        "http://onto-ns.com/meta/1.0/OPTIMADEStructure"
-    )
+    generator_config = default_soft7_ote_function_config("http://onto-ns.com/meta/1.0/OPTIMADEStructure")
 
     # Mock run the pipeline: mapping_strategy >> generator
     # BUT run only up to the point before running `get()` on generator.
-    session = (
-        SOFT7Generator(function_config=generator_config.model_dump()).initialize()
-        or AttrDict()
-    )
+    session = SOFT7Generator(function_config=generator_config.model_dump()).initialize() or AttrDict()
     session.update(
         MappingStrategy(
             mapping_config=mapping_config.model_copy(
-                update={
-                    "configuration": mapping_config.configuration.model_copy(
-                        update=session
-                    )
-                },
+                update={"configuration": mapping_config.configuration.model_copy(update=session)},
                 deep=True,
             )
         ).initialize()
@@ -104,11 +89,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
     session.update(
         MappingStrategy(
             mapping_config=mapping_config.model_copy(
-                update={
-                    "configuration": mapping_config.configuration.model_copy(
-                        update=session
-                    )
-                },
+                update={"configuration": mapping_config.configuration.model_copy(update=session)},
                 deep=True,
             )
         ).get()
@@ -117,11 +98,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
     # Instantiate the generator for test running the `get()` method
     generator = SOFT7Generator(
         function_config=generator_config.model_copy(
-            update={
-                "configuration": generator_config.configuration.model_copy(
-                    update=session
-                )
-            },
+            update={"configuration": generator_config.configuration.model_copy(update=session)},
             deep=True,
         ).model_dump()
     )
@@ -137,9 +114,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
         for _ in [
             (
                 {
-                    "namespace": AnyUrl(
-                        mapping_config.prefixes["optimade"].rstrip("#")
-                    ),
+                    "namespace": AnyUrl(mapping_config.prefixes["optimade"].rstrip("#")),
                     "concept": "data.id",
                 },
                 {"namespace": "", "concept": ""},
@@ -150,9 +125,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
             ),
             (
                 {
-                    "namespace": AnyUrl(
-                        mapping_config.prefixes["optimade"].rstrip("#")
-                    ),
+                    "namespace": AnyUrl(mapping_config.prefixes["optimade"].rstrip("#")),
                     "concept": "data.type",
                 },
                 {"namespace": "", "concept": ""},
@@ -163,9 +136,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
             ),
             (
                 {
-                    "namespace": AnyUrl(
-                        mapping_config.prefixes["optimade"].rstrip("#")
-                    ),
+                    "namespace": AnyUrl(mapping_config.prefixes["optimade"].rstrip("#")),
                     "concept": "data.attributes",
                 },
                 {"namespace": "", "concept": ""},
@@ -228,14 +199,10 @@ def _generate_entity_test_cases() -> tuple[
 
 
 @pytest.mark.parametrize("functionType", ["soft7", "SOFT7"])
-@pytest.mark.parametrize(
-    "entity", _generate_entity_test_cases()[1], ids=_generate_entity_test_cases()[0]
-)
+@pytest.mark.parametrize("entity", _generate_entity_test_cases()[1], ids=_generate_entity_test_cases()[0])
 def test_dataclass_validation(
     functionType: str,
-    entity: Union[
-        str, type[SOFT7EntityInstance], dict[str, Any], Path, AnyUrl, SOFT7Entity
-    ],
+    entity: Union[str, type[SOFT7EntityInstance], dict[str, Any], Path, AnyUrl, SOFT7Entity],
     httpx_mock: HTTPXMock,
     soft_entity_init: dict[str, Union[str, dict]],
 ) -> None:

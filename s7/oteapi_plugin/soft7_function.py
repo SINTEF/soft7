@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, cast
 
 from oteapi.models import AttrDict
-from pydantic import AnyUrl, Field, ValidationError
+from pydantic import AnyUrl, Field
 from pydantic.dataclasses import dataclass
 
 # from pydantic.dataclasses import dataclass
@@ -14,12 +14,11 @@ from s7.exceptions import (
     InvalidMapping,
     SOFT7FunctionError,
 )
-from s7.factories import create_entity
+from s7.factories import create_entity, entity_lookup
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_entity import (
     SOFT7IdentityURI,
     SOFT7IdentityURIType,
-    parse_identity,
 )
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
@@ -59,45 +58,6 @@ class RDFTriple(NamedTuple):
 LOGGER = logging.getLogger(__name__)
 
 
-def entity_lookup(
-    identity: Union[SOFT7IdentityURIType, str]
-) -> type[SOFT7EntityInstance]:
-    """Lookup and return a SOFT7 Entity Instance class."""
-    import s7.factories.generated_classes as cls_module
-
-    # Extract the name from the identity
-    if not isinstance(identity, AnyUrl):
-        try:
-            identity = SOFT7IdentityURI(identity)
-        except (ValidationError, TypeError) as exc:
-            raise TypeError(
-                f"identity must be a valid SOFT7 Identity URI. Got {identity!r} with "
-                f"type {type(identity)}."
-            ) from exc
-
-    _, _, entity_name = parse_identity(identity)
-    entity_name = entity_name.replace(" ", "")
-
-    # Lookup the entity instance class
-    try:
-        cls = getattr(cls_module, entity_name)
-    except AttributeError as exc:
-        raise ValueError(
-            f"Unable to find class with name {entity_name!r} in "
-            f"{cls_module.__name__!r}."
-        ) from exc
-
-    if not isinstance(cls, type) and not issubclass(cls, SOFT7EntityInstance):
-        error_message = (
-            f"Class {entity_name!r} in {cls_module.__name__!r} is not a "
-            f"{'subclass of ' if entity_name != 'SOFT7EntityInstance' else ''}"
-            f"SOFT7EntityInstance."
-        )
-        raise ValueError(error_message)
-
-    return cls
-
-
 @dataclass
 class SOFT7Generator:
     """SOFT7 Generator function strategy for OTEAPI.
@@ -117,9 +77,7 @@ class SOFT7Generator:
 
     """
 
-    function_config: Annotated[
-        SOFT7FunctionConfig, Field(description=SOFT7FunctionConfig.__doc__)
-    ]
+    function_config: Annotated[SOFT7FunctionConfig, Field(description=SOFT7FunctionConfig.__doc__)]
 
     def initialize(self) -> AttrDict:
         """Initialize the SOFT7 Generator function strategy."""
@@ -232,9 +190,9 @@ class SOFT7Generator:
                 # SOFT7IdentityURIs
                 continue
 
-            data_mapping.setdefault(triple.object["namespace"], {})[
-                triple.object["concept"]
-            ] = triple.subject["concept"]
+            data_mapping.setdefault(triple.object["namespace"], {})[triple.object["concept"]] = (
+                triple.subject["concept"]
+            )
 
         return data_mapping
 
@@ -300,9 +258,7 @@ class SOFT7Generator:
                             "concept on hash (#)."
                         ) from exc
 
-                    flat_triple.append(
-                        {"namespace": SOFT7IdentityURI(namespace), "concept": concept}
-                    )
+                    flat_triple.append({"namespace": SOFT7IdentityURI(namespace), "concept": concept})
 
             flat_mapping.append(RDFTriple(*flat_triple))
 
@@ -315,11 +271,7 @@ class SOFT7Generator:
         """
         refs: set[SOFT7IdentityURIType] = set()
         for entity_identity, entity in self.entities.items():
-            refs.update(
-                self._validate_data_mapping_for_entity(
-                    self.data_mapping[entity_identity], entity
-                )
-            )
+            refs.update(self._validate_data_mapping_for_entity(self.data_mapping[entity_identity], entity))
 
         while refs:
             ref = refs.pop()  # noqa: F841
@@ -430,16 +382,12 @@ class SOFT7Generator:
                 continue
 
             indexed_data_path = (
-                data_mapping[f"dimensions.{dimension}"].replace(
-                    no_index_data_path, data_path
-                )
+                data_mapping[f"dimensions.{dimension}"].replace(no_index_data_path, data_path)
                 if data_path
                 else data_mapping[f"dimensions.{dimension}"]
             )
 
-            parsed_dimension_value = self._get_parsed_datum(
-                indexed_data_path, dimension=True
-            )
+            parsed_dimension_value = self._get_parsed_datum(indexed_data_path, dimension=True)
             if parsed_dimension_value is not None:
                 entity_dimensions[dimension] = parsed_dimension_value
 
@@ -459,9 +407,7 @@ class SOFT7Generator:
                 # property. In which case this will be the data path to the entity
                 # instance with an added list index.
                 indexed_data_path = (
-                    data_mapping[f"properties.{property_name}"].replace(
-                        no_index_data_path, data_path
-                    )
+                    data_mapping[f"properties.{property_name}"].replace(no_index_data_path, data_path)
                     if data_path
                     else data_mapping[f"properties.{property_name}"]
                 )
@@ -481,8 +427,7 @@ class SOFT7Generator:
                 # TODO: This should be fixed, most likely using NumPy arrays.
                 if len(property_value.shape) != 1:
                     raise NotImplementedError(
-                        "Only 1-dimensional list shape is supported for Entity "
-                        "instance properties."
+                        "Only 1-dimensional list shape is supported for Entity " "instance properties."
                     )
 
                 parsed_property_value = []
@@ -491,9 +436,7 @@ class SOFT7Generator:
 
                 for list_index in range(dimension_value):
                     indexed_data_path = (
-                        data_mapping[f"properties.{property_name}"].replace(
-                            no_index_data_path, data_path
-                        )
+                        data_mapping[f"properties.{property_name}"].replace(no_index_data_path, data_path)
                         if data_path
                         else data_mapping[f"properties.{property_name}"]
                     )
@@ -520,9 +463,7 @@ class SOFT7Generator:
         # Create the SOFT7 Entity instance
         return entity_cls(dimensions=entity_dimensions, properties=entity_properties)
 
-    def _get_parsed_datum(
-        self, data_path: str, dimension: bool = False
-    ) -> ParsedDataType:
+    def _get_parsed_datum(self, data_path: str, dimension: bool = False) -> ParsedDataType:
         """Get the parsed data from the parsed data dict.
 
         Currently, we only expect the parsed data to come from the JSON or CSV parser,
@@ -533,9 +474,7 @@ class SOFT7Generator:
         def __recursively_get_parsed_datum(
             data: Union[ParsedDataPropertyType, dict[str, ParsedDataPropertyType]],
             depth: int = 0,
-        ) -> Union[
-            ParsedDataType, ParsedDataPropertyType, dict[str, ParsedDataPropertyType]
-        ]:
+        ) -> Union[ParsedDataType, ParsedDataPropertyType, dict[str, ParsedDataPropertyType]]:
             """Recursively get the parsed data from the parsed data dict."""
             try:
                 next_part = data_path_parts[depth]
@@ -581,9 +520,7 @@ class SOFT7Generator:
 
                 # The current data path part _is_ a list index
                 try:
-                    return __recursively_get_parsed_datum(
-                        data[next_part_as_index], depth=depth + 1
-                    )
+                    return __recursively_get_parsed_datum(data[next_part_as_index], depth=depth + 1)
                 except IndexError as exc:
                     raise ValueError(
                         f"Data path {data_path!r} is missing from the parsed "
@@ -594,9 +531,7 @@ class SOFT7Generator:
             elif isinstance(data, dict):
                 if next_part not in data:
                     # The data path part cannot be found in current data dict.
-                    previous_part = (
-                        data_path_parts[depth - 1] if (depth - 1) >= 0 else "/"
-                    )
+                    previous_part = data_path_parts[depth - 1] if (depth - 1) >= 0 else "/"
                     raise ValueError(
                         f"Data path {data_path!r} is either invalid or missing from "
                         "the parsed data. Specifically, the data path part "
@@ -611,13 +546,10 @@ class SOFT7Generator:
                 # so we raise an error - expecting the given data path to either be
                 # invalid or missing from the parsed data.
                 raise ValueError(
-                    f"Data path {data_path!r} is either invalid or missing from the "
-                    "parsed data."
+                    f"Data path {data_path!r} is either invalid or missing from the " "parsed data."
                 )
 
-        datum = __recursively_get_parsed_datum(
-            self.function_config.configuration.content
-        )
+        datum = __recursively_get_parsed_datum(self.function_config.configuration.content)
 
         if TYPE_CHECKING:  # pragma: no cover
             datum = cast(ParsedDataType, datum)

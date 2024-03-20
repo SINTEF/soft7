@@ -69,8 +69,7 @@ class SOFT7GeneratorConfig(AttrDict):
             entity = parse_input_entity(value)
         except (TypeError, EntityNotFound) as exc:
             raise ValueError(
-                f"Invalid value {value!r} for the 'entity' field in "
-                "SOFT7GeneratorConfig."
+                f"Invalid value {value!r} for the 'entity' field in " "SOFT7GeneratorConfig."
             ) from exc
 
         # Try to retrieve the SOFT7EntityInstance class from the generated_classes
@@ -96,6 +95,4 @@ class SOFT7FunctionConfig(HashableFunctionConfig):
         ),
     ]
 
-    configuration: Annotated[
-        SOFT7GeneratorConfig, Field(description=SOFT7GeneratorConfig.__doc__)
-    ]
+    configuration: Annotated[SOFT7GeneratorConfig, Field(description=SOFT7GeneratorConfig.__doc__)]

@@ -32,6 +32,7 @@ dependencies = [
     "httpx~=0.27.0",
     "oteapi-core>=0.7.0.dev1,<1",
     "pyyaml~=6.0",
+    "rdflib~=7.0",
     "typing-extensions~=4.10; python_version < '3.12'",
 ]
 
@@ -71,6 +72,9 @@ Package = "https://pypi.org/project/soft7"
 name = "s7"
 
 # Dev tool configurations
+[tool.black]
+line-length = 108
+
 [tool.mypy]
 python_version = "3.9"
 ignore_missing_imports = true
@@ -89,6 +93,9 @@ filterwarnings = [
     # Ignore deprecation warnings from importlib.metadata (used by oteapi-core)
     "ignore:SelectableGroups dict interface is deprecated.*:DeprecationWarning",
 ]
+
+[tool.ruff]
+line-length = 108
 
 [tool.ruff.lint]
 extend-select = [
