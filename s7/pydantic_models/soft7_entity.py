@@ -7,7 +7,6 @@ import logging
 import re
 import sys
 import traceback
-from collections.abc import Generator
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -39,7 +38,8 @@ from pydantic.functional_validators import (
 )
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
-from rdflib import Literal, URIRef
+from rdflib import Literal as RDFLiteral
+from rdflib import URIRef
 from rdflib.namespace import RDF, XSD
 
 from s7.pydantic_models.ontologization import SOFT
@@ -47,6 +47,8 @@ from s7.pydantic_models.ontologization import SOFT
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
     from pydantic.fields import FieldInfo
+    from pydantic.main import IncEx
+    from rdflib import Node
 
     UnshapedPropertyType = Union[str, float, int, complex, dict, bool, bytes, bytearray, BaseModel]
     ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
@@ -54,6 +56,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
+
+    RDFTriple = tuple[Node, Node, Node]
 
 
 SOFT7IdentityURIType = Annotated[
@@ -119,7 +123,8 @@ SOFT7EntityPropertyType = Union[
         "bytearray",
     ],
 ]
-map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
+
+map_soft_to_py_types: dict[SOFT7EntityPropertyType, type[UnshapedPropertyType]] = {
     "string": str,
     "str": str,
     "float": float,
@@ -132,7 +137,7 @@ map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
 }
 """Use this with a fallback default of returning the lookup value."""
 
-map_soft_to_ontology_types: dict[str, URIRef] = {
+map_soft_to_ontology_types: dict[SOFT7EntityPropertyType, URIRef] = {
     "string": SOFT.String,
     "str": SOFT.String,
     "float": SOFT.Float,
@@ -533,44 +538,108 @@ class SOFT7Entity(BaseModel):
 
         return self
 
-    def to_rdf(self) -> Generator[tuple[URIRef, str, Any], None, None]:
-        """Convert the entity to RDF triples."""
+    def model_dump_rdf(
+        self,
+        *,
+        include: IncEx = None,
+        exclude: IncEx = None,
+        by_alias: bool = False,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        round_trip: bool = False,
+        warnings: bool = True,
+    ) -> set[RDFTriple]:
+        """Convert the entity to RDF triples.
+
+        Parameters:
+            include: Field(s) to include in the output.
+            exclude: Field(s) to exclude from the output.
+            by_alias: Whether to serialize using field aliases.
+            exclude_unset: Whether to exclude fields that have not been explicitly set.
+            exclude_defaults: Whether to exclude fields that are set to their default value.
+            exclude_none: Whether to exclude fields that have a value of `None`.
+            round_trip: If True, dumped values should be valid as input for non-idempotent types such as
+                Json[T].
+            warnings: Whether to log warnings when invalid fields are encountered.
+
+        Returns:
+            A set of RDF triples, i.e., an RDF representation of the model according to the SOFT7 Entity
+            Ontology.
+
+        """
+        if any(_ is not None for _ in (include, exclude)):
+            raise ValueError("include and exclude are currently not supported for RDF serialization.")
+
+        if (
+            any(
+                _ is not False
+                for _ in (by_alias, exclude_unset, exclude_defaults, exclude_none, round_trip)
+            )
+            or warnings is not True
+        ):
+            raise ValueError(
+                "by_alias, exclude_unset, exclude_defaults, exclude_none, round_trip, and warnings are "
+                "currently not supported for RDF serialization."
+            )
+
+        triples: set[RDFTriple] = set()
+
         # Create the entity node
         entity_uri = URIRef(str(self.identity).rstrip("/"))
-        yield entity_uri, RDF.type, SOFT.Entity
-        yield entity_uri, SOFT.hasDescription, Literal(self.description, lang="en", datatype=XSD.string)
-        yield entity_uri, SOFT.hasURI, Literal(str(self.identity), datatype=XSD.anyURI)
+        triples.update(
+            [
+                (entity_uri, RDF.type, SOFT.Entity),
+                (
+                    entity_uri,
+                    SOFT.hasDescription,
+                    RDFLiteral(self.description, lang="en", datatype=XSD.string),
+                ),
+                (entity_uri, SOFT.hasURI, RDFLiteral(str(self.identity), datatype=XSD.anyURI)),
+            ]
+        )
 
         # Create dimensions
         dimension_labels = {}
         if self.dimensions:
             for name, description in self.dimensions.items():
-                dimension_labels[name] = Literal(name, lang="en", datatype=XSD.string)
+                dimension_labels[name] = RDFLiteral(name, lang="en", datatype=XSD.string)
 
                 dimension_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}")
 
-                yield dimension_uri, RDF.type, SOFT.Dimension
-                yield dimension_uri, SOFT.hasLabel, dimension_labels[name]
-                yield dimension_uri, SOFT.hasDescription, Literal(
-                    description, lang="en", datatype=XSD.string
+                triples.update(
+                    [
+                        # Define the dimension
+                        (dimension_uri, RDF.type, SOFT.Dimension),
+                        (dimension_uri, SOFT.hasLabel, dimension_labels[name]),
+                        (
+                            dimension_uri,
+                            SOFT.hasDescription,
+                            RDFLiteral(description, lang="en", datatype=XSD.string),
+                        ),
+                        # Add the dimension to the entity
+                        (entity_uri, SOFT.hasDimension, dimension_uri),
+                    ]
                 )
-
-                yield entity_uri, SOFT.hasDimension, dimension_uri
 
         # Create properties
         for name, property_model in self.properties.items():
             property_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}")
 
-            yield property_uri, RDF.type, SOFT.Property
-
-            # Required property values
-            yield property_uri, SOFT.hasLabel, Literal(name, lang="en", datatype=XSD.string)
+            triples.update(
+                [
+                    # Define the property
+                    (property_uri, RDF.type, SOFT.Property),
+                    # Required property values (continues below)
+                    (property_uri, SOFT.hasLabel, RDFLiteral(name, lang="en", datatype=XSD.string)),
+                ]
+            )
 
             ontology_type = map_soft_to_ontology_types.get(property_model.type, property_model.type)
             if isinstance(ontology_type, URIRef):
-                yield property_uri, SOFT.hasType, ontology_type
+                triples.add((property_uri, SOFT.hasType, ontology_type))
             elif isinstance(ontology_type, Url):
-                yield property_uri, SOFT.hasType, SOFT.Relation
+                triples.add((property_uri, SOFT.hasType, SOFT.Relation))
             else:
                 raise ValueError(f"Unknown ontology type: {ontology_type}")
 
@@ -578,16 +647,27 @@ class SOFT7Entity(BaseModel):
             if property_model.unit:
                 unit_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}.unit")
 
-                yield unit_uri, RDF.type, SOFT.Unit
-                yield unit_uri, SOFT.hasUnitSymbol, Literal(
-                    property_model.unit, lang="en", datatype=XSD.string
+                triples.update(
+                    [
+                        # Define the unit
+                        (unit_uri, RDF.type, SOFT.Unit),
+                        (
+                            unit_uri,
+                            SOFT.hasUnitSymbol,
+                            RDFLiteral(property_model.unit, lang="en", datatype=XSD.string),
+                        ),
+                        # Add the unit to the property
+                        (property_uri, SOFT.hasUnit, unit_uri),
+                    ]
                 )
 
-                yield property_uri, SOFT.hasUnit, unit_uri
-
             if property_model.description:
-                yield property_uri, SOFT.hasDescription, Literal(
-                    property_model.description, lang="en", datatype=XSD.string
+                triples.add(
+                    (
+                        property_uri,
+                        SOFT.hasDescription,
+                        RDFLiteral(property_model.description, lang="en", datatype=XSD.string),
+                    )
                 )
 
             if property_model.shape:
@@ -596,16 +676,23 @@ class SOFT7Entity(BaseModel):
                 for index, shape in enumerate(property_model.shape):
                     shape_uri = URIRef(f"{str(self.identity).rstrip('/')}#{name}.shape[{index}]")
 
-                    yield shape_uri, RDF.type, SOFT.DimensionExpression
-
-                    yield shape_uri, SOFT.hasExpressionString, Literal(
-                        shape, lang="en", datatype=XSD.string
+                    triples.update(
+                        [
+                            # Define the shape
+                            (shape_uri, RDF.type, SOFT.DimensionExpression),
+                            (
+                                shape_uri,
+                                SOFT.hasExpressionString,
+                                RDFLiteral(shape, lang="en", datatype=XSD.string),
+                            ),
+                        ]
                     )
 
                     matching_dimension = False
                     for dimension in dimension_labels:
                         if re.search(rf"[^a-zA-Z]*{re.escape(dimension)}[^a-zA-Z]*", shape):
-                            yield shape_uri, SOFT.hasDimensionRef, dimension_labels[shape]
+                            # Add the dimension to the shape
+                            triples.add((shape_uri, SOFT.hasDimensionRef, dimension_labels[shape]))
                             matching_dimension = True
 
                     if not matching_dimension:
@@ -615,6 +702,9 @@ class SOFT7Entity(BaseModel):
                         if previous_shape_uri is None:
                             raise ValueError(f"Previous shape URI not set for shape: {shape}")
 
-                        yield previous_shape_uri, SOFT.hasNextShape, shape_uri
+                        # Add this shape to the previous shape as the next shape
+                        triples.add((previous_shape_uri, SOFT.hasNextShape, shape_uri))
 
                     previous_shape_uri = deepcopy(shape_uri)
+
+        return triples

@@ -11,7 +11,7 @@ from rdflib import DefinedNamespace, Namespace, URIRef
 
 class SOFT(DefinedNamespace):
     """The SOFT7 Entity Ontology (SOFT)"""
-    
+
     _fail = True
     _NS = Namespace("http://www.quaat.com/ontologies#")
 
