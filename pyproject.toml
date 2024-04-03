@@ -19,6 +19,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Natural Language :: English",
     "Operating System :: OS Independent",
 ]
@@ -27,19 +29,24 @@ requires-python = "~=3.9"
 dynamic = ["version"]
 
 dependencies = [
-    "graphviz",
-    "Jinja2",
-    "oteapi-core>=0.6.0,<1",
-    "otelib>=0.4.0,<1",
-    "pydantic~=2.4",
-    "pymongo",
-    "pyyaml",
-    "rdflib",
+    "httpx~=0.27.0",
+    "oteapi-core>=0.7.0.dev1,<1",
+    "pyyaml~=6.0",
+    "typing-extensions~=4.10; python_version < '3.12'",
 ]
 
+# Other dependencies governed by oteapi-core:
+# - pydantic
+
 [project.optional-dependencies]
+testing = [
+    "pytest~=8.1",
+    "pytest-cov~=4.1",
+    "pytest-httpx~=0.30.0",
+]
 dev = [
-    "pre-commit~=2.18",
+    "pre-commit~=3.6",
+    "soft7[testing]",
 ]
 
 [project.urls]
@@ -49,6 +56,16 @@ Source = "https://github.com/SINTEF/soft7"
 "Issue Tracker" = "https://github.com/SINTEF/soft7/issues"
 Changelog = "https://github.com/SINTEF/soft7/blob/main/CHANGELOG.md"
 Package = "https://pypi.org/project/soft7"
+
+# Register OTEAPI strategies
+[project.entry-points."oteapi.function"]
+"soft7.soft7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.SOFT7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.soft" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+"soft7.SOFT" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
+[project.entry-points."oteapi.parse"]
+"soft7.application/yaml" = "s7.oteapi_plugin.yaml_parser:YAMLDataParseStrategy"
+"soft7.text/x-yaml" = "s7.oteapi_plugin.yaml_parser:YAMLDataParseStrategy"
 
 [tool.flit.module]
 name = "s7"
@@ -62,3 +79,51 @@ warn_unused_configs = true
 show_error_codes = true
 allow_redefinition = true
 plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+minversion = "8.1"
+addopts = "-rs --cov=s7 --cov-report=term-missing:skip-covered --no-cov-on-fail"
+filterwarnings = [
+    "error",  # Fail on any warning
+
+    # Ignore deprecation warnings from importlib.metadata (used by oteapi-core)
+    "ignore:SelectableGroups dict interface is deprecated.*:DeprecationWarning",
+]
+
+[tool.ruff.lint]
+extend-select = [
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "B",  # flake8-bugbear
+    "BLE",  # flake8-blind-except
+    "I",  # isort
+    "ARG",  # flake8-unused-arguments
+    "C4",  # flake8-comprehensions
+    "ICN",  # flake8-import-conventions
+    "G",  # flake8-logging-format
+    "PGH",  # pygrep-hooks
+    "PIE",  # flake8-pie
+    "PL",  # pylint
+    "PT",  # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "RET",  # flake8-return
+    "RUF",  # Ruff-specific
+    "SIM",  # flake8-simplify
+    "T20",  # flake8-print
+    "YTT",  # flake8-2020
+    "EXE",  # flake8-executable
+    "PYI",  # flake8-pyi
+]
+ignore = [
+    "PLR",  # Design related pylint codes
+
+    # # Self assignment of variable
+    # "PLW0127",
+]
+isort.required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**" = [
+    "BLE",  # flake8-blind-except
+    "PL",  # pylint
+]
