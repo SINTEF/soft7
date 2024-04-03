@@ -127,3 +127,6 @@ isort.required-imports = ["from __future__ import annotations"]
     "BLE",  # flake8-blind-except
     "PL",  # pylint
 ]
+"*.ipynb" = [
+  "I002", # from __future__ import annotations
+]

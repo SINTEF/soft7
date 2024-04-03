@@ -1,0 +1,8 @@
+---
+dimensions:
+  N: 3
+properties:
+  atom: ["H", "He", "Li"]
+  electrons: [1, 2, 3]
+  mass: [1.008, 4.0026, 6.94]
+  radius: [0.37, 0.32, 1.45]
