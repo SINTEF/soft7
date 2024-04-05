@@ -39,6 +39,11 @@ dependencies = [
 # - pydantic
 
 [project.optional-dependencies]
+docs = [
+    "myst-nb~=1.0",
+    "pydata-sphinx-theme~=0.15.2",
+    "sphinx~=7.2",
+]
 testing = [
     "pytest~=8.1",
     "pytest-cov~=5.0",
@@ -46,7 +51,7 @@ testing = [
 ]
 dev = [
     "pre-commit~=3.6",
-    "soft7[testing]",
+    "soft7[docs,testing]",
 ]
 
 [project.urls]
@@ -127,6 +132,6 @@ isort.required-imports = ["from __future__ import annotations"]
     "BLE",  # flake8-blind-except
     "PL",  # pylint
 ]
-"*.ipynb" = [
-  "I002", # from __future__ import annotations
+"docs/**" = [
+    "I002",  # from __future__ import annotations
 ]
