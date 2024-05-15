@@ -1,0 +1,24 @@
+---
+identity: "http://onto-ns.com/s7/0.1.0/MolecularSpecies"
+description: "A bare-bones entity for testing."
+dimensions:
+  N: "Number of elements."
+properties:
+  atom:
+    type: "string"
+    shape: ["N"]
+    description: "An atom."
+  electrons:
+    type: "int"
+    shape: ["N"]
+    description: "Number of electrons."
+  mass:
+    type: "float"
+    shape: ["N"]
+    description: "Atomic mass."
+    unit: "amu"
+  radius:
+    type: "float"
+    shape: ["N"]
+    description: "Atomic radius."
+    unit: "Å"
