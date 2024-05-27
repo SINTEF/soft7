@@ -257,7 +257,7 @@ class CallableAttributesMixin:
                 "source."
             ) from exc
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             LOGGER.error(
                 "An error occurred during attribute resolution:\n%s: %s\n"
                 "Traceback:\n%s",
