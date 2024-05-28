@@ -168,13 +168,16 @@ class SOFT7EntityInstance(BaseModel):
                         "expected Python type given from the entity property's `type`."
                     )
 
+            # Ensure None is allowed alongside the property type
+            property_type = Optional[property_type]  # type: ignore[valid-type]
+
             # Go through the dimensions in reversed order and nest the property type in
             # on itself.
             for literal_dimension in reversed(literal_dimensions):
                 # The literal dimension defines the number of times the property type is
                 # repeated.
-                property_type = conlist(
-                    property_type,
+                property_type = conlist(  # type: ignore[misc]
+                    property_type,  # type: ignore[arg-type]
                     min_length=literal_dimension,
                     max_length=literal_dimension,
                 )
