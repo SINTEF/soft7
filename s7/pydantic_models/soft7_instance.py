@@ -604,11 +604,12 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
-    ] = map_soft_to_py_types.get(
-        value.type, value.type  # type: ignore[arg-type]
-    )
+    # Wrap everything in `Optional` to allow for None values.
+    property_type: Optional[
+        Union[type[UnshapedPropertyType], SOFT7IdentityURIType]
+    ] = Optional[  # type: ignore[assignment]
+        map_soft_to_py_types.get(value.type, value.type)  # type: ignore[arg-type]
+    ]
 
     if isinstance(value.type, AnyUrl):
         # If the property type is a SOFT7IdentityURI, it means it should be another
