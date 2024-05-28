@@ -50,6 +50,9 @@ def create_entity(
 ) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.
 
+    If the entity instance class has already been created, it will be returned
+    as is from the `generated_classes` module.
+
     Parameters:
         entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
             entity.
@@ -65,6 +68,29 @@ def create_entity(
 
     # Split the identity into its parts
     _, _, name = parse_identity(entity.identity)
+
+    # Check if the entity has already been created
+    existing_cls: type[SOFT7EntityInstance] | None = getattr(
+        module_namespace, f"{name.replace(' ', '')}Entity", None
+    )
+
+    if existing_cls and issubclass(existing_cls, SOFT7EntityInstance):
+        # Check the existing class' entity attribute
+        if existing_cls.entity == entity:
+            LOGGER.debug("The %s entity class already exists.", name)
+            return existing_cls
+        raise ValueError(
+            f"The {name} entity class already exists, but with a different SOFT7 "
+            "entity."
+        )
+
+    if existing_cls:
+        raise ValueError(
+            f"The {name} entity class already exists, but is not a SOFT7EntityInstance "
+            "type."
+        )
+
+    LOGGER.debug("Creating the %s entity class anew.", name)
 
     # Create the entity model's dimensions
     dimensions: dict[str, tuple[Union[type[Optional[int]], object], Any]] = (
