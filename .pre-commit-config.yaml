@@ -14,7 +14,7 @@ ci:
 # hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
     - id: end-of-file-fixer
     - id: debug-statements
@@ -26,18 +26,18 @@ repos:
       args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.1
+    rev: v3.15.2
     hooks:
     - id: pyupgrade
       args: ["--py39-plus", "--keep-runtime-typing"]
 
-  - repo: https://github.com/ambv/black
-    rev: 24.3.0
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
     hooks:
     - id: black
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.3
+    rev: v0.4.5
     hooks:
     - id: ruff
       args:
@@ -54,7 +54,7 @@ repos:
       files: ^s7/.*$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+    rev: v1.10.0
     hooks:
     - id: mypy
       exclude: ^tests/.*$
