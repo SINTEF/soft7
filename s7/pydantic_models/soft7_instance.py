@@ -200,6 +200,7 @@ def parse_input_entity(
         # If it's a string or URL, we expect to either be:
         # - A path to a YAML file.
         # - A SOFT7 entity identity.
+        # - A parseable JSON/YAML string.
 
         # Check if it is a URL (i.e., a SOFT7 entity identity)
         try:
@@ -217,12 +218,19 @@ def parse_input_entity(
             else:
                 # If it's not a path to an existing file, assume it's a parseable
                 # JSON/YAML
-                entity = yaml.safe_load(entity)
+                try:
+                    entity = yaml.safe_load(entity)
+                except yaml.YAMLError as error:
+                    raise EntityNotFound(
+                        "Could not parse the entity string as a SOFT7 entity "
+                        "(YAML/JSON format)."
+                    ) from error
         else:
             # If it is a URL, assume it's a SOFT7 entity identity.
             with httpx.Client(follow_redirects=True) as client:
                 response = client.get(
-                    str(entity), headers={"Accept": "application/yaml"}
+                    str(entity),
+                    headers={"Accept": "application/yaml, application/json"},
                 )
 
             if not response.is_success:
@@ -306,19 +314,26 @@ def parse_input_configs(
             else:
                 # If it's not a path to an existing file, assume it's a parseable
                 # JSON/YAML
-                configs = yaml.safe_load(configs)
+                try:
+                    configs = yaml.safe_load(configs)
+                except yaml.YAMLError as error:
+                    raise ConfigsNotFound(
+                        "Could not parse the configurations as a YAML/JSON formatted "
+                        "string."
+                    ) from error
         else:
             # If it is a URL, assume it's a URL to a JSON/YAML resource online.
             with httpx.Client(follow_redirects=True) as client:
                 response = client.get(
-                    str(configs), headers={"Accept": "application/yaml"}
+                    str(configs),
+                    headers={"Accept": "application/yaml, application/json"},
                 )
 
             if not response.is_success:
                 try:
                     response.raise_for_status()
                 except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
+                    raise ConfigsNotFound(
                         f"Could not retrieve configurations online from {configs}"
                     ) from error
 
@@ -383,12 +398,19 @@ def parse_input_configs(
                 else:
                     # If it's not a path to an existing file, assume it's a
                     # parseable JSON/YAML
-                    config = yaml.safe_load(config)  # noqa: PLW2901
+                    try:
+                        config = yaml.safe_load(config)  # noqa: PLW2901
+                    except yaml.YAMLError as error:
+                        raise ConfigsNotFound(
+                            f"Could not parse the {name} config as a YAML/JSON "
+                            "formatted string."
+                        ) from error
             else:
                 # If it is a URL, assume it's a URL to a JSON/YAML resource online.
                 with httpx.Client(follow_redirects=True) as client:
                     response = client.get(
-                        str(config), headers={"Accept": "application/yaml"}
+                        str(config),
+                        headers={"Accept": "application/yaml, application/json"},
                     )
 
                 if not response.is_success:
