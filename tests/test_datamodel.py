@@ -4,7 +4,6 @@ import pytest
 
 from pydantic import AnyUrl, ValidationError
 from s7.pydantic_models.soft7 import (
-    SOFT7EntityPropertyType,
     SOFT7DataEntity,
     SOFT7EntityProperty,
     SOFT7Entity,
@@ -15,14 +14,14 @@ from s7.pydantic_models.soft7 import (
 
 
 def test_soft7_data_entity_attribute_access():
-    """ Test """
+    """Test"""
     entity = SOFT7DataEntity()
     with pytest.raises(AttributeError):
         _ = entity.non_existent_attribute
 
 
 def test_soft7_entity_property():
-    """ Test """
+    """Test"""
     property_data = {
         "type": "string",
         "shape": ["dim1", "dim2"],
@@ -37,9 +36,8 @@ def test_soft7_entity_property():
 
 
 def test_soft7_entity_property_invalid_type():
-    """ Test """
+    """Test"""
     property_data = {
-        
         "type": "invalid_type",
         "shape": ["dim1", "dim2"],
         "description": "Test property",
@@ -50,7 +48,7 @@ def test_soft7_entity_property_invalid_type():
 
 
 def test_soft7_entity():
-    """ Test """
+    """Test"""
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -72,7 +70,7 @@ def test_soft7_entity():
 
 
 def test_soft7_entity_empty_properties():
-    """ Test """
+    """Test"""
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -84,7 +82,7 @@ def test_soft7_entity_empty_properties():
 
 
 def test_soft7_entity_private_property():
-    """ Test """
+    """Test"""
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -103,7 +101,7 @@ def test_soft7_entity_private_property():
 
 
 def test_soft7_entity_shape_and_dimensions_mismatch():
-    """ Test """
+    """Test"""
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -122,7 +120,7 @@ def test_soft7_entity_shape_and_dimensions_mismatch():
 
 
 def test_soft7_collection_dimension():
-    """ Test """
+    """Test"""
     dimension_data = {
         "description": "Test dimension",
         "minValue": 0,
@@ -137,7 +135,7 @@ def test_soft7_collection_dimension():
 
 
 def test_soft7_collection_property():
-    """ Test """
+    """Test"""
     property_data = {
         "type": "string",
         "shape": ["dim1", "dim2"],
@@ -152,7 +150,7 @@ def test_soft7_collection_property():
 
 
 def test_soft7_collection():
-    """ Test """
+    """Test"""
     collection_data = {
         "identity": "http://example.com/collection",
         "description": "Test collection",
@@ -177,7 +175,7 @@ def test_soft7_collection():
 
 
 def test_soft7_collection_invalid_ref():
-    """ Test """
+    """Test"""
     collection_data = {
         "identity": "http://example.com/collection",
         "description": "Test collection",

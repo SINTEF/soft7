@@ -266,7 +266,7 @@ class SOFT7Collection(SOFT7Entity):
             schema_type, schema_name = parts[2], parts[3]
             if schema_type not in schemas or schema_name not in schemas[schema_type]:
                 raise ValueError(f"Unresolved $ref at {path}: {ref}")
-    
+
         for prop_name, prop in properties.items():
             if isinstance(prop["type"], dict) and "$ref" in prop["type"]:
                 check_ref(prop["type"]["$ref"], f"properties.{prop_name}.type.$ref")
@@ -278,7 +278,7 @@ class SOFT7Collection(SOFT7Entity):
                         check_ref(
                             prop["type"]["$ref"],
                             f"$schemas.{schema_type}.{schema_name}.properties.{prop_name}.type.$ref",
-                        )            
+                        )
         return values
 
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
