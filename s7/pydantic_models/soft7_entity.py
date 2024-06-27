@@ -558,7 +558,7 @@ class SOFT7CollectionDimension(BaseModel):
         Field(description="Dimension mapping for aligning entities."),
     ] = None
 
-    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class SOFT7CollectionProperty(BaseModel):
