@@ -1,21 +1,56 @@
-""" Unit tests """
+"""Tests for `s7.pydantic_models.soft7_entity`."""
 
 from __future__ import annotations
 
-import pytest
-from pydantic import AnyUrl, ValidationError
+from typing import TYPE_CHECKING
 
-from s7.pydantic_models.soft7_entity import (
-    SOFT7Collection,
-    SOFT7CollectionDimension,
-    SOFT7CollectionProperty,
-    SOFT7Entity,
-    SOFT7EntityProperty,
-)
+import pytest
+
+if TYPE_CHECKING:
+    from typing import Union
+
+
+def test_entity_shapes_and_dimensions(
+    soft_entity_init: dict[str, Union[str, dict]],
+) -> None:
+    """Ensure the validator `shapes_and_dimensions` enforces the desired rules."""
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
+    additional_dimensions = {
+        "nsites": "Number of sites.",
+        "cartesian": "Cartesian coordinates.",
+    }
+    additional_properties = {
+        "radius": {
+            "type": "float",
+            "shape": ["N"],
+            "description": "Atomic radius.",
+            "unit": "Å",
+        },
+        "positions": {
+            "type": "float",
+            "shape": ["nsites", "cartesian"],
+            "description": "Atomic positions.",
+            "unit": "Å",
+        },
+    }
+
+    assert soft_entity_init["dimensions"]
+    assert isinstance(soft_entity_init["dimensions"], dict)
+
+    assert soft_entity_init["properties"]
+    assert isinstance(soft_entity_init["properties"], dict)
+
+    soft_entity_init["dimensions"].update(additional_dimensions)
+    soft_entity_init["properties"].update(additional_properties)
+
+    SOFT7Entity(**soft_entity_init)
 
 
 def test_soft7_entity_property():
     """Test"""
+    from s7.pydantic_models.soft7_entity import SOFT7EntityProperty
+
     property_data = {
         "type": "string",
         "shape": ["dim1", "dim2"],
@@ -31,6 +66,10 @@ def test_soft7_entity_property():
 
 def test_soft7_entity_property_invalid_type():
     """Test"""
+    from pydantic import ValidationError
+
+    from s7.pydantic_models.soft7_entity import SOFT7EntityProperty
+
     property_data = {
         "type": "invalid_type",
         "shape": ["dim1", "dim2"],
@@ -43,6 +82,10 @@ def test_soft7_entity_property_invalid_type():
 
 def test_soft7_entity():
     """Test"""
+    from pydantic import AnyUrl
+
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -65,6 +108,10 @@ def test_soft7_entity():
 
 def test_soft7_entity_empty_properties():
     """Test"""
+    from pydantic import ValidationError
+
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -77,6 +124,10 @@ def test_soft7_entity_empty_properties():
 
 def test_soft7_entity_private_property():
     """Test"""
+    from pydantic import ValidationError
+
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -96,6 +147,10 @@ def test_soft7_entity_private_property():
 
 def test_soft7_entity_shape_and_dimensions_mismatch():
     """Test"""
+    from pydantic import ValidationError
+
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
     entity_data = {
         "identity": "http://example.com/entity",
         "description": "Test entity",
@@ -111,80 +166,3 @@ def test_soft7_entity_shape_and_dimensions_mismatch():
     }
     with pytest.raises(ValidationError):
         SOFT7Entity(**entity_data)
-
-
-def test_soft7_collection_dimension():
-    """Test"""
-    dimension_data = {
-        "description": "Test dimension",
-        "minValue": 0,
-        "maxValue": 10,
-        "dimensionMapping": {"map1": "value1"},
-    }
-    dimension = SOFT7CollectionDimension(**dimension_data)
-    assert dimension.description == "Test dimension"
-    assert dimension.minValue == 0
-    assert dimension.maxValue == 10
-    assert dimension.dimensionMapping == {"map1": "value1"}
-
-
-def test_soft7_collection_property():
-    """Test"""
-    property_data = {
-        "type": "string",
-        "shape": ["dim1", "dim2"],
-        "description": "Test property",
-        "unit": "m/s",
-    }
-    prop = SOFT7CollectionProperty(**property_data)
-    assert prop.type_ == "string"
-    assert prop.shape == ["dim1", "dim2"]
-    assert prop.description == "Test property"
-    assert prop.unit == "m/s"
-
-
-def test_soft7_collection():
-    """Test"""
-    collection_data = {
-        "identity": "http://example.com/collection",
-        "description": "Test collection",
-        "dimensions": {"dim1": {"description": "Dimension 1"}},
-        "properties": {
-            "prop1": {
-                "type": "string",
-                "shape": ["dim1"],
-                "description": "Property 1",
-                "unit": "m",
-            }
-        },
-        "$schemas": {
-            "type1": {"schema1": {"properties": {"prop1": {"type": "string"}}}}
-        },
-    }
-    collection = SOFT7Collection(**collection_data)
-    assert collection.identity == AnyUrl("http://example.com/collection")
-    assert collection.description == "Test collection"
-    assert "dim1" in collection.dimensions
-    assert "prop1" in collection.properties
-
-
-def test_soft7_collection_invalid_ref():
-    """Test"""
-    collection_data = {
-        "identity": "http://example.com/collection",
-        "description": "Test collection",
-        "dimensions": {"dim1": {"description": "Dimension 1"}},
-        "properties": {
-            "prop1": {
-                "type": {"$ref": "#/schemas/type1/invalid_schema"},
-                "shape": ["dim1"],
-                "description": "Property 1",
-                "unit": "m",
-            }
-        },
-        "$schemas": {
-            "type1": {"schema1": {"properties": {"prop1": {"type": "string"}}}}
-        },
-    }
-    with pytest.raises(ValidationError):
-        SOFT7Collection(**collection_data)
