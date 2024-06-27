@@ -1,23 +1,17 @@
 """ Unit tests """
 
-import pytest
+from __future__ import annotations
 
+import pytest
 from pydantic import AnyUrl, ValidationError
-from s7.pydantic_models.soft7 import (
-    SOFT7DataEntity,
-    SOFT7EntityProperty,
-    SOFT7Entity,
+
+from s7.pydantic_models.soft7_entity import (
+    SOFT7Collection,
     SOFT7CollectionDimension,
     SOFT7CollectionProperty,
-    SOFT7Collection,
+    SOFT7Entity,
+    SOFT7EntityProperty,
 )
-
-
-def test_soft7_data_entity_attribute_access():
-    """Test"""
-    entity = SOFT7DataEntity()
-    with pytest.raises(AttributeError):
-        _ = entity.non_existent_attribute
 
 
 def test_soft7_entity_property():
@@ -29,7 +23,7 @@ def test_soft7_entity_property():
         "unit": "m/s",
     }
     prop = SOFT7EntityProperty(**property_data)
-    assert prop.type_ == "string"
+    assert prop.type == "string"
     assert prop.shape == ["dim1", "dim2"]
     assert prop.description == "Test property"
     assert prop.unit == "m/s"
