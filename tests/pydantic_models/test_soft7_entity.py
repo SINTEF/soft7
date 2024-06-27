@@ -47,7 +47,7 @@ def test_entity_shapes_and_dimensions(
     SOFT7Entity(**soft_entity_init)
 
 
-def test_soft7_entity_property():
+def test_soft7_entity_property() -> None:
     """Test"""
     from s7.pydantic_models.soft7_entity import SOFT7EntityProperty
 
@@ -64,7 +64,7 @@ def test_soft7_entity_property():
     assert prop.unit == "m/s"
 
 
-def test_soft7_entity_property_invalid_type():
+def test_soft7_entity_property_invalid_type() -> None:
     """Test"""
     from pydantic import ValidationError
 
@@ -80,7 +80,7 @@ def test_soft7_entity_property_invalid_type():
         SOFT7EntityProperty(**property_data)
 
 
-def test_soft7_entity():
+def test_soft7_entity() -> None:
     """Test"""
     from pydantic import AnyUrl
 
@@ -106,7 +106,7 @@ def test_soft7_entity():
     assert "prop1" in entity.properties
 
 
-def test_soft7_entity_empty_properties():
+def test_soft7_entity_empty_properties() -> None:
     """Test"""
     from pydantic import ValidationError
 
@@ -122,7 +122,7 @@ def test_soft7_entity_empty_properties():
         SOFT7Entity(**entity_data)
 
 
-def test_soft7_entity_private_property():
+def test_soft7_entity_private_property() -> None:
     """Test"""
     from pydantic import ValidationError
 
@@ -145,7 +145,7 @@ def test_soft7_entity_private_property():
         SOFT7Entity(**entity_data)
 
 
-def test_soft7_entity_shape_and_dimensions_mismatch():
+def test_soft7_entity_shape_and_dimensions_mismatch() -> None:
     """Test"""
     from pydantic import ValidationError
 

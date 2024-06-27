@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 
-def test_soft7_collection_dimension():
+def test_soft7_collection_dimension() -> None:
     """Test"""
     from s7.pydantic_models.soft7_entity import SOFT7CollectionDimension
 
@@ -22,7 +22,7 @@ def test_soft7_collection_dimension():
     assert dimension.dimensionMapping == {"map1": "value1"}
 
 
-def test_soft7_collection_property():
+def test_soft7_collection_property() -> None:
     """Test"""
     from s7.pydantic_models.soft7_entity import (
         SOFT7CollectionProperty,
@@ -41,7 +41,7 @@ def test_soft7_collection_property():
     assert prop.unit == "m/s"
 
 
-def test_soft7_collection():
+def test_soft7_collection() -> None:
     """Test"""
     from pydantic import AnyUrl
 
@@ -70,7 +70,7 @@ def test_soft7_collection():
     assert "prop1" in collection.properties
 
 
-def test_soft7_collection_invalid_ref():
+def test_soft7_collection_invalid_ref() -> None:
     """Test"""
     from pydantic import ValidationError
 
