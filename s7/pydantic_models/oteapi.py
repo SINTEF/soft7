@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from oteapi.models import FunctionConfig, GenericConfig, MappingConfig, ResourceConfig
 from pydantic import AnyUrl
 
-from s7.pydantic_models.soft7_entity import s7_identity_uri, S7IdentityUriType
+from s7.pydantic_models.soft7_entity import S7IdentityUriType, s7_identity_uri
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Union

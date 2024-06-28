@@ -28,11 +28,11 @@ from s7.pydantic_models.oteapi import (
     default_soft7_ote_function_config,
 )
 from s7.pydantic_models.soft7_entity import (
-    SOFT7Entity,
-    s7_identity_uri,
     S7IdentityUriType,
+    SOFT7Entity,
     map_soft_to_py_types,
     parse_identity,
+    s7_identity_uri,
 )
 
 if TYPE_CHECKING:  # pragma: no cover

@@ -17,6 +17,7 @@ from pydantic import (
 from pydantic.functional_validators import (
     model_validator,
 )
+
 from .soft7_entity import SOFT7Entity, SOFT7EntityProperty
 
 

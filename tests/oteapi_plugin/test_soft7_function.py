@@ -245,6 +245,7 @@ def test_dataclass_validation(
 
     from s7.oteapi_plugin.soft7_function import SOFT7Generator
     from s7.pydantic_models.soft7_entity import s7_identity_uri
+
     if isinstance(entity, (AnyUrl, str)):
         try:
             s7_identity_uri(str(entity))

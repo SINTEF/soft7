@@ -16,6 +16,7 @@ from typing import (
     Union,
     runtime_checkable,
 )
+
 from pydantic import (
     AliasChoices,
     AnyUrl,
@@ -31,7 +32,6 @@ from pydantic.functional_validators import (
 )
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
-
 
 if sys.version_info >= (3, 10):
     from typing import Literal

@@ -17,9 +17,9 @@ from s7.exceptions import (
 from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_entity import (
-    s7_identity_uri,
     S7IdentityUriType,
     parse_identity,
+    s7_identity_uri,
 )
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
