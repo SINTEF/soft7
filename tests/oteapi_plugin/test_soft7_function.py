@@ -244,15 +244,14 @@ def test_dataclass_validation(
     from pydantic import AnyUrl, ValidationError
 
     from s7.oteapi_plugin.soft7_function import SOFT7Generator
-    from s7.pydantic_models.soft7_entity import SOFT7IdentityURI
-
+    from s7.pydantic_models.soft7_entity import s7_identity_uri
     if isinstance(entity, (AnyUrl, str)):
         try:
-            SOFT7IdentityURI(str(entity))
+            s7_identity_uri(str(entity))
         except ValidationError:
             pass
         else:
-            # This is a valid SOFT7IdentityURI.
+            # This is a valid s7_identity_uri.
             # Setup a mock URL response.
             httpx_mock.add_response(
                 url=str(entity),

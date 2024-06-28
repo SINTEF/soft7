@@ -16,17 +16,10 @@ from typing import (
     Union,
     runtime_checkable,
 )
-
-if sys.version_info >= (3, 10):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
-
 from pydantic import (
     AliasChoices,
     AnyUrl,
     BaseModel,
-    ConfigDict,
     Field,
     TypeAdapter,
     ValidationError,
@@ -38,6 +31,13 @@ from pydantic.functional_validators import (
 )
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
+
+
+if sys.version_info >= (3, 10):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
@@ -53,7 +53,7 @@ if TYPE_CHECKING:  # pragma: no cover
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
 
 
-SOFT7IdentityURIType = Annotated[
+S7IdentityUriType = Annotated[
     Url, UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True)
 ]
 
@@ -61,7 +61,7 @@ SOFT7IdentityURIType = Annotated[
 LOGGER = logging.getLogger(__name__)
 
 
-def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
+def s7_identity_uri(url: str) -> S7IdentityUriType:
     """SOFT7 Identity URI.
 
     This is a URL with the following constraints:
@@ -80,7 +80,7 @@ def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
     """
     if isinstance(url, str):
         url = url.split("#", maxsplit=1)[0].split("?", maxsplit=1)[0]
-        return SOFT7IdentityURIType(url)
+        return S7IdentityUriType(url)
 
     raise TypeError(f"Expected str or Url, got {type(url)}")
 
@@ -103,7 +103,7 @@ class GetData(Protocol):
 
 
 SOFT7EntityPropertyType = Union[
-    SOFT7IdentityURIType,
+    S7IdentityUriType,
     Literal[
         "string",
         "str",
@@ -431,7 +431,7 @@ class SOFT7EntityProperty(BaseModel):
                 new_type = ref
             elif isinstance(ref, str):
                 try:
-                    new_type = SOFT7IdentityURI(ref)
+                    new_type = s7_identity_uri(ref)
                 except ValidationError as exc:
                     raise ValueError(
                         f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
@@ -454,7 +454,7 @@ class SOFT7Entity(BaseModel):
     """A SOFT7 Entity."""
 
     identity: Annotated[
-        SOFT7IdentityURIType,
+        S7IdentityUriType,
         Field(
             description="The semantic reference for the entity.",
             validation_alias=AliasChoices("identity", "uri"),
@@ -539,106 +539,3 @@ class SOFT7Entity(BaseModel):
             )
 
         return self
-
-
-class SOFT7CollectionDimension(BaseModel):
-    """A SOFT7 Entity Dimension specification"""
-
-    description: Annotated[
-        Optional[str], Field(description="A description of the dimension.")
-    ] = None
-    minValue: Annotated[
-        Optional[int], Field(description="Minimum size of the dimension.")
-    ] = None
-    maxValue: Annotated[
-        Optional[int], Field(description="Maximal size of the dimension.")
-    ] = None
-    dimensionMapping: Annotated[
-        Optional[dict[str, Any]],
-        Field(description="Dimension mapping for aligning entities."),
-    ] = None
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class SOFT7CollectionProperty(BaseModel):
-    """A SOFT7 Entity property."""
-
-    type_: Annotated[
-        Union[str, dict],
-        Field(
-            description="A valid property type.",
-            alias="type",
-        ),
-    ]
-    shape: Annotated[
-        Optional[list[str]],
-        Field(description="List of dimensions making up the shape of the property."),
-    ] = None
-    description: Annotated[
-        Optional[str], Field(description="A human description of the property.")
-    ] = None
-    unit: Annotated[
-        Optional[str],
-        Field(
-            description=("The unit of the property."),
-        ),
-    ] = None
-
-    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
-
-
-class SOFT7Collection(SOFT7Entity):
-    """A SOFT7 Collection."""
-
-    dimensions: Annotated[  # type: ignore[assignment]
-        dict[str, SOFT7CollectionDimension],
-        Field(description="A dictionary of dimensions."),
-    ]
-
-    properties: Annotated[  # type: ignore[assignment]
-        dict[str, SOFT7CollectionProperty],
-        Field(description="A dictionary of properties."),
-    ]
-
-    schemas: Annotated[
-        dict[str, dict], Field(description="User defined types", alias="$schemas")
-    ] = {}
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_default=False,
-        extra="forbid",
-        frozen=True,
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_refs(cls, values):
-        """Check if all defined references are valid"""
-        schemas = values.get("$schemas", {})
-        properties = values.get("properties", {})
-
-        def check_ref(ref, path):
-            if not ref.startswith("#/schemas/"):
-                raise ValueError(f"Invalid $ref format at {path}: {ref}")
-            parts = ref.split("/")
-            if len(parts) != 4 or parts[1] != "schemas":
-                raise ValueError(f"Invalid $ref format at {path}: {ref}")
-            schema_type, schema_name = parts[2], parts[3]
-            if schema_type not in schemas or schema_name not in schemas[schema_type]:
-                raise ValueError(f"Unresolved $ref at {path}: {ref}")
-
-        for prop_name, prop in properties.items():
-            if isinstance(prop["type"], dict) and "$ref" in prop["type"]:
-                check_ref(prop["type"]["$ref"], f"properties.{prop_name}.type.$ref")
-
-        for schema_type, schema_dict in schemas.items():
-            for schema_name, schema in schema_dict.items():
-                for prop_name, prop in schema.get("properties", {}).items():
-                    if isinstance(prop["type"], dict) and "$ref" in prop["type"]:
-                        check_ref(
-                            prop["type"]["$ref"],
-                            f"$schemas.{schema_type}.{schema_name}.properties.{prop_name}.type.$ref",
-                        )
-        return values

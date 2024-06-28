@@ -7,7 +7,7 @@ import pytest
 
 def test_soft7_collection_dimension() -> None:
     """Test"""
-    from s7.pydantic_models.soft7_entity import SOFT7CollectionDimension
+    from s7.pydantic_models.soft7_collection import SOFT7CollectionDimension
 
     dimension_data = {
         "description": "Test dimension",
@@ -24,7 +24,7 @@ def test_soft7_collection_dimension() -> None:
 
 def test_soft7_collection_property() -> None:
     """Test"""
-    from s7.pydantic_models.soft7_entity import (
+    from s7.pydantic_models.soft7_collection import (
         SOFT7CollectionProperty,
     )
 
@@ -45,7 +45,7 @@ def test_soft7_collection() -> None:
     """Test"""
     from pydantic import AnyUrl
 
-    from s7.pydantic_models.soft7_entity import SOFT7Collection
+    from s7.pydantic_models.soft7_collection import SOFT7Collection
 
     collection_data = {
         "identity": "http://example.com/collection",
@@ -74,7 +74,7 @@ def test_soft7_collection_invalid_ref() -> None:
     """Test"""
     from pydantic import ValidationError
 
-    from s7.pydantic_models.soft7_entity import SOFT7Collection
+    from s7.pydantic_models.soft7_collection import SOFT7Collection
 
     collection_data = {
         "identity": "http://example.com/collection",

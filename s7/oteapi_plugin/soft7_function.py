@@ -17,8 +17,8 @@ from s7.exceptions import (
 from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_entity import (
-    SOFT7IdentityURI,
-    SOFT7IdentityURIType,
+    s7_identity_uri,
+    S7IdentityUriType,
     parse_identity,
 )
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
@@ -39,12 +39,12 @@ if TYPE_CHECKING:  # pragma: no cover
 
     ParsedDataPropertyType = Union[ParsedDataType, ListParsedDataType]
 
-    SOFT7IdentityURITypeOrStr = Union[SOFT7IdentityURIType, str]
+    S7IdentityUriTypeOrStr = Union[S7IdentityUriType, str]
 
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
 
-        namespace: SOFT7IdentityURITypeOrStr
+        namespace: S7IdentityUriTypeOrStr
         concept: str
 
 
@@ -59,16 +59,14 @@ class RDFTriple(NamedTuple):
 LOGGER = logging.getLogger(__name__)
 
 
-def entity_lookup(
-    identity: Union[SOFT7IdentityURIType, str]
-) -> type[SOFT7EntityInstance]:
+def entity_lookup(identity: Union[S7IdentityUriType, str]) -> type[SOFT7EntityInstance]:
     """Lookup and return a SOFT7 Entity Instance class."""
     import s7.factories.generated_classes as cls_module
 
     # Extract the name from the identity
     if not isinstance(identity, AnyUrl):
         try:
-            identity = SOFT7IdentityURI(identity)
+            identity = s7_identity_uri(identity)
         except (ValidationError, TypeError) as exc:
             raise TypeError(
                 f"identity must be a valid SOFT7 Identity URI. Got {identity!r} with "
@@ -175,7 +173,7 @@ class SOFT7Generator:
         )
 
     @property
-    def entities(self) -> dict[SOFT7IdentityURIType, type[SOFT7EntityInstance]]:
+    def entities(self) -> dict[S7IdentityUriType, type[SOFT7EntityInstance]]:
         """Return the mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes."""
         if not hasattr(self, "_entities"):
             raise SOFT7FunctionError(
@@ -195,7 +193,7 @@ class SOFT7Generator:
         return self._graph
 
     @property
-    def data_mapping(self) -> dict[SOFT7IdentityURIType, dict[str, str]]:
+    def data_mapping(self) -> dict[S7IdentityUriType, dict[str, str]]:
         """Return the reversed data dict to SOFT7 Entity mapping."""
         if not hasattr(self, "_data_mapping"):
             raise SOFT7FunctionError(
@@ -211,7 +209,7 @@ class SOFT7Generator:
         """
         return self._flatten_mapping(mapping=self.function_config.configuration)
 
-    def _generate_data_mapping(self) -> dict[SOFT7IdentityURIType, dict[str, str]]:
+    def _generate_data_mapping(self) -> dict[S7IdentityUriType, dict[str, str]]:
         """Generate the reversed data dict to SOFT7 Entity mapping.
 
         I.e., mapping for SOFT7 Entity to data dict for easier entity creation.
@@ -224,7 +222,7 @@ class SOFT7Generator:
         TODO: This should be replaced by some graph work instead
 
         """
-        data_mapping: dict[SOFT7IdentityURIType, dict[str, str]] = {}
+        data_mapping: dict[S7IdentityUriType, dict[str, str]] = {}
 
         for triple in self.graph:
             if not isinstance(triple.object["namespace"], AnyUrl):
@@ -240,7 +238,7 @@ class SOFT7Generator:
 
     def _generate_entities_mapping(
         self,
-    ) -> dict[SOFT7IdentityURIType, type[SOFT7EntityInstance]]:
+    ) -> dict[S7IdentityUriType, type[SOFT7EntityInstance]]:
         """Generate a mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes.
 
         This is done by looking up the SOFT7 Entity Instance class from the generated
@@ -255,7 +253,7 @@ class SOFT7Generator:
             A mapping of SOFT7 Identity URI to SOFT7 Entity Instance classes.
 
         """
-        mapping: dict[SOFT7IdentityURIType, type[SOFT7EntityInstance]] = {}
+        mapping: dict[S7IdentityUriType, type[SOFT7EntityInstance]] = {}
 
         for entity_identity in self.data_mapping:
             try:
@@ -285,7 +283,7 @@ class SOFT7Generator:
                     namespace, concept = part.split(":", maxsplit=1)
                     flat_triple.append(
                         {
-                            "namespace": SOFT7IdentityURI(mapping.prefixes[namespace]),
+                            "namespace": s7_identity_uri(mapping.prefixes[namespace]),
                             "concept": concept,
                         }
                     )
@@ -301,7 +299,7 @@ class SOFT7Generator:
                         ) from exc
 
                     flat_triple.append(
-                        {"namespace": SOFT7IdentityURI(namespace), "concept": concept}
+                        {"namespace": s7_identity_uri(namespace), "concept": concept}
                     )
 
             flat_mapping.append(RDFTriple(*flat_triple))
@@ -313,7 +311,7 @@ class SOFT7Generator:
 
         TODO: This should be possible in a different way using the graph, I suspect?
         """
-        refs: set[SOFT7IdentityURIType] = set()
+        refs: set[S7IdentityUriType] = set()
         for entity_identity, entity in self.entities.items():
             refs.update(
                 self._validate_data_mapping_for_entity(
@@ -331,7 +329,7 @@ class SOFT7Generator:
 
     def _validate_data_mapping_for_entity(
         self, data_mapping: dict[str, str], entity: type[SOFT7EntityInstance]
-    ) -> set[SOFT7IdentityURIType]:
+    ) -> set[S7IdentityUriType]:
         """Validate the data mapping for a specific entity.
 
         Data mapping is reversed, i.e., mapping from SOFT7 Entity to parsed data dict.
@@ -349,7 +347,7 @@ class SOFT7Generator:
         - Ensure all properties are present in the data mapping, foregoing entity types
 
         """
-        refs: set[SOFT7IdentityURIType] = set()
+        refs: set[S7IdentityUriType] = set()
 
         # Validate dimensions:
         #  - Ensure there are no nested dimensions

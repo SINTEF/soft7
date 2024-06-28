@@ -29,8 +29,8 @@ from s7.pydantic_models.oteapi import (
 )
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
-    SOFT7IdentityURI,
-    SOFT7IdentityURIType,
+    s7_identity_uri,
+    S7IdentityUriType,
     map_soft_to_py_types,
     parse_identity,
 )
@@ -203,7 +203,7 @@ def parse_input_entity(
 
         # Check if it is a URL (i.e., a SOFT7 entity identity)
         try:
-            SOFT7IdentityURI(str(entity))
+            s7_identity_uri(str(entity))
         except ValidationError as exc:
             if not isinstance(entity, str):
                 raise TypeError("Expected entity to be a str at this point") from exc
@@ -268,7 +268,7 @@ def parse_input_configs(
         str,
     ],
     entity_instance: Optional[
-        Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]
+        Union[type[SOFT7EntityInstance], S7IdentityUriType, str]
     ] = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
@@ -559,13 +559,13 @@ def generate_property_type(
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
+        type[UnshapedPropertyType], S7IdentityUriType
     ] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
     if isinstance(property_type, AnyUrl):
-        # If the property type is a SOFT7IdentityURI, it means it should be a
+        # If the property type is a s7_identity_uri, it means it should be a
         # SOFT7 Entity instance, NOT a SOFT7 Data source. Highlander rules apply:
         # There can be only one Data source per generated data source.
         property_type: type[SOFT7EntityInstance] = create_entity(value.type)  # type: ignore[no-redef]
@@ -605,13 +605,13 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
 
     # Get the Python type for the property as defined by SOFT7 data types.
     property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
+        type[UnshapedPropertyType], S7IdentityUriType
     ] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
     if isinstance(value.type, AnyUrl):
-        # If the property type is a SOFT7IdentityURI, it means it should be another
+        # If the property type is a s7_identity_uri, it means it should be another
         # SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
         property_type: type[SOFT7EntityInstance] = create_entity(value.type)  # type: ignore[no-redef]
