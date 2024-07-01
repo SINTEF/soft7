@@ -569,15 +569,12 @@ def parse_input_entity(
             # If it is a URL, assume it's a SOFT7 entity identity.
             # Or at least that the response is a SOFT7 entity as JSON/YAML.
             with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(entity),
-                    headers={"Accept": "application/yaml, application/json"},
-                )
-
-            if not response.is_success:
                 try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as error:
+                    response = client.get(
+                        str(entity),
+                        headers={"Accept": "application/yaml, application/json"},
+                    ).raise_for_status()
+                except (httpx.HTTPStatusError, httpx.HTTPError) as error:
                     raise EntityNotFound(
                         f"Could not retrieve SOFT7 entity online from {entity}"
                     ) from error
@@ -586,7 +583,7 @@ def parse_input_entity(
             # YAML. JSON is a subset of YAML.
             entity = _try_load_from_json_yaml(response.text)
         else:
-            if not isinstance(entity, str):
+            if not isinstance(entity, str):  # pragma: no cover
                 raise TypeError("Expected entity to be a str at this point")
 
             # If it's not a URL, check whether it is a path to an (existing) file.
@@ -594,7 +591,9 @@ def parse_input_entity(
 
             if entity_path.exists():
                 # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
+                entity = _try_load_from_json_yaml(
+                    entity_path.read_text(encoding="utf8")
+                )
             else:
                 # If it's not a path to an existing file, assume it's a parseable
                 # JSON/YAML
@@ -605,7 +604,9 @@ def parse_input_entity(
         entity_path = entity.resolve()
 
         if not entity_path.exists():
-            raise EntityNotFound(f"Could not find an entity YAML file at {entity_path}")
+            raise EntityNotFound(
+                f"Could not find an entity JSON/YAML file at {entity_path}"
+            )
 
         entity = _try_load_from_json_yaml(entity_path.read_text(encoding="utf8"))
 
@@ -624,9 +625,6 @@ def parse_input_entity(
 
 def _is_valid_url(url: str | AnyUrl) -> bool:
     """Check if the URL is valid."""
-    if not isinstance(url, (str, Url)):
-        return False
-
     try:
         url = AnyUrl(str(url))
     except ValidationError:
