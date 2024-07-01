@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 import traceback
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -21,6 +22,8 @@ if sys.version_info >= (3, 10):
 else:
     from typing_extensions import Literal
 
+import httpx
+import yaml
 from pydantic import (
     AliasChoices,
     AnyUrl,
@@ -36,6 +39,8 @@ from pydantic.functional_validators import (
 )
 from pydantic.networks import UrlConstraints
 from pydantic_core import Url
+
+from s7.exceptions import EntityNotFound
 
 if TYPE_CHECKING:  # pragma: no cover
     from pydantic import SerializerFunctionWrapHandler
@@ -535,3 +540,96 @@ class SOFT7Entity(BaseModel):
             )
 
         return self
+
+
+def parse_input_entity(
+    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
+) -> SOFT7Entity:
+    """Parse input to a function that expects a SOFT7 entity."""
+
+    def _try_load_from_json_yaml(entity: str) -> dict[Any, Any]:
+        """Try to load the entity from a JSON/YAML string."""
+        try:
+            return yaml.safe_load(entity)
+        except yaml.YAMLError as error:
+            raise EntityNotFound(
+                "Could not parse the entity string as a SOFT7 entity (YAML/JSON "
+                "format)."
+            ) from error
+
+    # Handle the case of the entity being a string or a URL
+    if isinstance(entity, (AnyUrl, str)):
+        # If it's a string or URL, we expect to either be:
+        # - A path to a YAML file.
+        # - A SOFT7 entity identity.
+        # - A parseable JSON/YAML string.
+
+        # Check if it is a URL
+        if _is_valid_url(str(entity)):
+            # If it is a URL, assume it's a SOFT7 entity identity.
+            # Or at least that the response is a SOFT7 entity as JSON/YAML.
+            with httpx.Client(follow_redirects=True) as client:
+                response = client.get(
+                    str(entity),
+                    headers={"Accept": "application/yaml, application/json"},
+                )
+
+            if not response.is_success:
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as error:
+                    raise EntityNotFound(
+                        f"Could not retrieve SOFT7 entity online from {entity}"
+                    ) from error
+
+            # Using YAML parser, since _if_ the content is JSON, it's still valid
+            # YAML. JSON is a subset of YAML.
+            entity = _try_load_from_json_yaml(response.text)
+        else:
+            if not isinstance(entity, str):
+                raise TypeError("Expected entity to be a str at this point")
+
+            # If it's not a URL, check whether it is a path to an (existing) file.
+            entity_path = Path(entity).resolve()
+
+            if entity_path.exists():
+                # If it's a path to an existing file, assume it's a JSON/YAML file.
+                entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
+            else:
+                # If it's not a path to an existing file, assume it's a parseable
+                # JSON/YAML
+                entity = _try_load_from_json_yaml(entity)
+
+    # Handle the case of the entity being a path to a YAML file
+    if isinstance(entity, Path):
+        entity_path = entity.resolve()
+
+        if not entity_path.exists():
+            raise EntityNotFound(f"Could not find an entity YAML file at {entity_path}")
+
+        entity = _try_load_from_json_yaml(entity_path.read_text(encoding="utf8"))
+
+    # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
+    # used to create the SOFT7Entity instance.
+    if isinstance(entity, dict):
+        entity = SOFT7Entity(**entity)
+
+    if not isinstance(entity, SOFT7Entity):
+        raise TypeError(
+            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
+        )
+
+    return entity
+
+
+def _is_valid_url(url: str | AnyUrl) -> bool:
+    """Check if the URL is valid."""
+    if not isinstance(url, (str, Url)):
+        return False
+
+    try:
+        url = AnyUrl(str(url))
+    except ValidationError:
+        return False
+
+    return not any(getattr(url, url_part) is None for url_part in ["scheme", "host"])

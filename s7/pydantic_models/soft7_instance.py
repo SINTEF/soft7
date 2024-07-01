@@ -29,7 +29,6 @@ from s7.pydantic_models.oteapi import (
 )
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
-    SOFT7IdentityURI,
     SOFT7IdentityURIType,
     map_soft_to_py_types,
     parse_identity,
@@ -189,82 +188,6 @@ class SOFT7EntityInstance(BaseModel):
                 ) from exc
 
         return self
-
-
-def parse_input_entity(
-    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
-) -> SOFT7Entity:
-    """Parse input to a function that expects a SOFT7 entity."""
-    # Handle the case of the entity being a string or a URL
-    if isinstance(entity, (AnyUrl, str)):
-        # If it's a string or URL, we expect to either be:
-        # - A path to a YAML file.
-        # - A SOFT7 entity identity.
-        # - A parseable JSON/YAML string.
-
-        # Check if it is a URL (i.e., a SOFT7 entity identity)
-        try:
-            SOFT7IdentityURI(str(entity))
-        except ValidationError as exc:
-            if not isinstance(entity, str):
-                raise TypeError("Expected entity to be a str at this point") from exc
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            entity_path = Path(entity).resolve()
-
-            if entity_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                try:
-                    entity = yaml.safe_load(entity)
-                except yaml.YAMLError as error:
-                    raise EntityNotFound(
-                        "Could not parse the entity string as a SOFT7 entity "
-                        "(YAML/JSON format)."
-                    ) from error
-        else:
-            # If it is a URL, assume it's a SOFT7 entity identity.
-            with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(entity),
-                    headers={"Accept": "application/yaml, application/json"},
-                )
-
-            if not response.is_success:
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
-            # JSON is a subset of YAML.
-            entity = yaml.safe_load(response.content)
-
-    # Handle the case of the entity being a path to a YAML file
-    if isinstance(entity, Path):
-        entity_path = entity.resolve()
-
-        if not entity_path.exists():
-            raise EntityNotFound(f"Could not find an entity YAML file at {entity_path}")
-
-        entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
-
-    # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
-    # used to create the SOFT7Entity instance.
-    if isinstance(entity, dict):
-        entity = SOFT7Entity(**entity)
-
-    if not isinstance(entity, SOFT7Entity):
-        raise TypeError(
-            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
-        )
-
-    return entity
 
 
 def parse_input_configs(
