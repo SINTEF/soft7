@@ -6,16 +6,21 @@ used to handle SPARQL queries and RDFlib for graph operations.
 
 - SemanticMatter 2024
 """
-import rdflib
-from SPARQLWrapper import SPARQLWrapper, BASIC, JSON
-from SPARQLWrapper.SPARQLExceptions import SPARQLWrapperException
-from jinja2 import Template, TemplateError
+from __future__ import annotations
 
-def find_parent_node(sparql_endpoint: str, 
-                     username: str, 
-                     password: str, 
-                     class_names: list[str], 
-                     graph_uri: str) -> str:
+import rdflib
+from jinja2 import Template, TemplateError
+from SPARQLWrapper import BASIC, JSON, SPARQLWrapper
+from SPARQLWrapper.SPARQLExceptions import SPARQLWrapperException
+
+
+def find_parent_node(
+    sparql_endpoint: str,
+    username: str,
+    password: str,
+    class_names: list[str],
+    graph_uri: str,
+) -> str:
     """
     Finds the parent node for a list of class names within a specified graph URI.
 
@@ -60,7 +65,7 @@ def find_parent_node(sparql_endpoint: str,
 
         results = sparql.query().convert()
         for result in results["results"]["bindings"]:
-            parent_class = result['parentClass']['value']
+            parent_class = result["parentClass"]["value"]
             counts[parent_class] = counts.get(parent_class, 0) + 1
             if counts[parent_class] == target_count:
                 return parent_class
@@ -72,15 +77,14 @@ def find_parent_node(sparql_endpoint: str,
     except TemplateError as e:
         print(f"Jinja2 template error: {e}")
         return None
-        
+
     print("Could not find a common parent node.")
     return None
 
-def fetch_and_populate_graph(sparql_endpoint: str, 
-                             username: str, 
-                             password: str, 
-                             graph_uri: str,
-                             parent_node: str) -> rdflib.Graph:
+
+def fetch_and_populate_graph(
+    sparql_endpoint: str, username: str, password: str, graph_uri: str, parent_node: str
+) -> rdflib.Graph:
     """
     Fetches and populates an RDF graph with triples related to the given parent node.
 
@@ -133,15 +137,14 @@ def fetch_and_populate_graph(sparql_endpoint: str,
 
         results = sparql.query().convert()
         for result in results["results"]["bindings"]:
-            s = rdflib.URIRef(result['subject']['value'])
-            p = rdflib.URIRef(result['predicate']['value'])
-            o = rdflib.URIRef(result['object']['value'])
+            s = rdflib.URIRef(result["subject"]["value"])
+            p = rdflib.URIRef(result["predicate"]["value"])
+            o = rdflib.URIRef(result["object"]["value"])
             g.add((s, p, o))
-        
+
         print("Graph populated with fetched triples.")
     except Exception as e:
         print(f"Failed to fetch or parse results: {e}")
         return None
-
 
     return g

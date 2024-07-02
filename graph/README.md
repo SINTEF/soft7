@@ -65,4 +65,3 @@ rdf_graph = fetch_and_populate_graph(
 
 ### Error Handling
 Both functions handle errors internally and will return None if an error occurs during execution. Errors during SPARQL querying or RDF graph manipulation are logged to the console.
-
