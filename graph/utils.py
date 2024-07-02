@@ -33,7 +33,7 @@ def find_parent_node(
         graph_uri (str): The graph URI to query.
 
     Returns:
-        str: The parent node URI if found, else None.
+        Optional[str]: The parent node URI if found, else `None`.
     """
     try:
         template_str = """
