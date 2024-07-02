@@ -20,7 +20,7 @@ def find_parent_node(
     password: str,
     class_names: list[str],
     graph_uri: str,
-) -> str:
+) -> str | None:
     """
     Finds the parent node for a list of class names within a specified graph URI.
 
