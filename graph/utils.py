@@ -138,10 +138,13 @@ def fetch_and_populate_graph(
 
         results = sparql.query().convert()
         for result in results["results"]["bindings"]:
-            s = rdflib.URIRef(result["subject"]["value"])
-            p = rdflib.URIRef(result["predicate"]["value"])
-            o = rdflib.URIRef(result["object"]["value"])
-            g.add((s, p, o))
+            graph.add(
+                (
+                    rdflib.URIRef(result["subject"]["value"]),
+                    rdflib.URIRef(result["predicate"]["value"]),
+                    rdflib.URIRef(result["object"]["value"]),
+                )
+            )
 
         print("Graph populated with fetched triples.")
     except Exception as e:
