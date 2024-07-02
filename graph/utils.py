@@ -37,7 +37,7 @@ def find_parent_node(
         str | None: The URI of the common parent node if one exists, otherwise None.
 
     Raises:
-        RuntimeError: If there is an error in executing or processing the SPARQL query or if there 
+        RuntimeError: If there is an error in executing or processing the SPARQL query or if there
         is an error in rendering the SPARQL query using Jinja2 templates.
 
     Note:
