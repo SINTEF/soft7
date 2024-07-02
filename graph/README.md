@@ -40,7 +40,7 @@ sparqlWrapper.setHTTPAuth(BASIC)
 sparqlWrapper.setCredentials(username, password)
 
 parent_node = find_parent_node(
-    sparql=sparqlWrapper,    
+    sparql=sparqlWrapper,  
     class_names=["http://example.com/class1", "http://example.com/class2"],
     graph_uri="http://example.com/graph"
 )
