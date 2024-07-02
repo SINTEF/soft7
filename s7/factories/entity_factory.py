@@ -16,6 +16,7 @@ from s7.pydantic_models.oteapi import (
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
     parse_identity,
+    parse_input_entity,
 )
 from s7.pydantic_models.soft7_instance import (
     SOFT7EntityInstance,
@@ -23,7 +24,6 @@ from s7.pydantic_models.soft7_instance import (
     generate_list_property_type,
     generate_model_docstring,
     generate_properties_docstring,
-    parse_input_entity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover

@@ -17,8 +17,8 @@ from pydantic import Field, field_validator
 from s7.exceptions import EntityNotFound
 from s7.factories import create_entity
 from s7.pydantic_models.oteapi import HashableFunctionConfig
-from s7.pydantic_models.soft7_entity import parse_identity
-from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
+from s7.pydantic_models.soft7_entity import parse_identity, parse_input_entity
+from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 PrefixesType: Any = MappingStrategyConfig.model_fields["prefixes"].rebuild_annotation()
 TriplesType: Any = MappingStrategyConfig.model_fields["triples"].rebuild_annotation()
