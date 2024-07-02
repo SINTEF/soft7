@@ -1,4 +1,5 @@
-"""This library provides tools for interacting with RDF graphs via a
+"""
+This library provides tools for interacting with RDF graphs via a
 SPARQL endpoint. It includes functions to find the `Lowest Common
 Ancestor` (LCA) of a set of classes and to populate an RDF graph with
 triples related to a given parent node. The SPARQLWrapper library is
@@ -9,32 +10,41 @@ used to handle SPARQL queries and RDFlib for graph operations.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import rdflib
 from jinja2 import Template, TemplateError
-from SPARQLWrapper import BASIC, JSON, SPARQLWrapper
+from rdflib.exceptions import Error as RDFLibException
+from SPARQLWrapper import JSON, SPARQLWrapper
 from SPARQLWrapper.SPARQLExceptions import SPARQLWrapperException
 
 
 def find_parent_node(
-    sparql_endpoint: str,
-    username: str,
-    password: str,
+    sparql: SPARQLWrapper,
     class_names: list[str],
     graph_uri: str,
 ) -> str | None:
     """
-    Finds the parent node for a list of class names within a specified graph URI.
+    Queries a SPARQL endpoint to find a common parent node (LCA) for a given list of class URIs
+    within a specified RDF graph.
 
     Args:
-        sparql_endpoint (str): The SPARQL endpoint URL.
-        username (str): Username for SPARQL authentication.
-        password (str): Password for SPARQL authentication.
-        class_names (list[str]): A list of class names to search for parent nodes.
-        graph_uri (str): The graph URI to query.
+        sparql (SPARQLWrapper): An instance of SPARQLWrapper configured for the target SPARQL service.
+        class_names (list[str]): The class URIs to find a common parent for.
+        graph_uri (str): The URI of the graph in which to perform the query.
 
     Returns:
-        Optional[str]: The parent node URI if found, else `None`.
+        str | None: The URI of the common parent node if one exists, otherwise None.
+
+    Raises:
+        SPARQLWrapperException: If there is an error in executing or processing the SPARQL query.
+        TemplateError: If there is an error in rendering the SPARQL query using Jinja2 templates.
+
+    Note:
+        This function assumes that the provided `sparql` instance is already configured with
+        necessary authentication and format settings.
     """
+
     try:
         template_str = """
         {% macro sparql_query(class_names, graph_uri) %}
@@ -52,12 +62,10 @@ def find_parent_node(
         }
         {% endmacro %}
         """
+
         template = Template(template_str)
         query = template.module.sparql_query(class_names, graph_uri)
-
-        sparql = SPARQLWrapper(sparql_endpoint)
-        sparql.setHTTPAuth(BASIC)
-        sparql.setCredentials(username, password)
+        print(query)
         sparql.setReturnFormat(JSON)
         sparql.setQuery(query)
 
@@ -71,39 +79,49 @@ def find_parent_node(
             if counts[parent_class] == target_count:
                 return parent_class
 
-    except SPARQLWrapperException as e:
-        print(f"Failed to fetch or parse results: {e}", file=sys.stderr)
-        return None
+    except SPARQLWrapperException as wrapper_error:
+        raise RuntimeError(
+            f"Failed to fetch or parse results: {wrapper_error}"
+        ) from wrapper_error
 
-    except TemplateError as e:
-        print(f"Jinja2 template error: {e}")
-        return None
+    except TemplateError as template_error:
+        raise RuntimeError(
+            f"Jinja2 template error: {template_error}"
+        ) from template_error
 
     print("Could not find a common parent node.")
     return None
 
 
 def fetch_and_populate_graph(
-    sparql_endpoint: str, username: str, password: str, graph_uri: str, parent_node: str
+    sparql: SPARQLWrapper,
+    graph_uri: str,
+    parent_node: str,
+    graph: Optional[rdflib.Graph] = rdflib.Graph(),
 ) -> rdflib.Graph | None:
     """
-    Fetches and populates an RDF graph with triples related to the given parent node.
+    Fetches RDF triples related to a specified parent node from a SPARQL endpoint and
+    populates them into an RDF graph.
 
     Args:
-        sparql_endpoint (str): The SPARQL endpoint URL.
-        username (str): Username for SPARQL authentication.
-        password (str): Password for SPARQL authentication.
-        parent_node (str): The parent node URI to fetch related triples.
+        sparql (SPARQLWrapper): An instance of SPARQLWrapper configured for the target SPARQL service.
+        graph_uri (str): The URI of the graph from which triples will be fetched.
+        parent_node (str): The URI of the parent node to base the triple fetching on.
+        graph (rdflib.Graph, optional): An instance of an RDFlib graph to populate with fetched triples.
+                                       If None, a new empty graph is created. Defaults to None.
 
     Returns:
-        rdflib.Graph: The populated RDF graph, or None if an error occurs.
-    """
-    g = rdflib.Graph()
+        rdflib.Graph: The graph populated with the fetched triples.
 
+    Raises:
+        SPARQLWrapperException: If there is an error in executing or processing the SPARQL query.
+        RDFLibException: If there is an error in adding fetched triples to the RDF graph.
+
+    Note:
+        This function assumes that the provided `sparql` instance is already configured with
+        necessary authentication and format settings.
+    """
     try:
-        sparql = SPARQLWrapper(sparql_endpoint)
-        sparql.setHTTPAuth(BASIC)
-        sparql.setCredentials(username, password)
         sparql.setReturnFormat(JSON)
 
         query = f"""
@@ -134,6 +152,7 @@ def fetch_and_populate_graph(
            }}
         }}
         """
+        print(query)
         sparql.setQuery(query)
 
         results = sparql.query().convert()
@@ -147,8 +166,15 @@ def fetch_and_populate_graph(
             )
 
         print("Graph populated with fetched triples.")
-    except Exception as e:
-        print(f"Failed to fetch or parse results: {e}")
-        return None
 
-    return g
+    except SPARQLWrapperException as wrapper_error:
+        raise RuntimeError(
+            f"Failed to fetch or parse results: {wrapper_error}"
+        ) from wrapper_error
+
+    except RDFLibException as rdflib_error:
+        raise RuntimeError(
+            f"Failed to build graph elements: {rdflib_error}"
+        ) from rdflib_error
+
+    return graph
