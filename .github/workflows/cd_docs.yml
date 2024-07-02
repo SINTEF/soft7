@@ -12,7 +12,7 @@ on:
     types:
       - published
 
-  # Run for every pull request (check we can build)
+  # Run for every pull request (check we can build, but do not build)
   pull_request:
     branches:
       - 'develop'
@@ -61,6 +61,8 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+
+    if: github.event_name != 'pull_request'
 
     needs: build
 
