@@ -85,7 +85,7 @@ def find_parent_node(
 
 def fetch_and_populate_graph(
     sparql_endpoint: str, username: str, password: str, graph_uri: str, parent_node: str
-) -> rdflib.Graph:
+) -> rdflib.Graph | None:
     """
     Fetches and populates an RDF graph with triples related to the given parent node.
 
