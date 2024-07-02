@@ -1,8 +1,11 @@
 """ Unit tests for the graph module
 """
+from __future__ import annotations
+
 import unittest
 from unittest.mock import patch
-from graph.utils import find_parent_node, fetch_and_populate_graph
+
+from graph.utils import fetch_and_populate_graph, find_parent_node
 
 
 class TestFindParentNode(unittest.TestCase):
