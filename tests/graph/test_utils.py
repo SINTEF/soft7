@@ -1,5 +1,6 @@
 """ Unit tests for the graph module
 """
+
 from __future__ import annotations
 
 import unittest
