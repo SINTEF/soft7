@@ -72,7 +72,7 @@ def find_parent_node(
                 return parent_class
 
     except SPARQLWrapperException as e:
-        print(f"Failed to fetch or parse results: {e}")
+        print(f"Failed to fetch or parse results: {e}", file=sys.stderr)
         return None
 
     except TemplateError as e:
