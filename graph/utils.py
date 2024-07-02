@@ -6,6 +6,7 @@ used to handle SPARQL queries and RDFlib for graph operations.
 
 - SemanticMatter 2024
 """
+
 from __future__ import annotations
 
 import rdflib
