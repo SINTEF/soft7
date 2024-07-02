@@ -25,11 +25,12 @@ def find_parent_node(
     graph_uri: str,
 ) -> str | None:
     """
-    Queries a SPARQL endpoint to find a common parent node (LCA) for a given list of class URIs
-    within a specified RDF graph.
+    Queries a SPARQL endpoint to find a common parent node (LCA) for a given list of
+    class URIs within a specified RDF graph.
 
     Args:
-        sparql (SPARQLWrapper): An instance of SPARQLWrapper configured for the target SPARQL service.
+        sparql (SPARQLWrapper): An instance of SPARQLWrapper configured for the target
+            SPARQL service.
         class_names (list[str]): The class URIs to find a common parent for.
         graph_uri (str): The URI of the graph in which to perform the query.
 
@@ -37,12 +38,12 @@ def find_parent_node(
         str | None: The URI of the common parent node if one exists, otherwise None.
 
     Raises:
-        RuntimeError: If there is an error in executing or processing the SPARQL query or if there
-        is an error in rendering the SPARQL query using Jinja2 templates.
+        RuntimeError: If there is an error in executing or processing the SPARQL query
+        or if there is an error in rendering the SPARQL query using Jinja2 templates.
 
     Note:
-        This function assumes that the provided `sparql` instance is already configured with
-        necessary authentication and format settings.
+        This function assumes that the provided `sparql` instance is already configured
+        with necessary authentication and format settings.
     """
 
     try:
@@ -70,7 +71,7 @@ def find_parent_node(
         sparql.setQuery(query)
 
         target_count = len(class_names)
-        counts = {}
+        counts: dict[str, int] = {}
 
         results = sparql.query().convert()
         for result in results["results"]["bindings"]:
@@ -97,18 +98,20 @@ def fetch_and_populate_graph(
     sparql: SPARQLWrapper,
     graph_uri: str,
     parent_node: str,
-    graph: Optional[rdflib.Graph] = rdflib.Graph(),
+    graph: Optional[rdflib.Graph] = None,
 ) -> rdflib.Graph | None:
     """
     Fetches RDF triples related to a specified parent node from a SPARQL endpoint and
     populates them into an RDF graph.
 
     Args:
-        sparql (SPARQLWrapper): An instance of SPARQLWrapper configured for the target SPARQL service.
+        sparql (SPARQLWrapper): An instance of SPARQLWrapper configured for the target
+            SPARQL service.
         graph_uri (str): The URI of the graph from which triples will be fetched.
         parent_node (str): The URI of the parent node to base the triple fetching on.
-        graph (rdflib.Graph, optional): An instance of an RDFlib graph to populate with fetched triples.
-                                       If None, a new empty graph is created. Defaults to None.
+        graph (rdflib.Graph, optional): An instance of an RDFlib graph to populate with
+            fetched triples.
+            If `None`, a new empty graph is created. Defaults to `None`.
 
     Returns:
         rdflib.Graph: The graph populated with the fetched triples.
@@ -117,9 +120,12 @@ def fetch_and_populate_graph(
         RuntimeError: If processing the SPARQL query or building the RDF graph fails.
 
     Note:
-        This function assumes that the provided `sparql` instance is already configured with
-        necessary authentication and format settings.
+        This function assumes that the provided `sparql` instance is already configured
+        with necessary authentication and format settings.
     """
+    # Create a new graph if one is not provided
+    graph = graph or rdflib.Graph()
+
     try:
         sparql.setReturnFormat(JSON)
 

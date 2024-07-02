@@ -141,3 +141,6 @@ isort.required-imports = ["from __future__ import annotations"]
 "docs/**" = [
     "I002",  # from __future__ import annotations
 ]
+"graph/**" = [
+    "T20",  # flake8-print
+]

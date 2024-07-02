@@ -6,6 +6,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 from graph.utils import fetch_and_populate_graph, find_parent_node
 
 
@@ -27,7 +29,7 @@ class TestFindParentNode(unittest.TestCase):
             sparql, ["http://example.com/Class1"], "http://example.com/graph"
         )
 
-        self.assertEqual(result, "http://example.com/Parent")
+        assert result == "http://example.com/Parent"
 
     @patch("graph.utils.SPARQLWrapper")
     def test_find_parent_node_no_parent_found(self, mock_wrapper):
@@ -38,7 +40,7 @@ class TestFindParentNode(unittest.TestCase):
         result = find_parent_node(
             sparql, ["http://example.com/Class1"], "http://example.com/graph"
         )
-        self.assertIsNone(result)
+        assert result is None
 
     @patch("graph.utils.SPARQLWrapper")
     def test_find_parent_node_exception(self, mock_wrapper):
@@ -46,7 +48,7 @@ class TestFindParentNode(unittest.TestCase):
         sparql = mock_wrapper.return_value
         sparql.query.side_effect = RuntimeError("SPARQL error")
 
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             find_parent_node(
                 sparql, ["http://example.com/Class1"], "http://example.com/graph"
             )
@@ -77,8 +79,8 @@ class TestFetchAndPopulateGraph(unittest.TestCase):
             sparql, "http://example.com/graph", "http://example.com/Parent", graph
         )
 
-        self.assertTrue(graph.add.called)
-        self.assertEqual(result, graph)
+        assert graph.add.called
+        assert result == graph
 
     @patch("graph.utils.SPARQLWrapper")
     def test_fetch_and_populate_graph_failure(self, mock_wrapper):
@@ -86,12 +88,7 @@ class TestFetchAndPopulateGraph(unittest.TestCase):
         sparql = mock_wrapper.return_value
         sparql.query.side_effect = RuntimeError("SPARQL error")
 
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             fetch_and_populate_graph(
                 sparql, "http://example.com/graph", "http://example.com/Parent"
             )
-
-
-# Running the tests
-if __name__ == "__main__":
-    unittest.main()
