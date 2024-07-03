@@ -1,4 +1,5 @@
 """Pytest fixtures for 'factoris'."""
+
 from __future__ import annotations
 
 import pytest
