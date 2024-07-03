@@ -1,4 +1,5 @@
 """Tests for `s7.pydantic_models.soft7`."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
