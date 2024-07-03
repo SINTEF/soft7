@@ -25,7 +25,6 @@ def test_create_datasource(
     """Test a straight forward call to create_datasource()."""
     import json
 
-    import yaml
     from otelib.settings import Settings
 
     from s7.factories.datasource_factory import create_datasource
@@ -40,7 +39,7 @@ def test_create_datasource(
     httpx_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
-        text=yaml.safe_dump(soft_entity_init),
+        json=soft_entity_init,
     )
 
     # Run SOFT7Generator
@@ -49,18 +48,25 @@ def test_create_datasource(
     session_data = {}
     session_data.update(soft_datasource_entity_mapping_init)
     session_data.update({"content": soft_datasource_init})
+    generator_configuration = {"entity": soft_entity_init["identity"]}
     function_get_content = SOFT7Generator(
-        {
+        function_config={
             "functionType": "SOFT7",
-            "configuration": {"entity": soft_entity_init["identity"]},
+            "configuration": {**session_data, **generator_configuration},
         }
-    ).get(session=session_data)
+    ).get()
 
     # Creating strategies
     # The data resource
     requests_mock.post(
         f"{oteapi_url}/dataresource",
         json={"resource_id": "1234"},
+    )
+
+    # The parser resource
+    requests_mock.post(
+        f"{oteapi_url}/parser",
+        json={"parser_id": "1234"},
     )
 
     # The mapping
@@ -94,6 +100,10 @@ def test_create_datasource(
         ),
     )
     requests_mock.post(
+        f"{oteapi_url}/parser/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.post(
         f"{oteapi_url}/dataresource/1234/initialize",
         content=json.dumps({}).encode(encoding="utf-8"),
     )
@@ -101,6 +111,10 @@ def test_create_datasource(
     # Fetch
     requests_mock.get(
         f"{oteapi_url}/dataresource/1234",
+        content=json.dumps({"key": "test"}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/parser/1234",
         content=json.dumps({"content": soft_datasource_init}).encode(encoding="utf-8"),
     )
     requests_mock.get(
@@ -112,18 +126,24 @@ def test_create_datasource(
         content=function_get_content.model_dump_json().encode(encoding="utf-8"),
     )
 
-    mapping_config = {"mappingType": "triples"}
-    mapping_config.update(soft_datasource_entity_mapping_init)
     create_datasource(
         entity=soft_entity_init["identity"],
         configs={
             "dataresource": {
+                "resourceType": "resource/url",
                 "downloadUrl": (
                     static_folder / "soft_datasource_content.yaml"
                 ).as_uri(),
                 "mediaType": "application/yaml",
             },
-            "mapping": mapping_config,
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
         },
     )
 
@@ -138,7 +158,6 @@ def test_inspect_created_datasource(
     httpx_mock: HTTPXMock,
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
-    import yaml
     from pydantic import AnyUrl, BaseModel
 
     from s7.factories.datasource_factory import create_datasource
@@ -147,21 +166,27 @@ def test_inspect_created_datasource(
     httpx_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
-        text=yaml.safe_dump(soft_entity_init),
+        json=soft_entity_init,
     )
 
-    mapping_config = {"mappingType": "triples"}
-    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
         configs={
             "dataresource": {
+                "resourceType": "resource/url",
                 "downloadUrl": (
                     static_folder / "soft_datasource_content.yaml"
                 ).as_uri(),
                 "mediaType": "application/yaml",
             },
-            "mapping": mapping_config,
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
         },
         oteapi_url="python",
     )
@@ -220,13 +245,11 @@ def test_inspect_created_datasource(
             # Avoid checking metadata
             continue
 
-        assert (
-            getattr(datasource, field_name)
-            == soft_datasource_init["properties"][field_name]
-        ), (
-            f"{field_name} is not correctly resolved, it is "
-            f"{getattr(datasource, field_name)} and should be "
-            f"{soft_datasource_init['properties'][field_name]}."
+        datasource_value = getattr(datasource, field_name)
+
+        assert datasource_value == soft_datasource_init["properties"][field_name], (
+            f"{field_name} is not correctly resolved, it is {datasource_value} and "
+            f"should be {soft_datasource_init['properties'][field_name]}."
         )
 
     ## Check the data source's metadata is correctly resolved
@@ -312,18 +335,24 @@ def test_serialize_python_datasource(
     """Check the data source contents when serialized to a Python dict."""
     from s7.factories.datasource_factory import create_datasource
 
-    mapping_config = {"mappingType": "triples"}
-    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
         configs={
             "dataresource": {
+                "resourceType": "resource/url",
                 "downloadUrl": (
                     static_folder / "soft_datasource_content.yaml"
                 ).as_uri(),
                 "mediaType": "application/yaml",
             },
-            "mapping": mapping_config,
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
         },
         oteapi_url="python",
     )
@@ -346,18 +375,24 @@ def test_serialize_json_datasource(
 
     from s7.factories.datasource_factory import create_datasource
 
-    mapping_config = {"mappingType": "triples"}
-    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
         configs={
             "dataresource": {
+                "resourceType": "resource/url",
                 "downloadUrl": (
                     static_folder / "soft_datasource_content.yaml"
                 ).as_uri(),
                 "mediaType": "application/yaml",
             },
-            "mapping": mapping_config,
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
         },
         oteapi_url="python",
     )
@@ -379,18 +414,24 @@ def test_datasource_json_schema(
     """Check the generated JSON Schema for the data source."""
     from s7.factories.datasource_factory import create_datasource
 
-    mapping_config = {"mappingType": "triples"}
-    mapping_config.update(soft_datasource_entity_mapping_init)
     datasource = create_datasource(
         entity=soft_entity_init,
         configs={
             "dataresource": {
+                "resourceType": "resource/url",
                 "downloadUrl": (
                     static_folder / "soft_datasource_content.yaml"
                 ).as_uri(),
                 "mediaType": "application/yaml",
             },
-            "mapping": mapping_config,
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
         },
         oteapi_url="python",
     )

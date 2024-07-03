@@ -1,4 +1,4 @@
-"""Pytest fixtures for 'factoris'."""
+"""Pytest fixtures for 'factories'."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_strategies() -> None:
+def _load_strategies() -> None:
     """Load entry points strategies."""
     from oteapi.plugins import load_strategies
 

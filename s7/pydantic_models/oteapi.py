@@ -5,7 +5,13 @@ from __future__ import annotations
 from collections.abc import Hashable
 from typing import TYPE_CHECKING
 
-from oteapi.models import FunctionConfig, GenericConfig, MappingConfig, ResourceConfig
+from oteapi.models import (
+    FunctionConfig,
+    GenericConfig,
+    MappingConfig,
+    ParserConfig,
+    ResourceConfig,
+)
 from pydantic import AnyUrl
 
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
@@ -37,16 +43,20 @@ class HashableMixin:
         )
 
 
-class HashableResourceConfig(ResourceConfig, HashableMixin):
-    """ResourceConfig, but hashable."""
+class HashableFunctionConfig(FunctionConfig, HashableMixin):
+    """FunctionConfig, but hashable."""
 
 
 class HashableMappingConfig(MappingConfig, HashableMixin):
     """MappingConfig, but hashable."""
 
 
-class HashableFunctionConfig(FunctionConfig, HashableMixin):
-    """FunctionConfig, but hashable."""
+class HashableParserConfig(ParserConfig, HashableMixin):
+    """ParserConfig, but hashable."""
+
+
+class HashableResourceConfig(ResourceConfig, HashableMixin):
+    """ResourceConfig, but hashable."""
 
 
 def default_soft7_ote_function_config(

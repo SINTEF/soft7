@@ -24,6 +24,7 @@ from s7.exceptions import ConfigsNotFound, EntityNotFound, S7EntityError
 from s7.pydantic_models.oteapi import (
     HashableFunctionConfig,
     HashableMappingConfig,
+    HashableParserConfig,
     HashableResourceConfig,
     default_soft7_ote_function_config,
 )
@@ -75,6 +76,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
         dataresource: HashableResourceConfig
         function: HashableFunctionConfig
+        parser: HashableParserConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -226,12 +228,18 @@ def parse_input_configs(
     name_to_config_type_mapping: dict[
         str,
         type[
-            Union[HashableResourceConfig, HashableFunctionConfig, HashableMappingConfig]
+            Union[
+                HashableFunctionConfig,
+                HashableMappingConfig,
+                HashableParserConfig,
+                HashableResourceConfig,
+            ],
         ],
     ] = {
         "dataresource": HashableResourceConfig,
-        "mapping": HashableMappingConfig,
         "function": HashableFunctionConfig,
+        "mapping": HashableMappingConfig,
+        "parser": HashableParserConfig,
     }
 
     # Handle the case of configs being a string or URL.
@@ -310,7 +318,7 @@ def parse_input_configs(
             )
 
         if TYPE_CHECKING:  # pragma: no cover
-            name = cast(Literal["dataresource", "mapping", "function"], name)
+            name = cast(Literal["dataresource", "function", "mapping", "parser"], name)
 
         # Handle the case of the config being a string or URL.
         if isinstance(config, (AnyUrl, str)):
@@ -397,10 +405,20 @@ def parse_input_configs(
             )
 
     # Ensure all required configs are present
-    if "dataresource" not in configs:
-        raise S7EntityError(
-            "The configs provided must contain a Resource configuration"
-        )
+    if any(required_key not in configs for required_key in ["dataresource", "parser"]):
+        error_message = "The configs provided must contain a "
+
+        if "dataresource" not in configs:
+            error_message += "Data Resource configuration"
+
+        if "parser" not in configs:
+            error_message += (
+                " and a Parser configuration"
+                if "dataresource" not in configs
+                else "Parser configuration"
+            )
+
+        raise S7EntityError(error_message)
 
     # Set default values if necessary
     if "function" not in configs:

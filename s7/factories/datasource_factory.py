@@ -63,6 +63,12 @@ def _get_data(
 ) -> GetData:
     """Get a datum via an OTEAPI pipeline.
 
+    The OTEAPI pipeline will look like:
+
+        DataResource -> Parser -> Mapping -> Function
+
+    It may be that the Mapping strategy is left out.
+
     Everything in the __get_data() function will not be called until the first time
     the attribute `name` is accessed.
 
@@ -85,19 +91,21 @@ def _get_data(
         **config["dataresource"].model_dump()
     )
 
+    ote_parser = client.create_parser(**config["parser"].model_dump())
+
     if "mapping" in config:
         ote_mapping = client.create_mapping(**config["mapping"].model_dump())  # type: ignore[typeddict-item]
 
     ote_function = client.create_function(**config["function"].model_dump())
 
     if "mapping" in config:
-        ote_pipeline = ote_data_resource >> ote_mapping >> ote_function
+        ote_pipeline = ote_data_resource >> ote_parser >> ote_mapping >> ote_function
     else:
         raise NotImplementedError(
             "Only OTEAPI pipelines with a mapping are supported for now, i.e., "
             "implicit 1:1 mapping is currently not supported."
         )
-        # ote_pipeline = ote_data_resource >> ote_function
+        # ote_pipeline = ote_data_resource >> ote_parser >> ote_function
 
     # Remove unused variables from memory
     del client
@@ -115,14 +123,14 @@ def _get_data(
         """
         LOGGER.debug("soft7_property: %r", soft7_property)
 
-        if id(ote_pipeline) not in CACHE:
+        if (pipeline_id := id(ote_pipeline)) not in CACHE:
             LOGGER.debug("Running OTEAPI pipeline: %r", ote_pipeline)
             # Should only run once per pipeline - after that we retrieve from the cache
             pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
             LOGGER.debug("OTEAPI pipeline result: %r", pipeline_result)
-            CACHE[id(ote_pipeline)] = pipeline_result
+            CACHE[pipeline_id] = pipeline_result
         else:
-            pipeline_result = CACHE[id(ote_pipeline)]
+            pipeline_result = CACHE[pipeline_id]
 
         LOGGER.debug("Pipeline result: %r", pipeline_result)
 

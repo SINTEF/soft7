@@ -12,28 +12,20 @@ else:
 
 import yaml
 from oteapi.datacache import DataCache
-from oteapi.models import AttrDict, DataCacheConfig, ResourceConfig
+from oteapi.models import (
+    AttrDict,
+    DataCacheConfig,
+    HostlessAnyUrl,
+    ParserConfig,
+    ResourceConfig,
+)
 from oteapi.plugins import create_strategy
 from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 
 class YAMLConfig(AttrDict):
-    """YAML parse-specific Configuration Data Model."""
-
-    datacache_config: Annotated[
-        Optional[DataCacheConfig],
-        Field(
-            description=(
-                "Configurations for the data cache for storing the downloaded file "
-                "content."
-            ),
-        ),
-    ] = None
-
-
-class YAMLResourceConfig(ResourceConfig):
-    """YAML parse strategy filter config.
+    """YAML parse-specific Configuration Data Model.
 
     From https://github.com/mime-types/mime-types-data it seems there are only two
     official MIME types for YAML:
@@ -45,12 +37,35 @@ class YAMLResourceConfig(ResourceConfig):
     `text/x-yaml` is the old MIME type.
     """
 
+    downloadUrl: Annotated[
+        Optional[HostlessAnyUrl],
+        Field(description=ResourceConfig.model_fields["downloadUrl"].description),
+    ] = None
+
     mediaType: Annotated[
         Literal["application/yaml", "text/x-yaml"],
-        Field(
-            description=ResourceConfig.model_fields["mediaType"].description,
-        ),
+        Field(description=ResourceConfig.model_fields["mediaType"].description),
     ] = "application/yaml"
+
+    datacache_config: Annotated[
+        Optional[DataCacheConfig],
+        Field(
+            description=(
+                "Configuration for the data cache for storing the downloaded file "
+                "content."
+            ),
+        ),
+    ] = None
+
+
+class YAMLResourceConfig(ParserConfig):
+    """YAML parse strategy filter config."""
+
+    parserType: Annotated[
+        Literal["parser/yaml", "parser/yml"],
+        Field(description=ParserConfig.model_fields["parserType"].description),
+    ] = "parser/yaml"
+
     configuration: Annotated[
         YAMLConfig, Field(description="YAML parse strategy-specific configuration.")
     ] = YAMLConfig()
@@ -70,8 +85,8 @@ class YAMLDataParseStrategy:
 
     **Registers strategies**:
 
-    - `("mediaType", "application/yaml")`
-    - `("mediaType", "text/x-yaml")`
+    - `("mediaType", "parser/yaml")`
+    - `("mediaType", "parser/yml")`
 
     """
 
@@ -83,7 +98,9 @@ class YAMLDataParseStrategy:
 
     def get(self) -> YAMLParseResult:
         """Parse YAML."""
-        downloader = create_strategy("download", self.parse_config)
+        downloader = create_strategy(
+            "download", self.parse_config.configuration.model_dump()
+        )
         output = downloader.get()
         cache = DataCache(self.parse_config.configuration.datacache_config)
         content = cache.get(output["key"])
