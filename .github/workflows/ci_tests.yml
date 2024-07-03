@@ -15,8 +15,7 @@ jobs:
       install_extras: '[dev]'
 
       # pre-commit
-      run_pre-commit: true
-      python_version_pre-commit: '3.9'
+      run_pre-commit: false  # Uses pre-commit.ci (see config file .pre-commit-config.yaml)
 
       # pylint & safety
       python_version_pylint_safety: '3.9'
