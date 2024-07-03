@@ -1,25 +1,20 @@
-"""The SOFT7 OTEAPI Function strategy.
+"""The SOFT7 OTEAPI Function strategy."""
 
-It expects mappings to be present in the session, and will use them to transform
-the parsed data source into a SOFT7 Entity instance.
-"""
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, cast
 
-from oteapi.models import SessionUpdate
-from oteapi.strategies.mapping.mapping import MappingSessionUpdate
+from oteapi.models import AttrDict
 from pydantic import AnyUrl, Field, ValidationError
 from pydantic.dataclasses import dataclass
 
 # from pydantic.dataclasses import dataclass
 from s7.exceptions import (
     InvalidMapping,
-    InvalidOrMissingSession,
     SOFT7FunctionError,
 )
-from s7.factories import create_entity_instance
+from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_entity import (
     SOFT7IdentityURI,
@@ -30,21 +25,26 @@ from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 if TYPE_CHECKING:  # pragma: no cover
     import sys
+    from typing import Optional, Union
 
     if sys.version_info < (3, 12):
         from typing_extensions import TypedDict
     else:
         from typing import TypedDict
 
+    from oteapi.strategies.mapping.mapping import MappingStrategyConfig
+
     ParsedDataType = Any
     ListParsedDataType = list[Union["ListParsedDataType", ParsedDataType]]
 
     ParsedDataPropertyType = Union[ParsedDataType, ListParsedDataType]
 
+    SOFT7IdentityURITypeOrStr = Union[SOFT7IdentityURIType, str]
+
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
 
-        namespace: Union[SOFT7IdentityURIType, str]
+        namespace: SOFT7IdentityURITypeOrStr
         concept: str
 
 
@@ -59,7 +59,9 @@ class RDFTriple(NamedTuple):
 LOGGER = logging.getLogger(__name__)
 
 
-def entity_lookup(identity: SOFT7IdentityURIType | str) -> type[SOFT7EntityInstance]:
+def entity_lookup(
+    identity: Union[SOFT7IdentityURIType, str]
+) -> type[SOFT7EntityInstance]:
     """Lookup and return a SOFT7 Entity Instance class."""
     import s7.factories.generated_classes as cls_module
 
@@ -100,13 +102,12 @@ def entity_lookup(identity: SOFT7IdentityURIType | str) -> type[SOFT7EntityInsta
 class SOFT7Generator:
     """SOFT7 Generator function strategy for OTEAPI.
 
-    The strategy expects the following to be present in the session:
-        - Mapping triples
-        - Parsed data
-
-    This means that it expects to be part of a pipeline like:
+    The strategy expects to be part of a pipeline like:
 
         DataResource >> Mapping >> SOFT7 Generator
+
+    This means, it expects certain configuration settings to be set by the other
+    strategies in the pipeline.
 
     The strategy will use the mapping triples to transform the parsed data into a SOFT7
     Entity instance.
@@ -120,28 +121,34 @@ class SOFT7Generator:
         SOFT7FunctionConfig, Field(description=SOFT7FunctionConfig.__doc__)
     ]
 
-    def initialize(self, session: dict[str, Any] | None) -> SessionUpdate:
+    def initialize(self) -> AttrDict:
         """Initialize the SOFT7 Generator function strategy."""
-        return SessionUpdate()
+        return AttrDict()
 
-    def get(self, session: dict[str, Any] | None) -> SessionUpdate:
+    def get(self) -> AttrDict:
         """Execute the SOFT7 Generator function strategy."""
-        if session is None:
-            raise InvalidOrMissingSession("Session is missing.")
-
         # Expect the mapping strategy "triples" to have run already.
-        try:
-            mapping_session = MappingSessionUpdate(**session)
-        except ValidationError as exc:
-            error_message = "Session is missing required keys."
-            LOGGER.error("%s\nsession: %r\nerror: %s", error_message, session, exc)
-            raise InvalidOrMissingSession(error_message) from exc
+        # Expect the parser strategy to have run already.
+        if any(
+            config_value is None
+            for config_value in (
+                # mapping
+                self.function_config.configuration.prefixes,
+                self.function_config.configuration.triples,
+                # parsed data resource
+                self.function_config.configuration.content,
+            )
+        ):
+            raise SOFT7FunctionError(
+                "The SOFT7 Generator function strategy expects the 'prefixes', "
+                "'triples', and 'content' fields to be set in the "
+                "SOFT7FunctionConfig.\n"
+                "Hint: Ensure the Mapping strategy and a DataResource or a Parser "
+                "strategies are run before the SOFT7 Generator strategy."
+            )
 
         # Parse the mapping triples
-        self._graph = self._parse_mapping(mapping_session)
-
-        # Retrieve the parsed data
-        self._parsed_data = self._retrieve_parsed_data(session)
+        self._graph = self._parse_mapping()
 
         # Generate the reversed data dict to SOFT7 Entity mapping.
         # I.e., mapping for SOFT7 Entity to data dict for easier entity creation.
@@ -163,7 +170,7 @@ class SOFT7Generator:
         )
 
         # Generate and return the SOFT7 Entity instance
-        return SessionUpdate(
+        return AttrDict(
             soft7_entity_data=generated_entity_instance.model_dump(),
         )
 
@@ -188,16 +195,6 @@ class SOFT7Generator:
         return self._graph
 
     @property
-    def parsed_data(self) -> dict[str, ParsedDataPropertyType]:
-        """Return the parsed data."""
-        if not hasattr(self, "_parsed_data"):
-            raise SOFT7FunctionError(
-                "SOFT7Generator._parsed_data is not set. This values is set in the "
-                "SOFT7Generator.get() method."
-            )
-        return self._parsed_data
-
-    @property
     def data_mapping(self) -> dict[SOFT7IdentityURIType, dict[str, str]]:
         """Return the reversed data dict to SOFT7 Entity mapping."""
         if not hasattr(self, "_data_mapping"):
@@ -207,30 +204,12 @@ class SOFT7Generator:
             )
         return self._data_mapping
 
-    def _parse_mapping(self, mapping_session: MappingSessionUpdate) -> list[RDFTriple]:
-        """Parse the mapping session.
+    def _parse_mapping(self) -> list[RDFTriple]:
+        """Parse the mapping.
 
         TODO: Rewrite this function to parse mapping using a graph.
         """
-        return self._flatten_mapping(mapping=mapping_session)
-
-    def _retrieve_parsed_data(self, session: dict[str, Any]) -> dict:
-        """Retrieve the parsed data from the session.
-
-        TODO: Update this to be more flexible and "knowledge agnostic" - with this, I
-            mean, I only knew "content" would be in the session for the core JSON and
-            CSV parsers. There should be a "generic" or data model-strict way to get the
-            parsed data - and most likely not from the session.
-        """
-        if "content" in session:
-            parsed_data: dict = session["content"]
-        else:
-            raise NotImplementedError(
-                "For now, the SOFT7 Generator function strategy only supports data "
-                "parsed into the 'content' key of the session."
-            )
-
-        return parsed_data
+        return self._flatten_mapping(mapping=self.function_config.configuration)
 
     def _generate_data_mapping(self) -> dict[SOFT7IdentityURIType, dict[str, str]]:
         """Generate the reversed data dict to SOFT7 Entity mapping.
@@ -283,13 +262,14 @@ class SOFT7Generator:
                 entity_cls = entity_lookup(identity=entity_identity)
             except ValueError:
                 # Entity not found in generated classes module, create it
-                entity_cls = create_entity_instance(entity_identity)
+                entity_cls = create_entity(entity_identity)
 
             mapping[entity_identity] = entity_cls
 
         return mapping
 
-    def _flatten_mapping(self, mapping: MappingSessionUpdate) -> list[RDFTriple]:
+    @staticmethod
+    def _flatten_mapping(mapping: MappingStrategyConfig) -> list[RDFTriple]:
         """Flatten the mapping dictionary."""
         flat_mapping: list[RDFTriple] = []
         for triple in mapping.triples:
@@ -357,6 +337,17 @@ class SOFT7Generator:
         Data mapping is reversed, i.e., mapping from SOFT7 Entity to parsed data dict.
 
         Ignore all refs, returning them instead as a set.
+
+        ### Validation
+
+        The dimensions are validated with the following rules:
+        - Ensure there are no nested dimensions
+        - Ensure all dimensions in the entity are present in the data mapping
+
+        The properties are validated with the following rules:
+        - Ensure there are no nested properties
+        - Ensure all properties are present in the data mapping, foregoing entity types
+
         """
         refs: set[SOFT7IdentityURIType] = set()
 
@@ -411,7 +402,7 @@ class SOFT7Generator:
         return refs
 
     def _generate_entity_instance(
-        self, entity_cls: type[SOFT7EntityInstance], data_path: str | None = None
+        self, entity_cls: type[SOFT7EntityInstance], data_path: Optional[str] = None
     ) -> SOFT7EntityInstance:
         """(Recursively) Generate the SOFT7 Entity instance.
 
@@ -540,11 +531,11 @@ class SOFT7Generator:
         data_path_parts = data_path.split(".")
 
         def __recursively_get_parsed_datum(
-            data: ParsedDataPropertyType | dict[str, ParsedDataPropertyType],
+            data: Union[ParsedDataPropertyType, dict[str, ParsedDataPropertyType]],
             depth: int = 0,
-        ) -> (
-            ParsedDataType | ParsedDataPropertyType | dict[str, ParsedDataPropertyType]
-        ):
+        ) -> Union[
+            ParsedDataType, ParsedDataPropertyType, dict[str, ParsedDataPropertyType]
+        ]:
             """Recursively get the parsed data from the parsed data dict."""
             try:
                 next_part = data_path_parts[depth]
@@ -624,7 +615,9 @@ class SOFT7Generator:
                     "parsed data."
                 )
 
-        datum = __recursively_get_parsed_datum(self.parsed_data)
+        datum = __recursively_get_parsed_datum(
+            self.function_config.configuration.content
+        )
 
         if TYPE_CHECKING:  # pragma: no cover
             datum = cast(ParsedDataType, datum)

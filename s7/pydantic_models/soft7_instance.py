@@ -1,4 +1,5 @@
 """Pydantic model for the SOFT7 data source instance."""
+
 from __future__ import annotations
 
 import logging
@@ -29,14 +30,19 @@ from s7.pydantic_models.oteapi import (
 from s7.pydantic_models.soft7_entity import (
     CallableAttributesMixin,
     SOFT7Entity,
-    SOFT7IdentityURI,
     SOFT7IdentityURIType,
     map_soft_to_py_types,
     parse_identity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any, Literal, TypedDict
+    import sys
+    from typing import Any, TypedDict, Union
+
+    if sys.version_info >= (3, 10):
+        from typing import Literal
+    else:
+        from typing_extensions import Literal
 
     from oteapi.models import GenericConfig
     from pydantic.main import Model
@@ -51,7 +57,7 @@ if TYPE_CHECKING:  # pragma: no cover
     class SOFT7InstanceDict(TypedDict):
         """A dictionary representation of a SOFT7 instance."""
 
-        dimensions: dict[str, int] | None
+        dimensions: Optional[dict[str, int]]
         properties: dict[str, Any]
 
     class GetDataOptionalMapping(TypedDict, total=False):
@@ -204,91 +210,24 @@ class DataSourceDimensions(BaseModel, CallableAttributesMixin):
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=False)
 
 
-def parse_input_entity(
-    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
-) -> SOFT7Entity:
-    """Parse input to a function that expects a SOFT7 entity."""
-    # Handle the case of the entity being a string or a URL
-    if isinstance(entity, (str, AnyUrl)):
-        # If it's a string or URL, we expect to either be:
-        # - A path to a YAML file.
-        # - A SOFT7 entity identity.
-
-        # Check if it is a URL (i.e., a SOFT7 entity identity)
-        try:
-            SOFT7IdentityURI(str(entity))
-        except ValidationError as exc:
-            if not isinstance(entity, str):
-                raise TypeError("Expected entity to be a str at this point") from exc
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            entity_path = Path(entity).resolve()
-
-            if entity_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                entity = yaml.safe_load(entity)
-        else:
-            # If it is a URL, assume it's a SOFT7 entity identity.
-            with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(entity), headers={"Accept": "application/yaml"}
-                )
-
-            if not response.is_success:
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
-            # JSON is a subset of YAML.
-            entity = yaml.safe_load(response.content)
-
-    # Handle the case of the entity being a path to a YAML file
-    if isinstance(entity, Path):
-        entity_path = entity.resolve()
-
-        if not entity_path.exists():
-            raise EntityNotFound(f"Could not find an entity YAML file at {entity_path}")
-
-        entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
-
-    # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
-    # used to create the SOFT7Entity instance.
-    if isinstance(entity, dict):
-        entity = SOFT7Entity(**entity)
-
-    if not isinstance(entity, SOFT7Entity):
-        raise TypeError(
-            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
-        )
-
-    return entity
-
-
 def parse_input_configs(
-    configs: GetDataConfigDict
-    | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
-    | Path
-    | AnyUrl
-    | str,
-    entity_instance: type[SOFT7EntityInstance]
-    | SOFT7IdentityURIType
-    | str
-    | None = None,
+    configs: Union[
+        GetDataConfigDict,
+        dict[str, Union[GenericConfig, dict[str, Any], Path, AnyUrl, str]],
+        Path,
+        AnyUrl,
+        str,
+    ],
+    entity_instance: Optional[
+        Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]
+    ] = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects a resource config."""
     name_to_config_type_mapping: dict[
         str,
-        type[HashableFunctionConfig]
-        | type[HashableMappingConfig]
-        | type[HashableFunctionConfig],
+        type[
+            Union[HashableResourceConfig, HashableFunctionConfig, HashableMappingConfig]
+        ],
     ] = {
         "dataresource": HashableResourceConfig,
         "mapping": HashableMappingConfig,
@@ -296,7 +235,7 @@ def parse_input_configs(
     }
 
     # Handle the case of configs being a string or URL.
-    if isinstance(configs, (str, AnyUrl)):
+    if isinstance(configs, (AnyUrl, str)):
         # Expect it to be either:
         # - A URL to a JSON/YAML resource online.
         # - A path to a JSON/YAML resource file.
@@ -318,19 +257,26 @@ def parse_input_configs(
             else:
                 # If it's not a path to an existing file, assume it's a parseable
                 # JSON/YAML
-                configs = yaml.safe_load(configs)
+                try:
+                    configs = yaml.safe_load(configs)
+                except yaml.YAMLError as error:
+                    raise ConfigsNotFound(
+                        "Could not parse the configurations as a YAML/JSON formatted "
+                        "string."
+                    ) from error
         else:
             # If it is a URL, assume it's a URL to a JSON/YAML resource online.
             with httpx.Client(follow_redirects=True) as client:
                 response = client.get(
-                    str(configs), headers={"Accept": "application/yaml"}
+                    str(configs),
+                    headers={"Accept": "application/yaml, application/json"},
                 )
 
             if not response.is_success:
                 try:
                     response.raise_for_status()
                 except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
+                    raise ConfigsNotFound(
                         f"Could not retrieve configurations online from {configs}"
                     ) from error
 
@@ -367,7 +313,7 @@ def parse_input_configs(
             name = cast(Literal["dataresource", "mapping", "function"], name)
 
         # Handle the case of the config being a string or URL.
-        if isinstance(config, (str, AnyUrl)):
+        if isinstance(config, (AnyUrl, str)):
             # Expect it to be either:
             # - A URL to a JSON/YAML config online.
             # - A path to a JSON/YAML config file.
@@ -395,12 +341,19 @@ def parse_input_configs(
                 else:
                     # If it's not a path to an existing file, assume it's a
                     # parseable JSON/YAML
-                    config = yaml.safe_load(config)  # noqa: PLW2901
+                    try:
+                        config = yaml.safe_load(config)  # noqa: PLW2901
+                    except yaml.YAMLError as error:
+                        raise ConfigsNotFound(
+                            f"Could not parse the {name} config as a YAML/JSON "
+                            "formatted string."
+                        ) from error
             else:
                 # If it is a URL, assume it's a URL to a JSON/YAML resource online.
                 with httpx.Client(follow_redirects=True) as client:
                     response = client.get(
-                        str(config), headers={"Accept": "application/yaml"}
+                        str(config),
+                        headers={"Accept": "application/yaml, application/json"},
                     )
 
                 if not response.is_success:
@@ -417,7 +370,7 @@ def parse_input_configs(
 
         # Ensure all values are Hashable*Config instances if they are dictionaries
         # or Hashable*Config instances.
-        if isinstance(config, (dict, BaseModel)):
+        if isinstance(config, (BaseModel, dict)):
             try:
                 configs[name] = name_to_config_type_mapping[name](
                     **(config if isinstance(config, dict) else config.model_dump())
@@ -489,7 +442,9 @@ def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
 
 def generate_properties_docstring(
     entity: SOFT7Entity,
-    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
+    property_types: Union[
+        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
+    ],
 ) -> str:
     """Generated a docstring for the properties model."""
     _, _, name = parse_identity(entity.identity)
@@ -516,7 +471,9 @@ def generate_properties_docstring(
 
 def generate_model_docstring(
     entity: SOFT7Entity,
-    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
+    property_types: Union[
+        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
+    ],
 ) -> str:
     """Generated a docstring for the data source model."""
     namespace, version, name = parse_identity(entity.identity)
@@ -563,12 +520,12 @@ def generate_property_type(
     value: SOFT7EntityProperty, dimensions: Model
 ) -> type[PropertyType]:
     """Generate a SOFT7 entity instance property type from a SOFT7EntityProperty."""
-    from s7.factories.entity_factory import create_entity_instance
+    from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: type[
-        UnshapedPropertyType
-    ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
+    property_type: Union[
+        type[UnshapedPropertyType], SOFT7IdentityURIType
+    ] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
@@ -576,7 +533,7 @@ def generate_property_type(
         # If the property type is a SOFT7IdentityURI, it means it should be a
         # SOFT7 Entity instance, NOT a SOFT7 Data source. Highlander rules apply:
         # There can be only one Data source per generated data source.
-        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity(value.type)  # type: ignore[no-redef]
 
     if value.shape:
         # Go through the dimensions in reversed order and nest the property type in on
@@ -609,12 +566,12 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     This makes it unnecessary to retrieve the actual dimension values, as they are not
     needed.
     """
-    from s7.factories.entity_factory import create_entity_instance
+    from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: type[
-        UnshapedPropertyType
-    ] | SOFT7IdentityURIType = map_soft_to_py_types.get(
+    property_type: Union[
+        type[UnshapedPropertyType], SOFT7IdentityURIType
+    ] = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
@@ -622,7 +579,7 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
         # If the property type is a SOFT7IdentityURI, it means it should be another
         # SOFT7 entity instance.
         # We need to get the property type for the SOFT7 entity instance.
-        property_type: type[SOFT7EntityInstance] = create_entity_instance(value.type)  # type: ignore[no-redef]
+        property_type: type[SOFT7EntityInstance] = create_entity(value.type)  # type: ignore[no-redef]
 
     if value.shape:
         # For each dimension listed in shape, nest the property type in on itself.

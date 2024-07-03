@@ -1,4 +1,5 @@
 """SOFT7 exceptions."""
+
 from __future__ import annotations
 
 
@@ -20,10 +21,6 @@ class ConfigsNotFound(S7EntityError, FileNotFoundError):
 
 class S7OTEAPIPluginError(S7Error):
     """Base class for all SOFT7 OTEAPI plugin exceptions."""
-
-
-class InvalidOrMissingSession(S7OTEAPIPluginError):
-    """Raised when the session is either invalid or missing."""
 
 
 class SOFT7FunctionError(S7OTEAPIPluginError):

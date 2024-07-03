@@ -1,17 +1,21 @@
 """Strategy class for application/yaml."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Literal, Optional, Union
+import sys
+from typing import Annotated, Optional, Union
+
+if sys.version_info >= (3, 10):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 import yaml
 from oteapi.datacache import DataCache
-from oteapi.models import AttrDict, DataCacheConfig, ResourceConfig, SessionUpdate
+from oteapi.models import AttrDict, DataCacheConfig, ResourceConfig
 from oteapi.plugins import create_strategy
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-
-if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
 
 
 class YAMLConfig(AttrDict):
@@ -52,7 +56,7 @@ class YAMLResourceConfig(ResourceConfig):
     ] = YAMLConfig()
 
 
-class SessionUpdateYAMLParse(SessionUpdate):
+class YAMLParseResult(AttrDict):
     """Class for returning values from YAML Parse."""
 
     content: Annotated[
@@ -73,11 +77,11 @@ class YAMLDataParseStrategy:
 
     parse_config: YAMLResourceConfig
 
-    def initialize(self, session: Optional[dict[str, Any]] = None) -> SessionUpdate:
+    def initialize(self) -> AttrDict:
         """Initialize."""
-        return SessionUpdate()
+        return AttrDict()
 
-    def get(self, session: Optional[dict[str, Any]] = None) -> SessionUpdateYAMLParse:
+    def get(self) -> YAMLParseResult:
         """Parse YAML."""
         downloader = create_strategy("download", self.parse_config)
         output = downloader.get()
@@ -85,10 +89,10 @@ class YAMLDataParseStrategy:
         content = cache.get(output["key"])
 
         if isinstance(content, (dict, list)):
-            return SessionUpdateYAMLParse(content=content)
+            return YAMLParseResult(content=content)
 
         parsed_content = list(yaml.safe_load_all(content))
         if len(parsed_content) == 1:
             parsed_content = parsed_content[0]
 
-        return SessionUpdateYAMLParse(content=parsed_content)
+        return YAMLParseResult(content=parsed_content)

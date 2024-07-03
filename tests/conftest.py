@@ -1,4 +1,5 @@
 """Pytest fixtures for all tests."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -7,33 +8,46 @@ import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Union
 
 
 def static_folder() -> Path:
-    """Path to the 'static' folder."""
+    """Path to the 'static' folder.
+
+    This is here to support _generate_entity_test_cases() in
+    tests/oteapi_plugin/test_soft7_function.py.
+    """
     from pathlib import Path
 
-    path = Path(__file__).resolve().parent.resolve() / "static"
-    return path
+    return Path(__file__).resolve().parent.resolve() / "static"
 
 
 @pytest.fixture(name="static_folder")
 def static_folder_fixture() -> Path:
     """Path to the 'static' folder."""
     path = static_folder()
-    assert path.exists() and path.is_dir()
+
+    assert path.exists()
+    assert path.is_dir()
+
     return path
 
 
-@pytest.fixture
-def soft_entity_init(static_folder: Path) -> dict[str, str | dict]:
+@pytest.fixture()
+def soft_entity_init_source(static_folder: Path) -> Path:
+    """Source to the SOFT7 entity YAML file used in the `soft_entity_init` fixture."""
+    return static_folder / "soft_datasource_entity.yaml"
+
+
+@pytest.fixture()
+def soft_entity_init(
+    soft_entity_init_source: Path,
+) -> dict[str, Union[str, dict[str, Any]]]:
     """A dict for initializing a `SOFT7Entity`."""
     import yaml
 
-    entity_path = static_folder / "soft_datasource_entity.yaml"
-    assert entity_path.exists()
-    entity = yaml.safe_load(entity_path.read_text(encoding="utf-8"))
+    assert soft_entity_init_source.exists()
+    entity = yaml.safe_load(soft_entity_init_source.read_text(encoding="utf-8"))
 
     # entity should be parsed as a dict.
     assert isinstance(entity, dict)
@@ -41,7 +55,7 @@ def soft_entity_init(static_folder: Path) -> dict[str, str | dict]:
     return entity
 
 
-@pytest.fixture
+@pytest.fixture()
 def soft_datasource_entity_mapping_init(
     static_folder: Path,
 ) -> dict[str, dict[str, str] | list[tuple[str, str, str]]]:
@@ -66,7 +80,7 @@ def soft_datasource_entity_mapping_init(
     }
 
 
-@pytest.fixture
+@pytest.fixture()
 def soft_datasource_init(static_folder: Path) -> dict[str, Any]:
     """A dict representating data source content."""
     import yaml
@@ -85,14 +99,37 @@ def soft_datasource_init(static_folder: Path) -> dict[str, Any]:
     assert isinstance(test_data, dict)
 
     # "properties" should exist and be a non-empty dict.
-    assert (
-        "properties" in test_data
-        and isinstance(test_data["properties"], dict)
-        and test_data["properties"]
-    )
+    assert "properties" in test_data
+    assert isinstance(test_data["properties"], dict)
+    assert test_data["properties"]
 
     # Convert all property values to the correct type.
     for property_name, property_value in list(test_data["properties"].items()):
         test_data["properties"][property_name] = _list_to_tuple(property_value)
 
     return test_data
+
+
+@pytest.fixture()
+def soft_instance_data_source(static_folder: Path) -> Path:
+    """Source to the SOFT7 instance data YAML file used in the `soft_instance_data`
+    fixture.
+    """
+    return static_folder / "soft_datasource_entity_test_data.yaml"
+
+
+@pytest.fixture()
+def soft_instance_data(soft_instance_data_source: Path) -> dict[str, dict[str, Any]]:
+    """A dict for initializing a `SOFT7Instance` based on the entity expressed in the
+    `soft_entity_init` fixture."""
+    import yaml
+
+    assert soft_instance_data_source.exists()
+    instance_data = yaml.safe_load(
+        soft_instance_data_source.read_text(encoding="utf-8")
+    )
+
+    # instance_data should be parsed as a dict.
+    assert isinstance(instance_data, dict)
+
+    return instance_data

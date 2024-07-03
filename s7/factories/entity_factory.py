@@ -1,4 +1,5 @@
 """Generate SOFT7 entities, wrapped as pydantic data models."""
+
 from __future__ import annotations
 
 import logging
@@ -15,6 +16,7 @@ from s7.pydantic_models.oteapi import (
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
     parse_identity,
+    parse_input_entity,
 )
 from s7.pydantic_models.soft7_instance import (
     SOFT7EntityInstance,
@@ -22,11 +24,10 @@ from s7.pydantic_models.soft7_instance import (
     generate_list_property_type,
     generate_model_docstring,
     generate_properties_docstring,
-    parse_input_entity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
+    from typing import Any, Union
 
     from s7.pydantic_models.soft7_entity import (
         ListPropertyType,
@@ -44,8 +45,8 @@ if TYPE_CHECKING:  # pragma: no cover
 LOGGER = logging.getLogger(__name__)
 
 
-def create_entity_instance(
-    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
+def create_entity(
+    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
 ) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.
 
@@ -66,7 +67,7 @@ def create_entity_instance(
     _, _, name = parse_identity(entity.identity)
 
     # Create the entity model's dimensions
-    dimensions: dict[str, tuple[type[int | None] | object, Any]] = (
+    dimensions: dict[str, tuple[Union[type[Optional[int]], object], Any]] = (
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
@@ -99,7 +100,9 @@ def create_entity_instance(
     }
 
     # Create the entity model's properties
-    properties: dict[str, tuple[type[ListPropertyType | None] | object, Any]] = {
+    properties: dict[
+        str, tuple[Union[type[Optional[ListPropertyType]], object], Any]
+    ] = {
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (

@@ -1,4 +1,5 @@
 """Customized OTEAPI pydantic models."""
+
 from __future__ import annotations
 
 from collections.abc import Hashable
@@ -10,6 +11,8 @@ from pydantic import AnyUrl
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 
 if TYPE_CHECKING:  # pragma: no cover
+    from typing import Union
+
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 
@@ -21,9 +24,11 @@ class HashableMixin:
         if isinstance(self, GenericConfig):
             return hash(
                 tuple(
-                    (field_name, field_value)
-                    if (isinstance(field_value, Hashable) or field_value is None)
-                    else (field_name, None)
+                    (
+                        (field_name, field_value)
+                        if (isinstance(field_value, Hashable) or field_value is None)
+                        else (field_name, None)
+                    )
                     for field_name, field_value in self
                 )
             )
@@ -45,7 +50,7 @@ class HashableFunctionConfig(FunctionConfig, HashableMixin):
 
 
 def default_soft7_ote_function_config(
-    entity: type[SOFT7EntityInstance] | SOFT7IdentityURIType | str,
+    entity: Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str],
 ) -> HashableFunctionConfig:
     """Create a default SOFT7 OTEAPI Function strategy configuration."""
     return HashableFunctionConfig(

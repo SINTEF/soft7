@@ -10,6 +10,7 @@ Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
 """
+
 from __future__ import annotations
 
 import json
@@ -24,6 +25,7 @@ from s7.pydantic_models.soft7_entity import (
     SOFT7DataSource,
     SOFT7Entity,
     parse_identity,
+    parse_input_entity,
 )
 from s7.pydantic_models.soft7_instance import (
     DataSourceDimensions,
@@ -31,7 +33,6 @@ from s7.pydantic_models.soft7_instance import (
     generate_model_docstring,
     generate_property_type,
     parse_input_configs,
-    parse_input_entity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -123,7 +124,6 @@ def _get_data(
         else:
             pipeline_result = CACHE[id(ote_pipeline)]
 
-        print("pipeline_result:", pipeline_result)
         LOGGER.debug("Pipeline result: %r", pipeline_result)
 
         # TODO: Use variable from SOFT7 OTEAPI Function configuration instead of
@@ -167,11 +167,13 @@ def _get_data(
 
 def create_datasource(
     entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
-    configs: GetDataConfigDict
-    | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
-    | Path
-    | AnyUrl
-    | str,
+    configs: (
+        GetDataConfigDict
+        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
+        | Path
+        | AnyUrl
+        | str
+    ),
     oteapi_url: str | None = None,
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.

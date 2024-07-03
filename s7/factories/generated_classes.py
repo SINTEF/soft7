@@ -1,4 +1,5 @@
 """A module to import certain factory-generated classes from."""
+
 from __future__ import annotations
 
 
