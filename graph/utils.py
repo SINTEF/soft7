@@ -114,7 +114,7 @@ def fetch_and_populate_graph(
             If `None`, a new empty graph is created. Defaults to `None`.
 
     Returns:
-        rdflib.Graph: The graph populated with the fetched triples.
+        Optional[rdflib.Graph]: The graph populated with the fetched triples.
 
     Raises:
         RuntimeError: If processing the SPARQL query or building the RDF graph fails.
