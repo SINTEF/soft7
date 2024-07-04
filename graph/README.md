@@ -16,6 +16,13 @@ Ensure you have Python installed on your system. You will need the following pac
 pip install rdflib SPARQLWrapper jinja2
 ```
 
+Or you can install the SOFT7 package with the `graph` extra:
+
+```bash
+cd ..
+pip install .[graph}
+\```
+
 ## Functions
 ### 1. find_parent_node
 This function queries a SPARQL endpoint to find the Lowest Common Ancestor (LCA) of a list of class URIs within a specified graph URI.
