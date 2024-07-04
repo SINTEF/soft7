@@ -45,15 +45,21 @@ docs = [
     "pydata-sphinx-theme~=0.15.2",
     "sphinx~=7.3",
 ]
+graph = [
+    "jinja2~=3.1",
+    "rdflib~=7.0",
+    "sparqlwrapper~=2.0",
+]
 testing = [
     "pytest~=8.2",
     "pytest-cov~=5.0",
     "pytest-httpx~=0.30.0",
     "requests-mock~=1.12",
+    "soft7[graph]",
 ]
 dev = [
     "pre-commit~=3.7",
-    "soft7[docs,testing]",
+    "soft7[docs,graph,testing]",
 ]
 
 [project.urls]
@@ -136,4 +142,7 @@ isort.required-imports = ["from __future__ import annotations"]
 ]
 "docs/**" = [
     "I002",  # from __future__ import annotations
+]
+"graph/**" = [
+    "T20",  # flake8-print
 ]
