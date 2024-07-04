@@ -13,7 +13,7 @@ Ensure you have Python installed on your system. You will need the following pac
 * jinja2
 
 ```bash
-	pip install rdflib SPARQLWrapper jinja2
+pip install rdflib SPARQLWrapper jinja2
 ```
 
 ## Functions
