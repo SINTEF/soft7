@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
@@ -576,3 +578,77 @@ Attributes:
         },
         "additionalProperties": False,
     }
+
+
+def test_cacheing_pipeline_results(
+    soft_entity_init: dict[str, str | dict],
+    static_folder: Path,
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    httpx_mock: HTTPXMock,
+) -> None:
+    """Test the OTEAPI pipeline results are cached."""
+    from copy import deepcopy
+
+    from s7.factories.datasource_factory import CACHE, create_datasource
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
+
+    datasource = create_datasource(
+        entity=soft_entity_init,
+        configs={
+            "dataresource": {
+                "resourceType": "resource/url",
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
+        },
+        oteapi_url="python",
+    )
+
+    # Check the cache is currently empty
+    assert len(CACHE) == 1
+    org_CACHE = deepcopy(CACHE)
+    pipeline_cache_key = next(iter(org_CACHE))
+
+    # Get one of the datasource's attributes and check the cache
+    assert len(datasource.model_fields) > 1
+    for attribute_name in datasource.model_fields:
+        if attribute_name.startswith("soft7___"):
+            continue
+        break
+    else:
+        pytest.fail("No 'proper' property could be found for datasource example.")
+
+    attribute_value = getattr(datasource, attribute_name)
+    # Everything will be tuple's in the datasource model (if there are multiple values)
+    # The type stored in the CACHE will be lists, as this will come from a JSON/YAML
+    # source (ideally)
+    if isinstance(attribute_value, tuple):
+        attribute_value = list(attribute_value)
+
+    assert org_CACHE == CACHE
+    assert len(CACHE) == 1
+    assert next(iter(CACHE)) == pipeline_cache_key
+    assert (
+        next(iter(CACHE.values()))["soft7_entity_data"]["properties"][attribute_name]
+        == attribute_value
+    )
+    for attribute_name in next(iter(CACHE.values()))["soft7_entity_data"]["properties"]:
+        assert not attribute_name.startswith("soft7___")

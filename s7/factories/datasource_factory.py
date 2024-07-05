@@ -49,11 +49,17 @@ if TYPE_CHECKING:  # pragma: no cover
         SOFT7InstanceDict,
     )
 
+DEFAULT_OTEAPI_SERVICES_BASE_URL = "http://localhost:8080"
 
 LOGGER = logging.getLogger(__name__)
 
 CACHE: dict[int, dict[str, Any]] = {}
 """A cache of the OTEAPI pipeline results."""
+
+
+def create_pipeline_id(configs: GetDataConfigDict, url: str) -> int:
+    """Hash given inputs and return it."""
+    return hash((*((key, configs[key]) for key in sorted(configs)), url))  # type: ignore[literal-required]
 
 
 def _get_data(
@@ -85,7 +91,7 @@ def _get_data(
 
     """
     # OTEAPI pipeline configuration
-    client = OTEClient(url or "http://localhost:8080")
+    client = OTEClient(url or DEFAULT_OTEAPI_SERVICES_BASE_URL)
 
     ote_data_resource = client.create_dataresource(
         **config["dataresource"].model_dump()
@@ -110,6 +116,8 @@ def _get_data(
     # Remove unused variables from memory
     del client
 
+    pipeline_id = create_pipeline_id(config, url or DEFAULT_OTEAPI_SERVICES_BASE_URL)
+
     def __get_data(soft7_property: str) -> Any:
         """Get a named datum (property or dimension) from the data resource.
 
@@ -123,8 +131,10 @@ def _get_data(
         """
         LOGGER.debug("soft7_property: %r", soft7_property)
 
-        if (pipeline_id := id(ote_pipeline)) not in CACHE:
-            LOGGER.debug("Running OTEAPI pipeline: %r", ote_pipeline)
+        if pipeline_id not in CACHE:
+            LOGGER.debug(
+                "Running OTEAPI pipeline: %r (id: %r)", ote_pipeline, pipeline_id
+            )
             # Should only run once per pipeline - after that we retrieve from the cache
             pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
             LOGGER.debug("OTEAPI pipeline result: %r", pipeline_result)

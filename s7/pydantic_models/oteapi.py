@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Hashable
 from typing import TYPE_CHECKING
 
@@ -22,40 +23,45 @@ if TYPE_CHECKING:  # pragma: no cover
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 class HashableMixin:
     """Mixin to make pydantic models hashable."""
 
     def __hash__(self) -> int:
         """Hash the model."""
         if isinstance(self, GenericConfig):
-            return hash(
-                tuple(
-                    (
-                        (field_name, field_value)
-                        if (isinstance(field_value, Hashable) or field_value is None)
-                        else (field_name, None)
-                    )
-                    for field_name, field_value in self
+            hashable_content = tuple(
+                (
+                    (field_name, field_value)
+                    if (isinstance(field_value, Hashable) or field_value is None)
+                    else (field_name, None)
                 )
+                for field_name, field_value in self
             )
+            LOGGER.debug(
+                "%s's hashable content: %r", self.__class__.__name__, hashable_content
+            )
+            return hash(hashable_content)
         raise NotImplementedError(
             f"Hashing of {self.__class__.__name__} is not implemented."
         )
 
 
-class HashableFunctionConfig(FunctionConfig, HashableMixin):
+class HashableFunctionConfig(HashableMixin, FunctionConfig):
     """FunctionConfig, but hashable."""
 
 
-class HashableMappingConfig(MappingConfig, HashableMixin):
+class HashableMappingConfig(HashableMixin, MappingConfig):
     """MappingConfig, but hashable."""
 
 
-class HashableParserConfig(ParserConfig, HashableMixin):
+class HashableParserConfig(HashableMixin, ParserConfig):
     """ParserConfig, but hashable."""
 
 
-class HashableResourceConfig(ResourceConfig, HashableMixin):
+class HashableResourceConfig(HashableMixin, ResourceConfig):
     """ResourceConfig, but hashable."""
 
 
