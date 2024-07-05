@@ -193,6 +193,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# ruff
+.ruff_cache/
+
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -240,3 +243,8 @@ cython_debug/
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,emacs
+
+# Documentation
+jupyter_execute/
+public/
+site/

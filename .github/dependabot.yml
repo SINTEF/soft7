@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    reviewers:
+      - "CasperWA"
+    labels:
+      - "CI/CD"
+      - "skip-changelog"
+      - "priority/low"
+    target-branch: "develop"  # Temporary, use "main" when ready
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Python
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:52"
+      timezone: "Europe/Oslo"
+    reviewers:
+      - "CasperWA"
+    labels:
+      - "CI/CD"
+      - "skip-changelog"
+      - "priority/low"
+    target-branch: "develop"  # Temporary, use "main" when ready
+    groups:
+      dependencies:
+        dependency-type: "production"

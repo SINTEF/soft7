@@ -5,31 +5,29 @@ on:
   push:
     branches:
       - 'main'
+      - 'develop'
 
 jobs:
   basics:
     name: External
-    uses: SINTEF/ci-cd/.github/workflows/ci_tests.yml@v2.5.1
+    uses: SINTEF/ci-cd/.github/workflows/ci_tests.yml@v2.7.4
     with:
       # General
       install_extras: '[dev]'
 
       # pre-commit
-      run_pre-commit: true
-      python_version_pre-commit: '3.9'
-      skip_pre-commit_hooks: pylint,pylint-tests
+      run_pre-commit: false  # Uses pre-commit.ci (see config file .pre-commit-config.yaml)
 
       # pylint & safety
       python_version_pylint_safety: '3.9'
-
-      run_pylint: true
-      pylint_targets: s7
-      pylint_options: |
-        --rcfile=pyproject.toml
-        --extension-pkg-whitelist='pydantic'
-        --recursive=yes
-
+      run_pylint: false
       run_safety: true
+      # ID: 70612
+      #   Package: Jinja2
+      #   Has been disputed by the maintainer and multiple third parties.
+      #   For more information see: https://github.com/advisories/GHSA-f6pv-j8mr-w6rr
+      safety_options: |
+        --ignore=70612
 
       # Build Python package
       run_build_package: true
@@ -46,30 +44,34 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.9', '3.10']
+        # Supported Python versions (according to pyproject.toml)
+        python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
         python -m pip install -U pip
-        pip install -U setuptools wheel flit
-        pip install -e .[dev]
+        pip install -U setuptools wheel
+        pip install -e .[testing]
 
     - name: Run pytest
       run: pytest -v -rs --cov=s7 --cov-report=xml --cov-report=term-missing
 
     - name: Upload code coverage report
-      if: github.repository == 'SINTEF/soft7' && matrix.python-version == '3.9'
-      uses: codecov/codecov-action@v3
+      if: github.repository == 'SINTEF/soft7'
+      uses: codecov/codecov-action@v4
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
         flags: pytest
-        token: ${{ secrets.CODECOV_TOKEN }}
+        env_vars: PYTHON
+      env:
+        PYTHON: ${{ matrix.python-version }}
