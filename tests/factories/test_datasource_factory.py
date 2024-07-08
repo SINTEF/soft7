@@ -332,10 +332,18 @@ def test_serialize_python_datasource(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
+    httpx_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Check the data source contents when serialized to a Python dict."""
     from s7.factories.datasource_factory import create_datasource
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
 
     datasource = create_datasource(
         entity=soft_entity_init,
@@ -370,12 +378,20 @@ def test_serialize_json_datasource(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
+    httpx_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Check the data source contents when serialized to JSON."""
     import json
 
     from s7.factories.datasource_factory import create_datasource
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
 
     datasource = create_datasource(
         entity=soft_entity_init,
@@ -411,10 +427,18 @@ def test_datasource_json_schema(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
+    httpx_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Check the generated JSON Schema for the data source."""
     from s7.factories.datasource_factory import create_datasource
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
 
     datasource = create_datasource(
         entity=soft_entity_init,
@@ -580,7 +604,7 @@ Attributes:
     }
 
 
-def test_cacheing_pipeline_results(
+def test_cacheing_model_attribute_results(
     soft_entity_init: dict[str, str | dict],
     static_folder: Path,
     soft_datasource_entity_mapping_init: dict[
@@ -588,10 +612,10 @@ def test_cacheing_pipeline_results(
     ],
     httpx_mock: HTTPXMock,
 ) -> None:
-    """Test the OTEAPI pipeline results are cached."""
-    from copy import deepcopy
+    """Test the DataSource attribute results are cached in the model."""
+    import json
 
-    from s7.factories.datasource_factory import CACHE, create_datasource
+    from s7.factories.datasource_factory import create_datasource
 
     # Mock SOFT7Entity identity URL
     httpx_mock.add_response(
@@ -600,6 +624,7 @@ def test_cacheing_pipeline_results(
         json=soft_entity_init,
     )
 
+    # Create the data source
     datasource = create_datasource(
         entity=soft_entity_init,
         configs={
@@ -622,10 +647,11 @@ def test_cacheing_pipeline_results(
         oteapi_url="python",
     )
 
-    # Check the cache is currently empty
-    assert len(CACHE) == 1
-    org_CACHE = deepcopy(CACHE)
-    pipeline_cache_key = next(iter(org_CACHE))
+    # Assert internal model cache is empty
+    assert hasattr(datasource, "_resolved_fields")
+    assert datasource._resolved_fields == {}, json.dumps(
+        datasource._resolved_fields, indent=2
+    )
 
     # Get one of the datasource's attributes and check the cache
     assert len(datasource.model_fields) > 1
@@ -637,18 +663,162 @@ def test_cacheing_pipeline_results(
         pytest.fail("No 'proper' property could be found for datasource example.")
 
     attribute_value = getattr(datasource, attribute_name)
-    # Everything will be tuple's in the datasource model (if there are multiple values)
-    # The type stored in the CACHE will be lists, as this will come from a JSON/YAML
-    # source (ideally)
-    if isinstance(attribute_value, tuple):
-        attribute_value = list(attribute_value)
 
-    assert org_CACHE == CACHE
-    assert len(CACHE) == 1
-    assert next(iter(CACHE)) == pipeline_cache_key
-    assert (
-        next(iter(CACHE.values()))["soft7_entity_data"]["properties"][attribute_name]
-        == attribute_value
+    # Check the internal model cache has been populated with the attribute
+    assert datasource._resolved_fields
+    assert len(datasource._resolved_fields) == 1
+    assert attribute_name in datasource._resolved_fields
+    assert datasource._resolved_fields[attribute_name] == attribute_value
+
+
+def test_pipeline_cache(
+    soft_entity_init: dict[str, str | dict],
+    static_folder: Path,
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    httpx_mock: HTTPXMock,
+) -> None:
+    """Test the pipeline cache functions as intended."""
+    import json
+
+    from s7.factories.datasource_factory import CACHE, create_datasource
+
+    assert CACHE == {}, json.dumps(CACHE, indent=2)
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
     )
-    for attribute_name in next(iter(CACHE.values()))["soft7_entity_data"]["properties"]:
-        assert not attribute_name.startswith("soft7___")
+
+    # Create the data source
+    datasource = create_datasource(
+        entity=soft_entity_init,
+        configs={
+            "dataresource": {
+                "resourceType": "resource/url",
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
+        },
+        oteapi_url="python",
+    )
+
+    assert CACHE, json.dumps(CACHE, indent=2)
+    assert len(CACHE) == 1, json.dumps(CACHE, indent=2)
+
+    # Check the cache is working as intended
+    # Get the data source from the cache
+    cached_datasource = next(iter(CACHE.values()))
+    assert isinstance(cached_datasource, dict)
+    assert "soft7_entity_data" in cached_datasource
+
+    # properties
+    assert "properties" in cached_datasource["soft7_entity_data"]
+    assert isinstance(cached_datasource["soft7_entity_data"]["properties"], dict)
+    for name, value in cached_datasource["soft7_entity_data"]["properties"].items():
+        assert hasattr(datasource, name)
+        datasource_attribute_value = getattr(datasource, name)
+
+        # The datasource's values will be tuple if it has a shape
+        if isinstance(datasource_attribute_value, tuple):
+            assert list(datasource_attribute_value) == value
+        else:
+            assert datasource_attribute_value == value
+
+    # dimensions
+    assert "dimensions" in cached_datasource["soft7_entity_data"]
+    assert isinstance(cached_datasource["soft7_entity_data"]["dimensions"], dict)
+    for name, value in cached_datasource["soft7_entity_data"]["dimensions"].items():
+        assert hasattr(datasource.soft7___dimensions, name)
+        datasource_dimensions_value = getattr(datasource.soft7___dimensions, name)
+
+        assert datasource_dimensions_value == value
+
+    # Create a new data source with the exact same configurations
+    new_datasource = create_datasource(
+        entity=soft_entity_init,
+        configs={
+            "dataresource": {
+                "resourceType": "resource/url",
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
+        },
+        oteapi_url="python",
+    )
+
+    assert CACHE, json.dumps(CACHE, indent=2)
+    assert len(CACHE) == 1, json.dumps(CACHE, indent=2)
+
+    # While the pipeline data is the same, the data source instances are different
+    assert new_datasource != datasource
+    assert new_datasource.soft7___identity == datasource.soft7___identity
+
+    # Create yet another new data source, but mix up the inputs, while keeping it
+    # semantically the same.
+    # The configs have been supplieed as a URL.
+    # The URL returns the same content as for the configs above, but mixed up a bit so
+    # that the key/value-pairs are mixed up a bit.
+
+    # Mock configs
+    httpx_mock.add_response(
+        method="GET",
+        url="http://example.org/soft7_configs",
+        json={
+            "dataresource": {
+                "mediaType": "application/yaml",
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "resourceType": "resource/url",
+            },
+            "mapping": {
+                **soft_datasource_entity_mapping_init,
+                "mappingType": "triples",
+            },
+            "parser": {
+                "entity": soft_entity_init["identity"],
+                "parserType": "parser/yaml",
+            },
+        },
+    )
+
+    new_new_datasource = create_datasource(
+        entity=soft_entity_init,
+        configs="http://example.org/soft7_configs",
+        oteapi_url="python",
+    )
+
+    assert CACHE, json.dumps(CACHE, indent=2)
+    assert len(CACHE) == 1, json.dumps(CACHE, indent=2)
+
+    # While the pipeline data is the same, the data source instances are different
+    assert new_new_datasource != new_datasource != datasource
+    assert (
+        new_new_datasource.soft7___identity
+        == new_datasource.soft7___identity
+        == datasource.soft7___identity
+    )

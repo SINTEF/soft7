@@ -137,7 +137,6 @@ def _get_data(
             )
             # Should only run once per pipeline - after that we retrieve from the cache
             pipeline_result: dict[str, Any] = json.loads(ote_pipeline.get())
-            LOGGER.debug("OTEAPI pipeline result: %r", pipeline_result)
             CACHE[pipeline_id] = pipeline_result
         else:
             pipeline_result = CACHE[pipeline_id]
@@ -162,6 +161,11 @@ def _get_data(
         data: SOFT7InstanceDict = pipeline_result["soft7_entity_data"]
 
         if soft7_property in data["properties"]:
+            LOGGER.debug(
+                "Returning property: %r = %r",
+                soft7_property,
+                data["properties"][soft7_property],
+            )
             return data["properties"][soft7_property]
 
         if (
@@ -169,6 +173,11 @@ def _get_data(
             and data["dimensions"]
             and soft7_property in data["dimensions"]
         ):
+            LOGGER.debug(
+                "Returning dimension: %r = %r",
+                soft7_property,
+                data["dimensions"][soft7_property],
+            )
             return data["dimensions"][soft7_property]
 
         error_message = f"{soft7_property!r} could not be determined for the resource."

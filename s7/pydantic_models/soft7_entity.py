@@ -196,10 +196,10 @@ def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, Optional[str], str]:
     return AnyUrl(namespace), version or None, name
 
 
-class CallableAttributesMixin:
-    """Mixin to call and resolve attributes if they are SOFT7 properties."""
+class CallableAttributesBaseModel(BaseModel):
+    """Call, resolve, and cache attributes if they are SOFT7 properties."""
 
-    _resolved_fields: dict[str, PropertyType] = {}  # noqa: RUF012
+    _resolved_fields: dict[str, PropertyType] = {}
 
     def __getattribute__(self, name: str) -> Any:
         """Get an attribute.
@@ -218,36 +218,46 @@ class CallableAttributesMixin:
         resolved_attr_value = "NOT SET"
 
         try:
-            attr_value: Union[Any, GetData] = object.__getattribute__(self, name)
+            if (
+                # If dunder method, return as-is.
+                # or is a SOFT7 metadata field
+                name.startswith(("__", "soft7___"))
+                # Or otherwise a non-SOFT7 attribute
+                or name
+                not in (model_fields := object.__getattribute__(self, "model_fields"))
+                # Or if private attributes are not set (not yet properly initialized)
+                or not (
+                    private_attrs := object.__getattribute__(
+                        self, "__pydantic_private__"
+                    )
+                )
+            ):
+                return object.__getattribute__(self, name)
 
-            # SOFT7 metadata
-            if name.startswith("soft7___"):
-                return attr_value
-
-            ## SOFT7 property
+            # Check "cache"
             # Retrieve from "cache"
-            if name in object.__getattribute__(self, "_resolved_fields"):
+            if name in (resolved_fields := private_attrs.get("_resolved_fields", {})):
+                LOGGER.debug("Using cached value for %s", name)
                 # If the field has already been resolved, use the resolved value.
-                return object.__getattribute__(self, "_resolved_fields")[name]
+                return resolved_fields[name]
 
             # Retrieve from data source
-            if name in object.__getattribute__(self, "model_fields"):
-                resolved_attr_value = attr_value(soft7_property=name)
+            LOGGER.debug("Resolving value for %s", name)
+            resolved_attr_value = object.__getattribute__(self, name)(
+                soft7_property=name
+            )
 
-                # Use TypeAdapter to return and validate the value against the
-                # generated type. This effectively validates the shape and
-                # dimensionality of the value, as well as the inner most expected type.
-                field_info: FieldInfo = object.__getattribute__(self, "model_fields")[
-                    name
-                ]
-                self._resolved_fields[name] = TypeAdapter(
-                    field_info.rebuild_annotation()
-                ).validate_python(resolved_attr_value)
+            # Use TypeAdapter to return and validate the value against the
+            # generated type. This effectively validates the shape and
+            # dimensionality of the value, as well as the inner most expected type.
+            field_info: FieldInfo = model_fields[name]
+            resolved_fields[name] = TypeAdapter(
+                field_info.rebuild_annotation()
+            ).validate_python(resolved_attr_value)
 
-                return self._resolved_fields[name]
+            BaseModel.__setattr__(self, "_resolved_fields", resolved_fields)
 
-            # Non-SOFT7 attribute
-            return attr_value
+            return resolved_fields[name]
 
         except ValidationError as exc:
             LOGGER.error(
@@ -307,7 +317,7 @@ class CallableAttributesMixin:
         return handler(self.model_copy(update=self._resolved_fields))
 
 
-class SOFT7DataSource(BaseModel, CallableAttributesMixin):
+class SOFT7DataSource(CallableAttributesBaseModel):
     """Generic SOFT7 data source
 
     This doc-string should be replaced with the specific data source's `description`.

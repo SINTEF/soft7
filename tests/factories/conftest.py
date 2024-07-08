@@ -13,6 +13,9 @@ def _load_strategies() -> None:
     load_strategies(test_for_uniqueness=False)
 
 
-# @pytest.fixture
-# def assert_all_responses_were_requested() -> bool:
-#     return False
+@pytest.fixture(autouse=True)
+def _clear_cache() -> None:
+    """Clear the cache before each test."""
+    from s7.factories.datasource_factory import CACHE
+
+    CACHE.clear()

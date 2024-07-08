@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Hashable
 from typing import TYPE_CHECKING
 
@@ -23,9 +22,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 
-LOGGER = logging.getLogger(__name__)
-
-
 class HashableMixin:
     """Mixin to make pydantic models hashable."""
 
@@ -38,10 +34,7 @@ class HashableMixin:
                     if (isinstance(field_value, Hashable) or field_value is None)
                     else (field_name, None)
                 )
-                for field_name, field_value in self
-            )
-            LOGGER.debug(
-                "%s's hashable content: %r", self.__class__.__name__, hashable_content
+                for field_name, field_value in sorted(self)
             )
             return hash(hashable_content)
         raise NotImplementedError(

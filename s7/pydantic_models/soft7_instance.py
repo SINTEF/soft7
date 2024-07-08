@@ -29,7 +29,7 @@ from s7.pydantic_models.oteapi import (
     default_soft7_ote_function_config,
 )
 from s7.pydantic_models.soft7_entity import (
-    CallableAttributesMixin,
+    CallableAttributesBaseModel,
     SOFT7Entity,
     SOFT7IdentityURIType,
     map_soft_to_py_types,
@@ -193,7 +193,7 @@ class SOFT7EntityInstance(BaseModel):
         return self
 
 
-class DataSourceDimensions(BaseModel, CallableAttributesMixin):
+class DataSourceDimensions(CallableAttributesBaseModel):
     """Dimensions for the SOFT7 data source.
 
     This doc-string will/should be overridden in the `create_datasource()` function.
