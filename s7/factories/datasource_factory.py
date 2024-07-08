@@ -205,6 +205,11 @@ def create_datasource(
 ) -> SOFT7DataSource:
     """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.
 
+    TODO: Utilize the `generated_classes` module and check whether we can return an
+        already created model based on the inputs given here.
+
+    TODO: Determine what to do with regards to differing inputs, but similar names.
+
     Parameters:
         entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
             entity.
