@@ -38,16 +38,22 @@ from s7.pydantic_models.soft7_instance import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Any
+    from typing import Any, TypedDict
 
     from oteapi.models import GenericConfig
 
     from s7.pydantic_models.datasource import (
         GetData,
         GetDataConfigDict,
-        SOFT7InstanceDict,
     )
     from s7.pydantic_models.soft7_entity import PropertyType
+
+    class SOFT7InstanceDict(TypedDict):
+        """A dictionary representation of a SOFT7 instance."""
+
+        dimensions: Optional[dict[str, int]]
+        properties: dict[str, Any]
+
 
 DEFAULT_OTEAPI_SERVICES_BASE_URL = "http://localhost:8080"
 

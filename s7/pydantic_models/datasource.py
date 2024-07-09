@@ -44,12 +44,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from s7.pydantic_models.soft7_entity import PropertyType, SOFT7IdentityURIType
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
-    class SOFT7InstanceDict(TypedDict):
-        """A dictionary representation of a SOFT7 instance."""
-
-        dimensions: Optional[dict[str, int]]
-        properties: dict[str, Any]
-
     class GetDataOptionalMapping(TypedDict, total=False):
         """A dictionary of the various required OTEAPI strategy configurations needed
         for the _get_data() OTEAPI pipeline.
