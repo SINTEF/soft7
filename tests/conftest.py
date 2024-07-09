@@ -133,3 +133,34 @@ def soft_instance_data(soft_instance_data_source: Path) -> dict[str, dict[str, A
     assert isinstance(instance_data, dict)
 
     return instance_data
+
+
+@pytest.fixture()
+def soft_datasource_configs(
+    static_folder: Path,
+    soft_entity_init: dict[str, Union[str, dict[str, Any]]],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+) -> dict[str, dict[str, Any]]:
+    """A dict representing the configurations for a SOFT7DataSource."""
+    from s7.pydantic_models.oteapi import default_soft7_ote_function_config
+
+    return {
+        "dataresource": {
+            "resourceType": "resource/url",
+            "downloadUrl": (static_folder / "soft_datasource_content.yaml").as_uri(),
+            "mediaType": "application/yaml",
+        },
+        "parser": {
+            "parserType": "parser/yaml",
+            "entity": soft_entity_init["identity"],
+        },
+        "mapping": {
+            "mappingType": "triples",
+            **soft_datasource_entity_mapping_init,
+        },
+        "function": default_soft7_ote_function_config(
+            soft_entity_init["identity"]
+        ).model_dump(),
+    }

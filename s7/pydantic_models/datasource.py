@@ -155,7 +155,7 @@ class CallableAttributesBaseModel(BaseModel):
                 "".join(traceback.format_tb(exc.__traceback__)),
             )
             raise AttributeError(
-                f"Could not type and shape validate attribute {name!r} from the data "
+                f"Could not 'type and shape'-validate attribute {name!r} from the data "
                 "source."
             ) from exc
 
@@ -256,7 +256,7 @@ class DataSourceDimensions(CallableAttributesBaseModel):
 def parse_input_configs(
     configs: Union[
         GetDataConfigDict,
-        dict[str, Union[GenericConfig, dict[str, Any], Path, AnyUrl, str]],
+        dict[str, Optional[Union[GenericConfig, dict[str, Any], Path, AnyUrl, str]]],
         Path,
         AnyUrl,
         str,
@@ -348,7 +348,7 @@ def parse_input_configs(
     if not isinstance(configs, dict):
         raise TypeError(f"configs must be a 'dict', instead it was a {type(configs)}")
 
-    for name, config in configs.items():
+    for name, config in list(configs.items()):
         if name and not isinstance(name, str):
             raise TypeError("The config name must be a string")
 
@@ -384,9 +384,7 @@ def parse_input_configs(
                 if config_path.exists():
                     # If it's a path to an existing file, assume it's a JSON/YAML
                     # file.
-                    config = yaml.safe_load(  # noqa: PLW2901
-                        config_path.read_text(encoding="utf8")
-                    )
+                    config = yaml.safe_load(config_path.read_text(encoding="utf8"))
                 else:
                     # If it's not a path to an existing file, assume it's a
                     # parseable JSON/YAML
@@ -417,8 +415,19 @@ def parse_input_configs(
                 # valid YAML. JSON is a subset of YAML.
                 config = yaml.safe_load(response.content)  # noqa: PLW2901
 
-        # Ensure all values are Hashable*Config instances if they are dictionaries
-        # or Hashable*Config instances.
+        # Handle the case of the config being a path to a JSON/YAML file.
+        elif isinstance(config, Path):
+            config_path = config.resolve()
+
+            if not config_path.exists():
+                raise ConfigsNotFound(
+                    f"Could not find a config YAML/JSON file at {config_path}"
+                )
+
+            config = yaml.safe_load(config_path.read_text(encoding="utf8"))
+
+        # Finally, ensure all values are Hashable*Config instances if they are
+        # dictionaries or Hashable*Config instances.
         if isinstance(config, (BaseModel, dict)):
             try:
                 configs[name] = name_to_config_type_mapping[name](
