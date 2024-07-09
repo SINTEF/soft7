@@ -21,18 +21,20 @@ from typing import TYPE_CHECKING, Optional
 from otelib import OTEClient
 from pydantic import AnyUrl, Field, create_model
 
-from s7.pydantic_models.soft7_entity import (
+from s7.pydantic_models.datasource import (
+    DataSourceDimensions,
     SOFT7DataSource,
+    parse_input_configs,
+)
+from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
     parse_identity,
     parse_input_entity,
 )
 from s7.pydantic_models.soft7_instance import (
-    DataSourceDimensions,
     generate_dimensions_docstring,
     generate_model_docstring,
     generate_property_type,
-    parse_input_configs,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -40,14 +42,12 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from oteapi.models import GenericConfig
 
-    from s7.pydantic_models.soft7_entity import (
+    from s7.pydantic_models.datasource import (
         GetData,
-        PropertyType,
-    )
-    from s7.pydantic_models.soft7_instance import (
         GetDataConfigDict,
         SOFT7InstanceDict,
     )
+    from s7.pydantic_models.soft7_entity import PropertyType
 
 DEFAULT_OTEAPI_SERVICES_BASE_URL = "http://localhost:8080"
 

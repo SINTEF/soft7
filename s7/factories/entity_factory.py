@@ -4,15 +4,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import AnyUrl, ConfigDict, Field, create_model
 
-from s7.pydantic_models.oteapi import (
-    HashableFunctionConfig,
-    HashableMappingConfig,
-    HashableResourceConfig,
-)
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
     parse_identity,
@@ -32,14 +27,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from s7.pydantic_models.soft7_entity import (
         ListPropertyType,
     )
-
-    class GetDataConfigDict(TypedDict):
-        """A dictionary of the various required OTEAPI strategy configurations needed
-        for the _get_data() OTEAPI pipeline."""
-
-        dataresource: HashableResourceConfig
-        mapping: HashableMappingConfig
-        function: HashableFunctionConfig
 
 
 LOGGER = logging.getLogger(__name__)
