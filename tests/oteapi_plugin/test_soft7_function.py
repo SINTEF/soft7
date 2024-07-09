@@ -8,7 +8,7 @@ import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Union
 
     from pydantic import AnyUrl
     from pytest_httpx import HTTPXMock
@@ -233,11 +233,11 @@ def _generate_entity_test_cases() -> tuple[
 )
 def test_dataclass_validation(
     functionType: str,
-    entity: (
-        str | type[SOFT7EntityInstance] | dict[str, Any] | Path | AnyUrl | SOFT7Entity
-    ),
+    entity: Union[
+        str, type[SOFT7EntityInstance], dict[str, Any], Path, AnyUrl, SOFT7Entity
+    ],
     httpx_mock: HTTPXMock,
-    soft_entity_init: dict[str, str | dict],
+    soft_entity_init: dict[str, Union[str, dict]],
 ) -> None:
     """Check the dataclass instantiates correctly (and validates) with different input
     types."""
@@ -246,7 +246,7 @@ def test_dataclass_validation(
     from s7.oteapi_plugin.soft7_function import SOFT7Generator
     from s7.pydantic_models.soft7_entity import SOFT7IdentityURI
 
-    if isinstance(entity, (str, AnyUrl)):
+    if isinstance(entity, (AnyUrl, str)):
         try:
             SOFT7IdentityURI(str(entity))
         except ValidationError:
