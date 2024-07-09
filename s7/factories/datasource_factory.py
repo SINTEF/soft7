@@ -96,15 +96,12 @@ def _get_data(
     ote_data_resource = client.create_dataresource(
         **config["dataresource"].model_dump()
     )
-
+    ote_function = client.create_function(**config["function"].model_dump())
     ote_parser = client.create_parser(**config["parser"].model_dump())
 
     if "mapping" in config:
         ote_mapping = client.create_mapping(**config["mapping"].model_dump())  # type: ignore[typeddict-item]
 
-    ote_function = client.create_function(**config["function"].model_dump())
-
-    if "mapping" in config:
         ote_pipeline = ote_data_resource >> ote_parser >> ote_mapping >> ote_function
     else:
         raise NotImplementedError(

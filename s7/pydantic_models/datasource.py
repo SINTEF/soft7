@@ -178,35 +178,30 @@ class CallableAttributesBaseModel(BaseModel):
     @model_serializer(mode="wrap", when_used="always")
     def _serialize_callable_attributes(
         self, handler: SerializerFunctionWrapHandler
-    ) -> Any:
+    ) -> dict[str, Any]:
         """Serialize all "lazy" SOFT7 property values.
 
         If the value matches the GetData protocol, i.e., it's a callable function with
-        the `name` parameter, call it with the property's name and the result will be
-        used in a copy of the model. Otherwise, the value will be used as-is.
+        the `soft7_property` parameter, call it with the property's name and the result
+        will be used in a copy of the model. Otherwise, the value will be used as-is.
 
         The copy of the model is returned through the SerializerFunctionWrapHandler.
         """
-        if not isinstance(self, BaseModel):
-            raise TypeError(
-                "This mixin class may only be used with pydantic.BaseModel subclasses."
-            )
-
         # This iteration works, due to how BaseModel yields fields (from __dict__ +
-        # __pydantic__extras__).
-        for field_name, field_value in self:
+        # __pydantic_extras__).
+        for field_name, field_value in self:  # type: ignore[attr-defined]
             if field_name in self._resolved_fields:
                 # If the field has already been resolved, use the resolved value.
                 continue
 
             if isinstance(field_value, GetData):
                 # Call the function via self.__getattribute__ to ensure proper type
-                # validation and store the returned value for later use.
-                self._resolved_fields[field_name] = getattr(self, field_name)
+                # validation and storage of the returned value for later use.
+                getattr(self, field_name)
 
             # Else: The value is not a GetData, so use it as-is, i.e., no changes.
 
-        return handler(self.model_copy(update=self._resolved_fields))
+        return handler(self.model_copy(update=self._resolved_fields))  # type: ignore[call-arg]
 
 
 class SOFT7DataSource(CallableAttributesBaseModel):

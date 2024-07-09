@@ -8,7 +8,7 @@ import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Literal
 
     from pytest_httpx import HTTPXMock
     from requests_mock import Mocker
@@ -255,8 +255,6 @@ def test_inspect_created_datasource(
         )
 
     ## Check the data source's metadata is correctly resolved
-    checked_metadata_names = set()
-
     # identity, including the derived metadata: namespace, version, and name."
     assert (
         str(datasource.soft7___identity)
@@ -266,7 +264,6 @@ def test_inspect_created_datasource(
     assert datasource.soft7___namespace == AnyUrl("http://onto-ns.com/s7")
     assert datasource.soft7___version == "0.1.0"
     assert datasource.soft7___name == "MolecularSpecies"
-    checked_metadata_names.update({"identity", "namespace", "version", "name"})
 
     # dimensions
     assert isinstance(datasource.soft7___dimensions, BaseModel)
@@ -822,3 +819,464 @@ def test_pipeline_cache(
         == new_datasource.soft7___identity
         == datasource.soft7___identity
     )
+
+
+def test_no_mapping_config(soft_entity_init: dict[str, str | dict]) -> None:
+    """Not passing a mapping config is currently not implemented."""
+    from s7.factories.datasource_factory import create_datasource
+
+    # Create the data source
+    with pytest.raises(
+        NotImplementedError,
+        match=r"^Only OTEAPI pipelines with a mapping are supported for now.*$",
+    ):
+        create_datasource(
+            entity=soft_entity_init,
+            configs={
+                "dataresource": {
+                    "resourceType": "resource/url",
+                    "downloadUrl": "http://example.org/soft_datasource_content.yaml",
+                    "mediaType": "application/yaml",
+                },
+                "parser": {
+                    "parserType": "parser/yaml",
+                    "entity": soft_entity_init["identity"],
+                },
+            },
+            oteapi_url="python",
+        )
+
+
+def test_bad_pipeline_response(
+    soft_entity_init: dict[str, str | dict],
+    soft_datasource_init: dict[str, Any],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    requests_mock: Mocker,
+    httpx_mock: HTTPXMock,
+    static_folder: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test an error is raised if the pipeline response is not as expected.
+
+    Need to go the route of mocking an OTEAPI Service, not using `python`, as this
+    is the easiest way to mock a bad pipeline response.
+    """
+    import json
+
+    from otelib.settings import Settings
+
+    from s7.factories.datasource_factory import create_datasource
+    from s7.oteapi_plugin.soft7_function import SOFT7Generator
+
+    default_oteapi_url = "http://localhost:8080"
+    rest_api_prefix = Settings().prefix
+
+    oteapi_url = f"{default_oteapi_url}{rest_api_prefix}"
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
+
+    # Run SOFT7Generator
+    # Mock the session data content for the
+    # pipeline = dataresource >> mapping >> function
+    session_data = {}
+    session_data.update(soft_datasource_entity_mapping_init)
+    session_data.update({"content": soft_datasource_init})
+    generator_configuration = {"entity": soft_entity_init["identity"]}
+    function_get_content = SOFT7Generator(
+        function_config={
+            "functionType": "SOFT7",
+            "configuration": {**session_data, **generator_configuration},
+        }
+    ).get()
+
+    # Change the key of the 'function_get_content' to simulate a bad response
+    assert "soft7_entity_data" in function_get_content
+    function_get_content["wrong_key"] = function_get_content.pop("soft7_entity_data")
+    assert "soft7_entity_data" not in function_get_content
+
+    # Creating strategies
+    # The data resource
+    requests_mock.post(
+        f"{oteapi_url}/dataresource",
+        json={"resource_id": "1234"},
+    )
+
+    # The parser resource
+    requests_mock.post(
+        f"{oteapi_url}/parser",
+        json={"parser_id": "1234"},
+    )
+
+    # The mapping
+    requests_mock.post(
+        f"{oteapi_url}/mapping",
+        json={"mapping_id": "1234"},
+    )
+
+    # The function
+    requests_mock.post(
+        f"{oteapi_url}/function",
+        json={"function_id": "1234"},
+    )
+
+    # Getting the OTE pipeline = dataresource >> mapping >> function
+    # Create session
+    requests_mock.post(
+        f"{oteapi_url}/session",
+        text=json.dumps({"session_id": "1234"}),
+    )
+
+    # Initialize
+    requests_mock.post(
+        f"{oteapi_url}/function/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/mapping/1234/initialize",
+        content=json.dumps(soft_datasource_entity_mapping_init).encode(
+            encoding="utf-8"
+        ),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/parser/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/dataresource/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+
+    # Fetch
+    requests_mock.get(
+        f"{oteapi_url}/dataresource/1234",
+        content=json.dumps({"key": "test"}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/parser/1234",
+        content=json.dumps({"content": soft_datasource_init}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/mapping/1234",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/function/1234",
+        content=function_get_content.model_dump_json().encode(encoding="utf-8"),
+    )
+
+    # Create the data source
+    # As it is now, the pipeline will be run to retrieve the dimensions for property
+    # creation.
+    # Hence, the error will be raised already during creation in the
+    # `generate_property_type()` function. Here, the error will be caught and re-raised
+    # as another ValueError.
+    # Note, there is only one dimension (`N`).
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^.*Dimension 'N' is not defined in the data model or cannot be "
+            r"resolved\.$"
+        ),
+    ):
+        create_datasource(
+            entity=soft_entity_init,
+            configs={
+                "dataresource": {
+                    "resourceType": "resource/url",
+                    "downloadUrl": (
+                        static_folder / "soft_datasource_content.yaml"
+                    ).as_uri(),
+                    "mediaType": "application/yaml",
+                },
+                "parser": {
+                    "parserType": "parser/yaml",
+                    "entity": soft_entity_init["identity"],
+                },
+                "mapping": {
+                    "mappingType": "triples",
+                    **soft_datasource_entity_mapping_init,
+                },
+            },
+        )
+
+    # This is the "original" error, reported in the log through the custom
+    # `__getattribute__()` method as well as through the "internal" `_get_data()`
+    # method.
+    original_error_message = (
+        "The OTEAPI pipeline did not return the expected data structure."
+    )
+    assert original_error_message in caplog.text
+    assert caplog.text.count(original_error_message) == 2
+    assert f"ValueError: {original_error_message}" in caplog.text
+    assert "An error occurred during attribute resolution:" in caplog.text
+
+
+def test_get_nonexisting_property(
+    soft_entity_init: dict[str, str | dict],
+    static_folder: Path,
+    soft_datasource_init: dict[str, Any],
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    requests_mock: Mocker,
+    httpx_mock: HTTPXMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test an error is raised when trying to get a non-existing property.
+
+    Test an error is raised when trying to get a property that cannot be resolved.
+    """
+    import json
+
+    from otelib.settings import Settings
+
+    from s7.factories.datasource_factory import create_datasource
+    from s7.oteapi_plugin.soft7_function import SOFT7Generator
+
+    default_oteapi_url = "http://localhost:8080"
+    rest_api_prefix = Settings().prefix
+
+    oteapi_url = f"{default_oteapi_url}{rest_api_prefix}"
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
+
+    # Run SOFT7Generator
+    # Mock the session data content for the
+    # pipeline = dataresource >> mapping >> function
+    session_data = {}
+    session_data.update(soft_datasource_entity_mapping_init)
+    session_data.update({"content": soft_datasource_init})
+    generator_configuration = {"entity": soft_entity_init["identity"]}
+    function_get_content = SOFT7Generator(
+        function_config={
+            "functionType": "SOFT7",
+            "configuration": {**session_data, **generator_configuration},
+        }
+    ).get()
+
+    # Change the content, removing a property to simulate a bad response
+    missing_property = function_get_content["soft7_entity_data"]["properties"].popitem()
+    # Ensure there are still properties
+    assert function_get_content["soft7_entity_data"]["properties"]
+
+    # Creating strategies
+    # The data resource
+    requests_mock.post(
+        f"{oteapi_url}/dataresource",
+        json={"resource_id": "1234"},
+    )
+
+    # The parser resource
+    requests_mock.post(
+        f"{oteapi_url}/parser",
+        json={"parser_id": "1234"},
+    )
+
+    # The mapping
+    requests_mock.post(
+        f"{oteapi_url}/mapping",
+        json={"mapping_id": "1234"},
+    )
+
+    # The function
+    requests_mock.post(
+        f"{oteapi_url}/function",
+        json={"function_id": "1234"},
+    )
+
+    # Getting the OTE pipeline = dataresource >> mapping >> function
+    # Create session
+    requests_mock.post(
+        f"{oteapi_url}/session",
+        text=json.dumps({"session_id": "1234"}),
+    )
+
+    # Initialize
+    requests_mock.post(
+        f"{oteapi_url}/function/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/mapping/1234/initialize",
+        content=json.dumps(soft_datasource_entity_mapping_init).encode(
+            encoding="utf-8"
+        ),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/parser/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.post(
+        f"{oteapi_url}/dataresource/1234/initialize",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+
+    # Fetch
+    requests_mock.get(
+        f"{oteapi_url}/dataresource/1234",
+        content=json.dumps({"key": "test"}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/parser/1234",
+        content=json.dumps({"content": soft_datasource_init}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/mapping/1234",
+        content=json.dumps({}).encode(encoding="utf-8"),
+    )
+    requests_mock.get(
+        f"{oteapi_url}/function/1234",
+        content=function_get_content.model_dump_json().encode(encoding="utf-8"),
+    )
+
+    # Create the data source
+    datasource = create_datasource(
+        entity=soft_entity_init,
+        configs={
+            "dataresource": {
+                "resourceType": "resource/url",
+                "downloadUrl": (
+                    static_folder / "soft_datasource_content.yaml"
+                ).as_uri(),
+                "mediaType": "application/yaml",
+            },
+            "parser": {
+                "parserType": "parser/yaml",
+                "entity": soft_entity_init["identity"],
+            },
+            "mapping": {
+                "mappingType": "triples",
+                **soft_datasource_entity_mapping_init,
+            },
+        },
+    )
+
+    # Try to get a non-existing property
+    assert "non_existing_property" not in datasource.model_fields
+    with pytest.raises(
+        AttributeError,
+        match=(
+            rf"^{datasource.__class__.__name__!r} object has no attribute "
+            r"'non_existing_property'$"
+        ),
+    ):
+        datasource.non_existing_property
+
+    # Try getting a "bad" property that cannot be resolved.
+    with pytest.raises(
+        AttributeError,
+        match=(
+            rf"^{datasource.__class__.__name__!r} object has no attribute "
+            rf"{missing_property[0]!r}$"
+        ),
+    ):
+        getattr(datasource, missing_property[0])
+
+    # Check the error is logged
+    # This is the "original" error, reported in the log through the custom
+    # `__getattribute__()` method as well as through the "internal" `_get_data()`
+    # method.
+    original_error_message = (
+        f"{missing_property[0]!r} could not be determined for the resource."
+    )
+    assert original_error_message in caplog.text
+    assert caplog.text.count(original_error_message) == 2
+    assert f"AttributeError: {original_error_message}" in caplog.text
+    assert "An error occurred during attribute resolution:" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "metadata_field",
+    ["soft7___non_existing", "soft7___name"],
+    ids=["non_existing", "overwrite"],
+)
+def test_try_to_overwrite_metadata_fields(
+    soft_entity_init: dict[str, str | dict],
+    static_folder: Path,
+    soft_datasource_entity_mapping_init: dict[
+        str, dict[str, str] | list[tuple[str, str, str]]
+    ],
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    metadata_field: Literal["soft7___non_existing", "soft7___name"],
+) -> None:
+    """Ensure an error is raised if the entity contains special metadata fields used
+    for the DataSource model generation."""
+    import yaml
+
+    from s7.factories.datasource_factory import create_datasource
+
+    # Add a metadata field to the entity
+    soft_entity_init["properties"][metadata_field] = {
+        "type": "string",
+        "description": (
+            "Metadata field that should not be overwritten."
+            if metadata_field == "soft7___non_existing"
+            else "Metadata field that intends to overwrite an existing metadata field."
+        ),
+    }
+    # Extend mapping
+    soft_datasource_entity_mapping_init["triples"].append(
+        (
+            f"data_source:properties.{metadata_field}",
+            "",
+            f"s7_entity:properties.{metadata_field}",
+        )
+    )
+    # Extend data source content
+    soft_datasource_content: dict[str, Any] = yaml.safe_load(
+        (static_folder / "soft_datasource_content.yaml").read_text()
+    )
+    assert "properties" in soft_datasource_content
+    soft_datasource_content["properties"][metadata_field] = "test"
+
+    # Write the modified data source content to a temporary file
+    modified_datasource_content_path = tmp_path / "soft_datasource_content.yaml"
+    modified_datasource_content_path.write_text(yaml.safe_dump(soft_datasource_content))
+
+    # Mock SOFT7Entity identity URL
+    httpx_mock.add_response(
+        method="GET",
+        url=soft_entity_init["identity"],
+        json=soft_entity_init,
+    )
+
+    # Create the data source
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^The data model properties are not allowed to overwrite or mock SOFT7 "
+            r"metadata fields\.$"
+        ),
+    ):
+        create_datasource(
+            entity=soft_entity_init,
+            configs={
+                "dataresource": {
+                    "resourceType": "resource/url",
+                    "downloadUrl": modified_datasource_content_path.as_uri(),
+                    "mediaType": "application/yaml",
+                },
+                "parser": {
+                    "parserType": "parser/yaml",
+                    "entity": soft_entity_init["identity"],
+                },
+                "mapping": {
+                    "mappingType": "triples",
+                    **soft_datasource_entity_mapping_init,
+                },
+            },
+            oteapi_url="python",
+        )

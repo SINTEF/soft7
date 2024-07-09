@@ -139,6 +139,7 @@ isort.required-imports = ["from __future__ import annotations"]
 "tests/**" = [
     "BLE",  # flake8-blind-except
     "PL",  # pylint
+    "B018",  # useless expression
 ]
 "docs/**" = [
     "I002",  # from __future__ import annotations
