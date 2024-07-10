@@ -20,7 +20,6 @@ else:
     from typing_extensions import Literal
 
 import httpx
-import yaml
 from pydantic import (
     AliasChoices,
     AnyUrl,
@@ -36,8 +35,11 @@ from pydantic.networks import UrlConstraints
 from pydantic_core import Url
 
 from s7.exceptions import EntityNotFound
+from s7.pydantic_models._utils import is_valid_url, try_load_from_json_yaml
 
 if TYPE_CHECKING:  # pragma: no cover
+    from typing import TypedDict
+
     UnshapedPropertyType = Union[
         str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
     ]
@@ -46,6 +48,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
+
+    class LoadFromJsonYamlErrorDict(TypedDict):
+        exception_cls: type[EntityNotFound]
+        exception_msg: str
 
 
 SOFT7IdentityURIType = Annotated[
@@ -411,15 +417,12 @@ def parse_input_entity(
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
 
-    def _try_load_from_json_yaml(entity: str) -> dict[Any, Any]:
-        """Try to load the entity from a JSON/YAML string."""
-        try:
-            return yaml.safe_load(entity)
-        except yaml.YAMLError as error:
-            raise EntityNotFound(
-                "Could not parse the entity string as a SOFT7 entity (YAML/JSON "
-                "format)."
-            ) from error
+    load_from_json_yaml_error: LoadFromJsonYamlErrorDict = {
+        "exception_cls": EntityNotFound,
+        "exception_msg": (
+            "Could not parse the entity string as a SOFT7 entity (YAML/JSON format)."
+        ),
+    }
 
     # Handle the case of the entity being a string or a URL
     if isinstance(entity, (AnyUrl, str)):
@@ -429,7 +432,7 @@ def parse_input_entity(
         # - A parseable JSON/YAML string.
 
         # Check if it is a URL
-        if _is_valid_url(str(entity)):
+        if is_valid_url(str(entity)):
             # If it is a URL, assume it's a SOFT7 entity identity.
             # Or at least that the response is a SOFT7 entity as JSON/YAML.
             with httpx.Client(follow_redirects=True) as client:
@@ -445,7 +448,7 @@ def parse_input_entity(
 
             # Using YAML parser, since _if_ the content is JSON, it's still valid
             # YAML. JSON is a subset of YAML.
-            entity = _try_load_from_json_yaml(response.text)
+            entity = try_load_from_json_yaml(response.text, **load_from_json_yaml_error)
         else:
             if not isinstance(entity, str):  # pragma: no cover
                 raise TypeError("Expected entity to be a str at this point")
@@ -455,13 +458,20 @@ def parse_input_entity(
 
             if entity_path.exists():
                 # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = _try_load_from_json_yaml(
-                    entity_path.read_text(encoding="utf8")
+                entity = try_load_from_json_yaml(
+                    entity_path.read_text(encoding="utf8"), **load_from_json_yaml_error
                 )
             else:
                 # If it's not a path to an existing file, assume it's a parseable
                 # JSON/YAML
-                entity = _try_load_from_json_yaml(entity)
+                entity = try_load_from_json_yaml(entity, **load_from_json_yaml_error)
+
+                if not isinstance(entity, dict):
+                    # The entity is not a dictionary, so it's not a valid entity
+                    # Assume it was a "string as a Path", but to a non-existing file.
+                    raise EntityNotFound(
+                        f"Could not find an entity JSON/YAML file at {entity_path}"
+                    )
 
     # Handle the case of the entity being a path to a YAML file
     if isinstance(entity, Path):
@@ -472,7 +482,9 @@ def parse_input_entity(
                 f"Could not find an entity JSON/YAML file at {entity_path}"
             )
 
-        entity = _try_load_from_json_yaml(entity_path.read_text(encoding="utf8"))
+        entity = try_load_from_json_yaml(
+            entity_path.read_text(encoding="utf8"), **load_from_json_yaml_error
+        )
 
     # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
     # used to create the SOFT7Entity instance.
@@ -485,13 +497,3 @@ def parse_input_entity(
         )
 
     return entity
-
-
-def _is_valid_url(url: str | AnyUrl) -> bool:
-    """Check if the URL is valid."""
-    try:
-        url = AnyUrl(str(url))
-    except ValidationError:
-        return False
-
-    return not any(getattr(url, url_part) is None for url_part in ["scheme", "host"])

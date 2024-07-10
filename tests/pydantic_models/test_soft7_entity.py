@@ -259,16 +259,38 @@ def test_parse_input_entity_http_error(httpx_mock: HTTPXMock) -> None:
         parse_input_entity("http://example.org")
 
 
-def test_parse_input_entity_path_not_found(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "entity_type",
+    [
+        "Path",
+        "str_path",
+    ],
+)
+def test_parse_input_entity_path_not_found(
+    entity_type: Literal["Path", "str_path"], tmp_path: Path
+) -> None:
     """Ensure a proper error message occurs if a file is not found."""
     import re
+    from pathlib import Path
 
     from s7.exceptions import EntityNotFound
     from s7.pydantic_models.soft7_entity import parse_input_entity
 
     bad_entity_path = tmp_path / "bad_entity.json"
 
-    assert not bad_entity_path.exists()
+    if entity_type == "Path":
+        entity = bad_entity_path
+
+        assert not entity.exists()
+
+    elif entity_type == "str_path":
+        entity = str(bad_entity_path)
+
+        assert not Path(entity).exists()
+        assert isinstance(entity, str)
+
+    else:
+        pytest.fail(f"Unexpected entity type: {entity_type}")
 
     with pytest.raises(
         EntityNotFound,
@@ -277,7 +299,7 @@ def test_parse_input_entity_path_not_found(tmp_path: Path) -> None:
             rf"{re.escape(str(bad_entity_path))}$"
         ),
     ):
-        parse_input_entity(bad_entity_path)
+        parse_input_entity(entity)
 
 
 def test_parse_input_entity_bad_type() -> None:

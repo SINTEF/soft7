@@ -162,5 +162,5 @@ def soft_datasource_configs(
         },
         "function": default_soft7_ote_function_config(
             soft_entity_init["identity"]
-        ).model_dump(),
+        ).model_dump(mode="json"),
     }
