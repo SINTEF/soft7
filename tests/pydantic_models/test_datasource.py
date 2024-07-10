@@ -402,19 +402,31 @@ def test_parse_input_configs_yaml_errors(
         yaml.safe_load(bad_inputs[raw_format])
 
     # Prepare input according to configs_type
-    if configs_type == "dict_Path":
+    if configs_type in ("dict_Path", "dict_str_path"):
         configs = {}
         for key in config_keys:
-            configs[key] = tmp_path / f"{key}.{raw_format}"
+            configs[key] = (tmp_path / f"{key}.{raw_format}").resolve()
             configs[key].write_text(bad_inputs[raw_format], encoding="utf-8")
 
-        assert all(isinstance(value, Path) for value in configs.values())
+        if configs_type == "dict_str_path":
+            configs = {key: str(value) for key, value in configs.items()}
 
-    elif configs_type == "dict_AnyUrl":
+        error_msg = (
+            rf"^Could not parse the ({'|'.join(config_keys)}) config (string )?as "
+            rf"OTEAPI ({'|'.join(_.capitalize() for _ in config_keys)})Config from "
+            rf"{re.escape(str(tmp_path))}/({'|'.join(config_keys)}).{raw_format} "
+            r"\(expecting a JSON/YAML format\)\.$"
+        )
+
+    elif configs_type in ("dict_AnyUrl", "dict_str_url"):
         # Create URLs for each config
         configs = {}
         for key in config_keys:
-            configs[key] = AnyUrl(f"http://example.org/{key}")
+            configs[key] = (
+                AnyUrl(f"http://example.org/{key}")
+                if configs_type == "dict_AnyUrl"
+                else f"http://example.org/{key}"
+            )
 
         # Mock HTTP GET call to retrieve the configs online.
         # Mock once and at the root domain, since the error will raise before all
@@ -425,44 +437,32 @@ def test_parse_input_configs_yaml_errors(
             text=bad_inputs[raw_format],
         )
 
-    elif configs_type == "dict_str_url":
-        # Case of the configuration values being a URL, i.e., same as for
-        # configs_type == "dict_AnyUrl"
-
-        # Create URLs for each config
-        configs = {}
-        for key in config_keys:
-            configs[key] = f"http://example.org/{key}"
-
-        # Mock HTTP GET call to retrieve the configs online.
-        # Mock once and at the root domain, since the error will raise before all
-        # configs will be checked.
-        httpx_mock.add_response(
-            url=re.compile(r"^http://example\.org/.*"),
-            method="GET",
-            text=bad_inputs[raw_format],
-        )
-
-    elif configs_type == "dict_str_path":
-        # Case of the configuration values being a path, i.e., same as for
-        # configs_type == "dict_Path"
-        configs = {}
-        for key in config_keys:
-            configs[key] = tmp_path / f"{key}.{raw_format}"
-            configs[key].write_text(bad_inputs[raw_format], encoding="utf-8")
-
-        configs = {key: str(value.resolve()) for key, value in configs.items()}
-        assert all(isinstance(value, str) for value in configs.values())
+        # This will be the default error message from `try_load_from_json_yaml()`.
+        error_msg = r"^Could not parse the string\. Expecting a YAML/JSON format\.$"
 
     elif configs_type == "dict_str_dump":
         # A raw JSON/YAML dump of the configs
         configs = {key: bad_inputs[raw_format] for key in config_keys}
 
-    elif configs_type == "Path":
-        configs = tmp_path / f"bad_configs.{raw_format}"
+        error_msg = (
+            rf"^Could not parse the ({'|'.join(config_keys)}) config string as OTEAPI "
+            rf"({'|'.join(_.capitalize() for _ in config_keys)})Config \(expecting a "
+            r"JSON/YAML format\)\.$"
+        )
+
+    elif configs_type in ("Path", "str_path"):
+        configs = (tmp_path / f"bad_configs.{raw_format}").resolve()
         configs.write_text(bad_inputs[raw_format], encoding="utf-8")
 
-    elif configs_type == "AnyUrl":
+        if configs_type == "str_path":
+            configs = str(configs)
+
+        error_msg = (
+            r"^Could not parse the configs (string )?as OTEAPI configurations from "
+            rf"{re.escape(str(Path(configs)))} \(expecting a JSON/YAML format\)\.$"
+        )
+
+    elif configs_type in ("AnyUrl", "str_url"):
         # Mock HTTP GET call to retrieve the configs online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
@@ -470,39 +470,28 @@ def test_parse_input_configs_yaml_errors(
             text=bad_inputs[raw_format],
         )
 
-        configs = AnyUrl("http://example.org/configs")
-
-    elif configs_type == "str_url":
-        # Case of it being a URL, i.e., same as for configs_type == "AnyUrl"
-        httpx_mock.add_response(
-            url=re.compile(r"^http://example\.org/configs.*"),
-            method="GET",
-            text=bad_inputs[raw_format],
+        configs = (
+            AnyUrl("http://example.org/configs")
+            if configs_type == "AnyUrl"
+            else "http://example.org/configs"
         )
 
-        configs = "http://example.org/configs"
-
-    elif configs_type == "str_path":
-        # Case of it being a path, i.e., same as for configs_type == "Path"
-        configs = tmp_path / f"bad_configs.{raw_format}"
-        configs.write_text(bad_inputs[raw_format], encoding="utf-8")
-
-        configs = str(configs.resolve())
+        # This will be the default error message from `try_load_from_json_yaml()`.
+        error_msg = r"^Could not parse the string\. Expecting a YAML/JSON format\.$"
 
     elif configs_type == "str_dump":
         # A raw JSON/YAML dump of the configs
         configs = bad_inputs[raw_format]
 
+        error_msg = (
+            r"^Could not parse the configs string as OTEAPI configurations "
+            r"\(expecting a JSON/YAML format\)\.$"
+        )
+
     else:
         pytest.fail(f"Unexpected configs type: {configs_type}")
 
-    with pytest.raises(
-        ConfigsNotFound,
-        match=(
-            r"^Could not parse the config string as an OTEAPI configuration "
-            r"\(YAML/JSON format\)\.$"
-        ),
-    ):
+    with pytest.raises(ConfigsNotFound, match=error_msg):
         parse_input_configs(configs)
 
 
@@ -546,23 +535,19 @@ def test_parse_input_configs_http_error(
     )
 
     # Prepare input according to configs_type
-    if configs_type == "dict_AnyUrl":
+    if configs_type in ("dict_AnyUrl", "dict_str_url"):
         # Create URLs for each config
-        configs = {key: AnyUrl(f"{bad_url}/{key}") for key in config_keys}
+        configs = {
+            key: (
+                AnyUrl(f"{bad_url}/{key}")
+                if configs_type == "dict_AnyUrl"
+                else f"{bad_url}/{key}"
+            )
+            for key in config_keys
+        }
 
-    elif configs_type == "dict_str_url":
-        # Case of the configuration values being a URL, i.e., same as for
-        # configs_type == "dict_AnyUrl"
-
-        # Create URLs for each config
-        configs = {key: f"{bad_url}/{key}" for key in config_keys}
-
-    elif configs_type == "AnyUrl":
-        configs = AnyUrl(bad_url)
-
-    elif configs_type == "str_url":
-        # Case of it being a URL, i.e., same as for configs_type == "AnyUrl"
-        configs = bad_url
+    elif configs_type in ("AnyUrl", "str_url"):
+        configs = AnyUrl(bad_url) if configs_type == "AnyUrl" else bad_url
 
     else:
         pytest.fail(f"Unexpected configs type: {configs_type}")
@@ -570,12 +555,13 @@ def test_parse_input_configs_http_error(
     # Determine error message based on the `configs_type`
     error_message = (
         (
-            rf"^Could not retrieve ({'|'.join(config_keys)}) config online "
+            r"^Could not retrieve OTEAPI "
+            rf"({'|'.join(_.capitalize() for _ in config_keys)})Config online "
             rf"from {re.escape(bad_url)}/({'|'.join(config_keys)})$"
         )
         if configs_type.startswith("dict_")
         else (
-            r"^Could not retrieve configurations online from "
+            r"^Could not retrieve OTEAPI configurations online from "
             rf"{re.escape(str(configs))}$"
         )
     )
@@ -606,7 +592,6 @@ def test_parse_input_configs_path_not_found(
 ) -> None:
     """Ensure a proper error message occurs if a file is not found."""
     import re
-    from pathlib import Path
 
     from s7.exceptions import ConfigsNotFound
     from s7.pydantic_models.datasource import parse_input_configs
@@ -615,35 +600,21 @@ def test_parse_input_configs_path_not_found(
 
     # Prepare input according to configs_type
     # Determine error message based on the `configs_type`
-    if configs_type == "dict_Path":
-        configs = {key: tmp_path / f"{key}.json" for key in config_keys}
+    if configs_type in ("dict_Path", "dict_str_path"):
+        configs = {key: (tmp_path / f"{key}.json").resolve() for key in config_keys}
 
         assert all(not value.exists() for value in configs.values())
-        assert all(isinstance(value, Path) for value in configs.values())
 
-    elif configs_type == "dict_str_path":
-        # Case of the configuration values being paths, i.e., same as for
-        # configs_type == "dict_Path"
+        if configs_type == "dict_str_path":
+            configs = {key: str(value) for key, value in configs.items()}
 
-        # Create URLs for each config
-        configs = {
-            key: str((tmp_path / f"{key}.json").resolve()) for key in config_keys
-        }
-
-        assert all(not Path(value).exists() for value in configs.values())
-        assert all(isinstance(value, str) for value in configs.values())
-
-    elif configs_type == "Path":
-        configs = tmp_path / "bad_configs.json"
+    elif configs_type in ("Path", "str_path"):
+        configs = (tmp_path / "bad_configs.json").resolve()
 
         assert not configs.exists()
 
-    elif configs_type == "str_path":
-        # Case of it being a path, i.e., same as for configs_type == "Path"
-        configs = str((tmp_path / "bad_configs.json").resolve())
-
-        assert not Path(configs).exists()
-        assert isinstance(configs, str)
+        if configs_type == "str_path":
+            configs = str(configs)
 
     else:
         pytest.fail(f"Unexpected configs type: {configs_type}")
@@ -651,12 +622,14 @@ def test_parse_input_configs_path_not_found(
     # Determine error message based on the `configs_type`
     error_message = (
         (
-            rf"^Could not find a ({'|'.join(config_keys)}) config JSON/YAML file "
+            r"^Could not find OTEAPI "
+            rf"({'|'.join(_.capitalize() for _ in config_keys)})Config JSON/YAML file "
             rf"at {re.escape(str(tmp_path))}/({'|'.join(config_keys)})\.json$"
         )
         if configs_type.startswith("dict_")
         else (
-            rf"^Could not find a configs JSON/YAML file at {re.escape(str(configs))}$"
+            r"^Could not find OTEAPI configurations JSON/YAML file at "
+            rf"{re.escape(str(configs))}$"
         )
     )
 
@@ -673,7 +646,10 @@ def test_parse_input_configs_bad_type() -> None:
 
     with pytest.raises(
         TypeError,
-        match=rf"^configs must be a 'dict', instead it was a {type(bad_input)}$",
+        match=(
+            r"^The configs provided must be \(a reference to\) a dictionary of "
+            r"OTEAPI configurations\.$"
+        ),
     ):
         parse_input_configs(bad_input)
 

@@ -7,7 +7,6 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Protocol, cast, runtime_checkable
 
-import httpx
 from pydantic import (
     AnyUrl,
     BaseModel,
@@ -18,7 +17,9 @@ from pydantic import (
 from pydantic.functional_serializers import model_serializer
 
 from s7.exceptions import ConfigsNotFound, EntityNotFound, S7EntityError
-from s7.pydantic_models._utils import is_valid_url, try_load_from_json_yaml
+from s7.pydantic_models._utils import (
+    get_dict_from_url_path_or_raw,
+)
 from s7.pydantic_models.oteapi import (
     HashableFunctionConfig,
     HashableMappingConfig,
@@ -286,84 +287,23 @@ def parse_input_configs(
         "parser": HashableParserConfig,
     }
 
-    load_from_json_yaml_error: LoadFromJsonYamlErrorDict = {
-        "exception_cls": ConfigsNotFound,
-        "exception_msg": (
-            "Could not parse the config string as an OTEAPI configuration "
-            "(YAML/JSON format)."
-        ),
-    }
-
-    # Handle the case of configs being a string or URL.
-    if isinstance(configs, (AnyUrl, str)):
-        # Expect it to be either:
-        # - A URL to a JSON/YAML resource online.
-        # - A path to a JSON/YAML resource file.
-        # - A JSON/YAML parseable string.
-
-        # Check if the string is a URL
-        if is_valid_url(str(configs)):
-            # If it is a URL, assume it's a URL to a JSON/YAML resource online.
-            with httpx.Client(follow_redirects=True) as client:
-                try:
-                    response = client.get(
-                        str(configs),
-                        headers={"Accept": "application/yaml, application/json"},
-                    ).raise_for_status()
-                except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-                    raise ConfigsNotFound(
-                        f"Could not retrieve configurations online from {configs}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
-            # JSON is a subset of YAML.
-            configs = try_load_from_json_yaml(
-                response.content, **load_from_json_yaml_error
-            )
-        else:
-            if not isinstance(configs, str):  # pragma: no cover
-                raise TypeError("Expected configs to be a str at this point")
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            configs_path = Path(configs).resolve()
-
-            if configs_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                configs = try_load_from_json_yaml(
-                    configs_path.read_text(encoding="utf8"), **load_from_json_yaml_error
-                )
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                configs = try_load_from_json_yaml(configs, **load_from_json_yaml_error)
-
-                if not isinstance(configs, dict):
-                    # configs is not a dictionary, so it's not a valid collection of
-                    # OTEAPI configs.
-                    # Assume it was a "string as a Path", but to a non-existing file.
-                    raise ConfigsNotFound(
-                        f"Could not find a configs JSON/YAML file at {configs_path}"
-                    )
-
-    # Handle the case of configs being a path to a JSON/YAML file.
-    if isinstance(configs, Path):
-        configs_path = configs.resolve()
-
-        if not configs_path.exists():
-            raise ConfigsNotFound(
-                f"Could not find a configs JSON/YAML file at {configs_path}"
-            )
-
-        configs = try_load_from_json_yaml(
-            configs_path.read_text(encoding="utf8"), **load_from_json_yaml_error
+    if isinstance(configs, (Path, AnyUrl, str)):
+        configs = get_dict_from_url_path_or_raw(
+            configs,
+            exception_cls=ConfigsNotFound,
+            parameter_name="configs",
+            concept_name="OTEAPI configurations",
         )
 
-    # Expect configs to be a dictionary at this point.
     if not isinstance(configs, dict):
-        raise TypeError(f"configs must be a 'dict', instead it was a {type(configs)}")
+        raise TypeError(
+            "The configs provided must be (a reference to) a dictionary of "
+            "OTEAPI configurations."
+        )
 
     # Inspect each config and ensure it is a valid OTEAPI config.
-    for name, config in list(configs.items()):
+    for name, config_raw in list(configs.items()):
+        # Validate the name
         if name and not isinstance(name, str):
             raise TypeError("The config name must be a string")
 
@@ -376,93 +316,9 @@ def parse_input_configs(
         if TYPE_CHECKING:  # pragma: no cover
             name = cast(Literal["dataresource", "function", "mapping", "parser"], name)
 
-        # Handle the case of the config being a string or URL.
-        if isinstance(config, (AnyUrl, str)):
-            # Expect it to be either:
-            # - A URL to a JSON/YAML config online.
-            # - A path to a JSON/YAML config file.
-            # - A JSON/YAML parseable string.
-
-            # Check if the string is a URL
-            if is_valid_url(str(config)):
-                # If it is a URL, assume it's a URL to a JSON/YAML resource online.
-                with httpx.Client(follow_redirects=True) as client:
-                    try:
-                        response = client.get(
-                            str(config),
-                            headers={"Accept": "application/yaml, application/json"},
-                        ).raise_for_status()
-                    except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-                        raise ConfigsNotFound(
-                            f"Could not retrieve {name} config online from {config}"
-                        ) from error
-
-                # Using YAML parser, since _if_ the content is JSON, it's still
-                # valid YAML. JSON is a subset of YAML.
-                config = try_load_from_json_yaml(  # noqa: PLW2901
-                    response.content, **load_from_json_yaml_error
-                )
-            else:
-                if not isinstance(config, str):  # pragma: no cover
-                    raise TypeError("Expected config to be a str at this point")
-
-                # If it's not a URL, check whether it is a path to an (existing)
-                # file.
-                config_path = Path(config).resolve()
-
-                if config_path.exists():
-                    # If it's a path to an existing file, assume it's a JSON/YAML
-                    # file.
-                    config = try_load_from_json_yaml(  # noqa: PLW2901
-                        config_path.read_text(encoding="utf8"),
-                        **load_from_json_yaml_error,
-                    )
-                else:
-                    # If it's not a path to an existing file, assume it's a
-                    # parseable JSON/YAML
-                    config = try_load_from_json_yaml(  # noqa: PLW2901
-                        config, **load_from_json_yaml_error
-                    )
-
-                    if not isinstance(config, dict):
-                        # The config is not a dictionary, so it's not a valid
-                        # OTEAPI config.
-                        # Assume it was a "string as a Path", but to a non-existing
-                        # file.
-                        raise ConfigsNotFound(
-                            f"Could not find a {name} config JSON/YAML file at "
-                            f"{config_path}"
-                        )
-
-        # Handle the case of the config being a path to a JSON/YAML file.
-        elif isinstance(config, Path):
-            config_path = config.resolve()
-
-            if not config_path.exists():
-                raise ConfigsNotFound(
-                    f"Could not find a {name} config JSON/YAML file at {config_path}"
-                )
-
-            config = try_load_from_json_yaml(  # noqa: PLW2901
-                config_path.read_text(encoding="utf8"), **load_from_json_yaml_error
-            )
-
-        # Finally, ensure all values are Hashable*Config instances if they are
-        # dictionaries or Hashable*Config instances.
-        if isinstance(config, (BaseModel, dict)):
-            try:
-                configs[name] = name_to_config_type_mapping[name](
-                    **(config if isinstance(config, dict) else config.model_dump())
-                )
-            except ValidationError as exc:
-                raise S7EntityError(
-                    f"The {name!r} configuration provided could not be validated "
-                    f"as a proper OTEAPI {name.capitalize()}Config"
-                ) from exc
-
-        # Allow function to be None, as it has a default value.
-        # Otherwise, raise.
-        elif name == "function" and config is None:
+        # Check special case for "function":
+        # Allow "function" to be `None`, as it has a default value.
+        if name == "function" and config_raw is None:
             if entity_instance is None:
                 raise EntityNotFound(
                     "The entity must be provided if the function config is not "
@@ -471,11 +327,38 @@ def parse_input_configs(
             configs["function"] = default_soft7_ote_function_config(
                 entity=entity_instance
             )
+            continue
+
+        if TYPE_CHECKING:  # pragma: no cover
+            config: BaseModel | dict[Any, Any] | Any
+
+        # Get the config as a BaseModel or a dictionary.
+        if isinstance(config_raw, (Path, AnyUrl, str)):
+            config = get_dict_from_url_path_or_raw(
+                config_raw,
+                exception_cls=ConfigsNotFound,
+                parameter_name=f"{name} config",
+                concept_name=f"OTEAPI {name.capitalize()}Config",
+            )
+        elif isinstance(config_raw, (BaseModel, dict)):
+            config = config_raw
         else:
             raise TypeError(
                 f"The {name!r} configuration provided is not a valid OTEAPI "
-                f"{name.capitalize()}Config. Got type {type(config)}"
+                f"{name.capitalize()}Config or reference to one. Got type "
+                f"{type(config_raw)}."
             )
+
+        # Finally, ensure all configs are Hashable*Config instances.
+        try:
+            configs[name] = name_to_config_type_mapping[name](
+                **(config if isinstance(config, dict) else config.model_dump())
+            )
+        except ValidationError as exc:
+            raise S7EntityError(
+                f"The {name!r} configuration provided could not be validated "
+                f"as a proper OTEAPI {name.capitalize()}Config"
+            ) from exc
 
     # Ensure all required configs are present
     if any(required_key not in configs for required_key in ["dataresource", "parser"]):

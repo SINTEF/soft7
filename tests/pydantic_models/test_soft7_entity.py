@@ -192,7 +192,7 @@ def test_parse_input_entity_yaml_errors(
             test_entity_input = str(test_entity_input)
 
         error_msg = (
-            r"^Could not parse the entity string as SOFT7 entity from "
+            r"^Could not parse the entity (string )?as SOFT7 entity from "
             rf"{re.escape(str(Path(test_entity_input).resolve()))} "
             r"\(expecting a JSON/YAML format\)\.$"
         )

@@ -207,7 +207,7 @@ def get_dict_from_url_path_or_raw(
             source.read_text(encoding="utf-8"),
             exception_cls=exception_cls,
             exception_msg=(
-                f"Could not parse the {parameter_name} string as {concept_name} "
+                f"Could not parse the {parameter_name} as {concept_name} "
                 f"from {source} (expecting a JSON/YAML format)."
             ),
             assert_dict=True,
