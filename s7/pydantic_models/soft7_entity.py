@@ -39,8 +39,6 @@ from s7.pydantic_models._utils import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import TypedDict
-
     UnshapedPropertyType = Union[
         str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
     ]
@@ -49,10 +47,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
-
-    class LoadFromJsonYamlErrorDict(TypedDict):
-        exception_cls: type[EntityNotFound]
-        exception_msg: str
 
 
 SOFT7IdentityURIType = Annotated[

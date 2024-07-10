@@ -61,10 +61,6 @@ if TYPE_CHECKING:  # pragma: no cover
         function: HashableFunctionConfig
         parser: HashableParserConfig
 
-    class LoadFromJsonYamlErrorDict(TypedDict):
-        exception_cls: type[ConfigsNotFound]
-        exception_msg: str
-
 
 LOGGER = logging.getLogger(__name__)
 
