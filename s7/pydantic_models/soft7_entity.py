@@ -19,7 +19,6 @@ if sys.version_info >= (3, 10):
 else:
     from typing_extensions import Literal
 
-import httpx
 from pydantic import (
     AliasChoices,
     AnyUrl,
@@ -35,7 +34,9 @@ from pydantic.networks import UrlConstraints
 from pydantic_core import Url
 
 from s7.exceptions import EntityNotFound
-from s7.pydantic_models._utils import is_valid_url, try_load_from_json_yaml
+from s7.pydantic_models._utils import (
+    get_dict_from_url_path_or_raw,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import TypedDict
@@ -416,84 +417,20 @@ def parse_input_entity(
     entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
+    if isinstance(entity, SOFT7Entity):
+        return entity
 
-    load_from_json_yaml_error: LoadFromJsonYamlErrorDict = {
-        "exception_cls": EntityNotFound,
-        "exception_msg": (
-            "Could not parse the entity string as a SOFT7 entity (YAML/JSON format)."
-        ),
-    }
-
-    # Handle the case of the entity being a string or a URL
-    if isinstance(entity, (AnyUrl, str)):
-        # If it's a string or URL, we expect to either be:
-        # - A path to a YAML file.
-        # - A SOFT7 entity identity.
-        # - A parseable JSON/YAML string.
-
-        # Check if it is a URL
-        if is_valid_url(str(entity)):
-            # If it is a URL, assume it's a SOFT7 entity identity.
-            # Or at least that the response is a SOFT7 entity as JSON/YAML.
-            with httpx.Client(follow_redirects=True) as client:
-                try:
-                    response = client.get(
-                        str(entity),
-                        headers={"Accept": "application/yaml, application/json"},
-                    ).raise_for_status()
-                except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid
-            # YAML. JSON is a subset of YAML.
-            entity = try_load_from_json_yaml(response.text, **load_from_json_yaml_error)
-        else:
-            if not isinstance(entity, str):  # pragma: no cover
-                raise TypeError("Expected entity to be a str at this point")
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            entity_path = Path(entity).resolve()
-
-            if entity_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = try_load_from_json_yaml(
-                    entity_path.read_text(encoding="utf8"), **load_from_json_yaml_error
-                )
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                entity = try_load_from_json_yaml(entity, **load_from_json_yaml_error)
-
-                if not isinstance(entity, dict):
-                    # The entity is not a dictionary, so it's not a valid entity
-                    # Assume it was a "string as a Path", but to a non-existing file.
-                    raise EntityNotFound(
-                        f"Could not find an entity JSON/YAML file at {entity_path}"
-                    )
-
-    # Handle the case of the entity being a path to a YAML file
-    if isinstance(entity, Path):
-        entity_path = entity.resolve()
-
-        if not entity_path.exists():
-            raise EntityNotFound(
-                f"Could not find an entity JSON/YAML file at {entity_path}"
-            )
-
-        entity = try_load_from_json_yaml(
-            entity_path.read_text(encoding="utf8"), **load_from_json_yaml_error
-        )
-
-    # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
-    # used to create the SOFT7Entity instance.
     if isinstance(entity, dict):
-        entity = SOFT7Entity(**entity)
+        # Create and return the entity model
+        return SOFT7Entity(**entity)
 
-    if not isinstance(entity, SOFT7Entity):
-        raise TypeError(
-            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
-        )
+    # Get the entity as a dictionary
+    entity = get_dict_from_url_path_or_raw(
+        entity,
+        exception_cls=EntityNotFound,
+        parameter_name="entity",
+        concept_name="SOFT7 entity",
+    )
 
-    return entity
+    # Create and return the entity model
+    return SOFT7Entity(**entity)

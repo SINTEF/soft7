@@ -206,7 +206,7 @@ def create_datasource(
     ),
     oteapi_url: str | None = None,
 ) -> SOFT7DataSource:
-    """Create and return a SOFT7 Data Source from  wrapped as a pydantic model.
+    """Create and return an instance of a SOFT7 Data Source wrapped as a pydantic model.
 
     TODO: Utilize the `generated_classes` module and check whether we can return an
         already created model based on the inputs given here.
@@ -214,14 +214,15 @@ def create_datasource(
     TODO: Determine what to do with regards to differing inputs, but similar names.
 
     Parameters:
-        entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
-            entity.
+        entity: A SOFT7 entity (data model). It can be supplied as a URL reference,
+            path or as a raw JSON/YAML string or Python `dict`.
         configs: A dictionary of the various required OTEAPI strategy configurations
-            needed for the underlying OTEAPI pipeline.
+            needed for the underlying OTEAPI pipeline. It can be supplied as a URL
+            reference, path or as a raw JSON/YAML string or Python `dict`.
         oteapi_url: The base URL of the OTEAPI service to use.
 
     Returns:
-        A SOFT7 entity class wrapped as a pydantic data model.
+        An instance of a SOFT7 Data Source wrapped as a pydantic data model.
 
     """
     import s7.factories.generated_classes as module_namespace

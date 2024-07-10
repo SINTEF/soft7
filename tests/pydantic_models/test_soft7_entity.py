@@ -184,13 +184,20 @@ def test_parse_input_entity_yaml_errors(
         yaml.safe_load(bad_inputs[raw_format])
 
     # Prepare input according to entity_type
-    if entity_type == "Path":
-        test_entity_input = tmp_path / f"bad_entity.{raw_format}"
+    if entity_type in ("Path", "str_path"):
+        test_entity_input = (tmp_path / f"bad_entity.{raw_format}").resolve()
         test_entity_input.write_text(bad_inputs[raw_format], encoding="utf-8")
 
-        assert isinstance(test_entity_input, Path)
+        if entity_type == "str_path":
+            test_entity_input = str(test_entity_input)
 
-    elif entity_type == "AnyUrl":
+        error_msg = (
+            r"^Could not parse the entity string as SOFT7 entity from "
+            rf"{re.escape(str(Path(test_entity_input).resolve()))} "
+            r"\(expecting a JSON/YAML format\)\.$"
+        )
+
+    elif entity_type in ("AnyUrl", "str_url"):
         # Mock HTTP GET call to retrieve the entity online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org.*"),
@@ -198,39 +205,28 @@ def test_parse_input_entity_yaml_errors(
             text=bad_inputs[raw_format],
         )
 
-        test_entity_input = AnyUrl("http://example.org")
-
-    elif entity_type == "str_url":
-        # Case of it being a URL, i.e., same as for entity_type == "AnyUrl"
-        httpx_mock.add_response(
-            url=re.compile(r"^http://example\.org.*"),
-            method="GET",
-            text=bad_inputs[raw_format],
+        test_entity_input = (
+            AnyUrl("http://example.org")
+            if entity_type == "AnyUrl"
+            else "http://example.org"
         )
 
-        test_entity_input = "http://example.org"
-
-    elif entity_type == "str_path":
-        # Case of it being a path, i.e., same as for entity_type == "Path"
-        test_entity_input = tmp_path / f"bad_entity.{raw_format}"
-        test_entity_input.write_text(bad_inputs[raw_format], encoding="utf-8")
-
-        test_entity_input = str(test_entity_input.resolve())
+        # This will be the default error message from `try_load_from_json_yaml()`.
+        error_msg = r"^Could not parse the string\. Expecting a YAML/JSON format\.$"
 
     elif entity_type == "str_dump":
         # A raw JSON/YAML dump of the entity
         test_entity_input = bad_inputs[raw_format]
 
+        error_msg = (
+            r"^Could not parse the entity string as SOFT7 entity "
+            r"\(expecting a JSON/YAML format\)\.$"
+        )
+
     else:
         pytest.fail(f"Unexpected entity type: {entity_type}")
 
-    with pytest.raises(
-        EntityNotFound,
-        match=(
-            r"^Could not parse the entity string as a SOFT7 entity "
-            r"\(YAML/JSON format\)\.$"
-        ),
-    ):
+    with pytest.raises(EntityNotFound, match=error_msg):
         parse_input_entity(test_entity_input)
 
 
@@ -295,7 +291,7 @@ def test_parse_input_entity_path_not_found(
     with pytest.raises(
         EntityNotFound,
         match=(
-            r"^Could not find an entity JSON/YAML file at "
+            r"^Could not find SOFT7 entity JSON/YAML file at "
             rf"{re.escape(str(bad_entity_path))}$"
         ),
     ):
@@ -310,6 +306,6 @@ def test_parse_input_entity_bad_type() -> None:
 
     with pytest.raises(
         TypeError,
-        match=rf"^entity must be a 'SOFT7Entity', instead it was a {type(bad_input)}$",
+        match=rf"^Expected entity to be a str at this point, instead got {list}\.$",
     ):
         parse_input_entity(bad_input)
