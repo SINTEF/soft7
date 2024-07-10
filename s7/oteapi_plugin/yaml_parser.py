@@ -58,7 +58,7 @@ class YAMLConfig(AttrDict):
     ] = None
 
 
-class YAMLResourceConfig(ParserConfig):
+class YAMLParserConfig(ParserConfig):
     """YAML parse strategy filter config."""
 
     parserType: Annotated[
@@ -90,7 +90,7 @@ class YAMLDataParseStrategy:
 
     """
 
-    parse_config: YAMLResourceConfig
+    parse_config: YAMLParserConfig
 
     def initialize(self) -> AttrDict:
         """Initialize."""
