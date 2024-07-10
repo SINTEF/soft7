@@ -926,7 +926,7 @@ def test_parse_input_configs_malformed_configs(
             TypeError,
             rf"^The (\"|')({'|'.join(config_keys)})(\"|') configuration provided is "
             rf"not a valid OTEAPI {'|'.join(_.capitalize() for _ in config_keys)}"
-            rf"Config. Got type {type(2)}$",
+            rf"Config. Got type {int}$",
         )
     else:
         pytest.fail(f"Unexpected configs value kind: {configs_value_kind}")
