@@ -14,4 +14,5 @@ This section contains examples for users on how to use SOFT7.
 
 basic
 advanced
+datasource
 ```

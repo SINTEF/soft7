@@ -30,7 +30,8 @@ dynamic = ["version"]
 
 dependencies = [
     "httpx~=0.27.0",
-    "oteapi-core>=0.7.0.dev1,<1",
+    "oteapi-core>=0.7.0.dev2,<1",
+    "otelib~=0.5.0.dev0",
     "pyyaml~=6.0",
     "typing-extensions~=4.12; python_version < '3.12'",
 ]
@@ -53,6 +54,7 @@ testing = [
     "pytest~=8.2",
     "pytest-cov~=5.0",
     "pytest-httpx~=0.30.0",
+    "requests-mock~=1.12",
     "soft7[graph]",
 ]
 dev = [
@@ -75,8 +77,8 @@ Package = "https://pypi.org/project/soft7"
 "soft7.soft" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
 "soft7.SOFT" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
 [project.entry-points."oteapi.parse"]
-"soft7.application/yaml" = "s7.oteapi_plugin.yaml_parser:YAMLDataParseStrategy"
-"soft7.text/x-yaml" = "s7.oteapi_plugin.yaml_parser:YAMLDataParseStrategy"
+"soft7.parser/yaml" = "s7.oteapi_plugin.yaml_parser:YAMLDataParseStrategy"
+"soft7.parser/yml" = "s7.oteapi_plugin.yaml_parser:YAMLDataParseStrategy"
 
 [tool.flit.module]
 name = "s7"
@@ -137,6 +139,7 @@ isort.required-imports = ["from __future__ import annotations"]
 "tests/**" = [
     "BLE",  # flake8-blind-except
     "PL",  # pylint
+    "B018",  # useless expression
 ]
 "docs/**" = [
     "I002",  # from __future__ import annotations

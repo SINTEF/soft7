@@ -72,3 +72,6 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
         flags: pytest
+        env_vars: PYTHON
+      env:
+        PYTHON: ${{ matrix.python-version }}

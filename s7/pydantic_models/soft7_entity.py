@@ -5,16 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import sys
-import traceback
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
     Optional,
-    Protocol,
     Union,
-    runtime_checkable,
 )
 
 if sys.version_info >= (3, 10):
@@ -22,17 +19,13 @@ if sys.version_info >= (3, 10):
 else:
     from typing_extensions import Literal
 
-import httpx
-import yaml
 from pydantic import (
     AliasChoices,
     AnyUrl,
     BaseModel,
     Field,
-    TypeAdapter,
     ValidationError,
 )
-from pydantic.functional_serializers import model_serializer
 from pydantic.functional_validators import (
     field_validator,
     model_validator,
@@ -41,11 +34,11 @@ from pydantic.networks import UrlConstraints
 from pydantic_core import Url
 
 from s7.exceptions import EntityNotFound
+from s7.pydantic_models._utils import (
+    get_dict_from_url_path_or_raw,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pydantic import SerializerFunctionWrapHandler
-    from pydantic.fields import FieldInfo
-
     UnshapedPropertyType = Union[
         str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
     ]
@@ -86,23 +79,6 @@ def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
         return SOFT7IdentityURIType(url)
 
     raise TypeError(f"Expected str or Url, got {type(url)}")
-
-
-@runtime_checkable
-class GetData(Protocol):
-    """Get a named datum (property or dimension) from the data resource.
-
-    Properties:
-        soft7_property: The name of a datum to get, i.e., the SOFT7 data resource
-            property (or dimension).
-
-    Returns:
-        The value of the SOFT7 data resource property (or dimension).
-
-    """
-
-    def __call__(self, soft7_property: str) -> Any:  # pragma: no cover
-        ...
 
 
 SOFT7EntityPropertyType = Union[
@@ -193,117 +169,6 @@ def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, Optional[str], str]:
     namespace += identity.path.rstrip("/")[: -len(version) - len(name) - 2]
 
     return AnyUrl(namespace), version or None, name
-
-
-class CallableAttributesMixin:
-    """Mixin to call and resolve attributes if they are SOFT7 properties."""
-
-    _resolved_fields: dict[str, PropertyType] = {}  # noqa: RUF012
-
-    def __getattribute__(self, name: str) -> Any:
-        """Get an attribute.
-
-        This function will _always_ be called whenever an attribute is accessed.
-
-        Having this function allows us to intercept the attribute access and if the
-        attribute is a SOFT7 property, we can retrieve the value from the underlying
-        data source, i.e., call the `__get_data()` function that the attribute value
-        currently is.
-
-        Before calling the `__get_data()` function, we need to ensure the attribute
-        is not a SOFT7 metadata attribute, i.e., starts with `soft7___`.
-
-        """
-        resolved_attr_value = "NOT SET"
-
-        try:
-            attr_value: Union[Any, GetData] = object.__getattribute__(self, name)
-
-            # SOFT7 metadata
-            if name.startswith("soft7___"):
-                return attr_value
-
-            ## SOFT7 property
-            # Retrieve from "cache"
-            if name in object.__getattribute__(self, "_resolved_fields"):
-                # If the field has already been resolved, use the resolved value.
-                return object.__getattribute__(self, "_resolved_fields")[name]
-
-            # Retrieve from data source
-            if name in object.__getattribute__(self, "model_fields"):
-                resolved_attr_value = attr_value(soft7_property=name)
-
-                # Use TypeAdapter to return and validate the value against the
-                # generated type. This effectively validates the shape and
-                # dimensionality of the value, as well as the inner most expected type.
-                field_info: FieldInfo = object.__getattribute__(self, "model_fields")[
-                    name
-                ]
-                self._resolved_fields[name] = TypeAdapter(
-                    field_info.rebuild_annotation()
-                ).validate_python(resolved_attr_value)
-
-                return self._resolved_fields[name]
-
-            # Non-SOFT7 attribute
-            return attr_value
-
-        except ValidationError as exc:
-            LOGGER.error(
-                "Attribute: %s. Data: %r\n%s: %s\nTraceback:\n%s",
-                name,
-                resolved_attr_value,
-                exc.__class__.__name__,
-                exc,
-                "".join(traceback.format_tb(exc.__traceback__)),
-            )
-            raise AttributeError(
-                f"Could not type and shape validate attribute {name!r} from the data "
-                "source."
-            ) from exc
-
-        except Exception as exc:
-            LOGGER.error(
-                "An error occurred during attribute resolution:\n%s: %s\n"
-                "Traceback:\n%s",
-                exc.__class__.__name__,
-                exc,
-                "".join(traceback.format_tb(exc.__traceback__)),
-            )
-            raise AttributeError(f"Could not retrieve attribute {name!r}.") from exc
-
-    @model_serializer(mode="wrap", when_used="always")
-    def _serialize_callable_attributes(
-        self, handler: SerializerFunctionWrapHandler
-    ) -> Any:
-        """Serialize all "lazy" SOFT7 property values.
-
-        If the value matches the GetData protocol, i.e., it's a callable function with
-        the `name` parameter, call it with the property's name and the result will be
-        used in a copy of the model. Otherwise, the value will be used as-is.
-
-        The copy of the model is returned through the SerializerFunctionWrapHandler.
-        """
-        if not isinstance(self, BaseModel):
-            raise TypeError(
-                "This mixin class may only be used with pydantic.BaseModel subclasses."
-            )
-
-        # This iteration works, due to how BaseModel yields fields (from __dict__ +
-        # __pydantic__extras__).
-        for field_name, field_value in self:
-            if field_name in self._resolved_fields:
-                # If the field has already been resolved, use the resolved value.
-                continue
-
-            if isinstance(field_value, GetData):
-                # Call the function via self.__getattribute__ to ensure proper type
-                # validation and store the returned value for later use.
-                self._resolved_fields[field_name] = getattr(self, field_name)
-
-            # Else: The value is not a GetData, so use it as-is, i.e., no changes.
-
-        return handler(self.model_copy(update=self._resolved_fields))
 
 
 class SOFT7EntityProperty(BaseModel):
@@ -546,88 +411,20 @@ def parse_input_entity(
     entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
+    if isinstance(entity, SOFT7Entity):
+        return entity
 
-    def _try_load_from_json_yaml(entity: str) -> dict[Any, Any]:
-        """Try to load the entity from a JSON/YAML string."""
-        try:
-            return yaml.safe_load(entity)
-        except yaml.YAMLError as error:
-            raise EntityNotFound(
-                "Could not parse the entity string as a SOFT7 entity (YAML/JSON "
-                "format)."
-            ) from error
-
-    # Handle the case of the entity being a string or a URL
-    if isinstance(entity, (AnyUrl, str)):
-        # If it's a string or URL, we expect to either be:
-        # - A path to a YAML file.
-        # - A SOFT7 entity identity.
-        # - A parseable JSON/YAML string.
-
-        # Check if it is a URL
-        if _is_valid_url(str(entity)):
-            # If it is a URL, assume it's a SOFT7 entity identity.
-            # Or at least that the response is a SOFT7 entity as JSON/YAML.
-            with httpx.Client(follow_redirects=True) as client:
-                try:
-                    response = client.get(
-                        str(entity),
-                        headers={"Accept": "application/yaml, application/json"},
-                    ).raise_for_status()
-                except (httpx.HTTPStatusError, httpx.HTTPError) as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid
-            # YAML. JSON is a subset of YAML.
-            entity = _try_load_from_json_yaml(response.text)
-        else:
-            if not isinstance(entity, str):  # pragma: no cover
-                raise TypeError("Expected entity to be a str at this point")
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            entity_path = Path(entity).resolve()
-
-            if entity_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = _try_load_from_json_yaml(
-                    entity_path.read_text(encoding="utf8")
-                )
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                entity = _try_load_from_json_yaml(entity)
-
-    # Handle the case of the entity being a path to a YAML file
-    if isinstance(entity, Path):
-        entity_path = entity.resolve()
-
-        if not entity_path.exists():
-            raise EntityNotFound(
-                f"Could not find an entity JSON/YAML file at {entity_path}"
-            )
-
-        entity = _try_load_from_json_yaml(entity_path.read_text(encoding="utf8"))
-
-    # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
-    # used to create the SOFT7Entity instance.
     if isinstance(entity, dict):
-        entity = SOFT7Entity(**entity)
+        # Create and return the entity model
+        return SOFT7Entity(**entity)
 
-    if not isinstance(entity, SOFT7Entity):
-        raise TypeError(
-            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
-        )
+    # Get the entity as a dictionary
+    entity = get_dict_from_url_path_or_raw(
+        entity,
+        exception_cls=EntityNotFound,
+        parameter_name="entity",
+        concept_name="SOFT7 entity",
+    )
 
-    return entity
-
-
-def _is_valid_url(url: str | AnyUrl) -> bool:
-    """Check if the URL is valid."""
-    try:
-        url = AnyUrl(str(url))
-    except ValidationError:
-        return False
-
-    return not any(getattr(url, url_part) is None for url_part in ["scheme", "host"])
+    # Create and return the entity model
+    return SOFT7Entity(**entity)

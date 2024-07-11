@@ -70,7 +70,7 @@ class SOFT7GeneratorConfig(AttrDict):
         except (TypeError, EntityNotFound) as exc:
             raise ValueError(
                 f"Invalid value {value!r} for the 'entity' field in "
-                "SOFT7GeneratorConfig."
+                f"SOFT7GeneratorConfig. Internal error: {exc}"
             ) from exc
 
         # Try to retrieve the SOFT7EntityInstance class from the generated_classes
