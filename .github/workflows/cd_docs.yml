@@ -1,11 +1,10 @@
 name: CI/CD - Documentation
 
 on:
-  # Run for every push to the active development branch (currently 'develop')
+  # Run for every push to the active development branch
   push:
     branches:
-      # - 'main'
-      - 'develop'
+      - 'main'
 
   # Run for every new release
   release:
@@ -15,7 +14,7 @@ on:
   # Run for every pull request (check we can build, but do not build)
   pull_request:
     branches:
-      - 'develop'
+      - 'main'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
