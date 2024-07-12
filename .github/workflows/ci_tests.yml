@@ -9,7 +9,7 @@ on:
 jobs:
   basics:
     name: External
-    uses: SINTEF/ci-cd/.github/workflows/ci_tests.yml@v2.7.4
+    uses: SINTEF/ci-cd/.github/workflows/ci_tests.yml@v2.8.0
     with:
       # General
       install_extras: '[dev]'
