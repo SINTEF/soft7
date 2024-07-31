@@ -31,6 +31,7 @@ jobs:
 
           for (const label of labels.data) {
             if (label.name === 'skip-changelog') {
+              console.log("Label 'skip-changelog' already exists 👌")
               return  // Skip adding the label if it already exists
             }
           }
@@ -41,3 +42,4 @@ jobs:
             issue_number: context.issue.number,
             labels: ['skip-changelog']
           })
+          console.log("Label 'skip-changelog' added 🎉")
