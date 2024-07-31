@@ -11,7 +11,7 @@ jobs:
     name: Add 'skip-changelog' label
     runs-on: ubuntu-latest
 
-    if: contains(github.event.pull_request.user.name, '[bot]')
+    if: github.event.pull_request.user.type == 'Bot'
 
     permissions:
       contents: read
