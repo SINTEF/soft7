@@ -2,7 +2,7 @@ name: CI - Update [bot] PR
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, edited]
+    types: [opened, reopened, synchronize, edited, assigned]
     branches:
       - 'main'
 
