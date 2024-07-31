@@ -13,6 +13,11 @@ jobs:
 
     if: contains(github.actor, '[bot]')
 
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
     steps:
     - name: Add 'skip-changelog' label
       uses: actions/github-script@v7

@@ -98,9 +98,6 @@ minversion = "8.1"
 addopts = "-rs --cov=s7 --cov-report=term-missing:skip-covered --no-cov-on-fail"
 filterwarnings = [
     "error",  # Fail on any warning
-
-    # Ignore deprecation warnings from importlib.metadata (used by oteapi-core)
-    "ignore:SelectableGroups dict interface is deprecated.*:DeprecationWarning",
 ]
 
 [tool.ruff.lint]
@@ -129,9 +126,6 @@ extend-select = [
 ]
 ignore = [
     "PLR",  # Design related pylint codes
-
-    # # Self assignment of variable
-    # "PLW0127",
 ]
 isort.required-imports = ["from __future__ import annotations"]
 
