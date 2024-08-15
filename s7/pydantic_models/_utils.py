@@ -290,7 +290,7 @@ def get_dict_from_any_model_input(data: Any) -> dict[Any, Any]:
         data: The data to convert to a dictionary.
 
     Returns:
-        The dictionary representation of the input data if possible, otherwise None.
+        The dictionary representation of the input data.
 
     """
     # If the data is already a dictionary, we return it as is.
@@ -301,6 +301,11 @@ def get_dict_from_any_model_input(data: Any) -> dict[Any, Any]:
         # If we get an instance of a pydantic model, we dump it as minimalistically
         # as possible.
         return data.model_dump(exclude_defaults=True, exclude_unset=True)
+
+    if not isinstance(data, (AnyUrl, str, Path, bytes, bytearray)):
+        raise ValueError(
+            f"Input data is not valid for model input. Type: {type(data)}."
+        )
 
     return get_dict_from_url_path_or_raw(
         data,

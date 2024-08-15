@@ -579,7 +579,7 @@ class SOFT7Entity(BaseModel):
 
             # Let pydantic handle any type/model casting.
             data["properties"] = {
-                property_.pop("name").decode(): property_ for property_ in properties
+                property_.pop("name"): property_ for property_ in properties
             }
 
         return data
