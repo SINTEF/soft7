@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, overload
 
 import httpx
 import yaml
-from pydantic import AnyUrl, ValidationError
+from pydantic import AnyUrl, BaseModel, ValidationError
 
-from s7.exceptions import S7EntityError
+from s7.exceptions import EntityNotFound, S7EntityError
 
 if TYPE_CHECKING:  # pragma: no cover
     import sys
@@ -169,7 +169,7 @@ def try_load_from_url(
 
 
 def get_dict_from_url_path_or_raw(
-    source: AnyUrl | Path | str,
+    source: AnyUrl | Path | str | bytes | bytearray,
     *,
     exception_cls: type[S7EntityError] | None = None,
     parameter_name: str | None = None,
@@ -193,6 +193,21 @@ def get_dict_from_url_path_or_raw(
 
     if not isinstance(parameter_name, str) or not isinstance(concept_name, str):
         raise ValueError("parameter_name and concept_name should be strings.")
+
+    # Handle source as bytes or bytearray (raw JSON/YAML string)
+    if isinstance(source, (bytes, bytearray)):
+        return try_load_from_json_yaml(
+            source.decode(),
+            exception_cls=exception_cls,
+            exception_msg=(
+                f"Could not parse the {parameter_name} as {concept_name} "
+                "(expecting a JSON/YAML format)."
+            ),
+            assert_dict=True,
+            assert_dict_exception_msg=(
+                f"Could not find {concept_name} JSON/YAML file at {source.decode()}"
+            ),
+        )
 
     # Handle source as a Path
     if isinstance(source, Path):
@@ -265,4 +280,31 @@ def get_dict_from_url_path_or_raw(
         assert_dict_exception_msg=(
             f"Could not find {concept_name} JSON/YAML file at {source_path}"
         ),
+    )
+
+
+def get_dict_from_any_model_input(data: Any) -> dict[Any, Any]:
+    """Get a dictionary from any model input.
+
+    Parameters:
+        data: The data to convert to a dictionary.
+
+    Returns:
+        The dictionary representation of the input data if possible, otherwise None.
+
+    """
+    # If the data is already a dictionary, we return it as is.
+    if isinstance(data, dict):
+        return data
+
+    if isinstance(data, BaseModel):
+        # If we get an instance of a pydantic model, we dump it as minimalistically
+        # as possible.
+        return data.model_dump(exclude_defaults=True, exclude_unset=True)
+
+    return get_dict_from_url_path_or_raw(
+        data,
+        exception_cls=EntityNotFound,
+        parameter_name="data",
+        concept_name="SOFT7 entity data",
     )
