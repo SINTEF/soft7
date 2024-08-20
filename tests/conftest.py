@@ -33,13 +33,13 @@ def static_folder_fixture() -> Path:
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_entity_init_source(static_folder: Path) -> Path:
     """Source to the SOFT7 entity YAML file used in the `soft_entity_init` fixture."""
     return static_folder / "soft_datasource_entity.yaml"
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_entity_init(
     soft_entity_init_source: Path,
 ) -> dict[str, Union[str, dict[str, Any]]]:
@@ -55,7 +55,7 @@ def soft_entity_init(
     return entity
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_datasource_entity_mapping_init(
     static_folder: Path,
 ) -> dict[str, dict[str, str] | list[tuple[str, str, str]]]:
@@ -80,7 +80,7 @@ def soft_datasource_entity_mapping_init(
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_datasource_init(static_folder: Path) -> dict[str, Any]:
     """A dict representating data source content."""
     import yaml
@@ -110,7 +110,7 @@ def soft_datasource_init(static_folder: Path) -> dict[str, Any]:
     return test_data
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_instance_data_source(static_folder: Path) -> Path:
     """Source to the SOFT7 instance data YAML file used in the `soft_instance_data`
     fixture.
@@ -118,7 +118,7 @@ def soft_instance_data_source(static_folder: Path) -> Path:
     return static_folder / "soft_datasource_entity_test_data.yaml"
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_instance_data(soft_instance_data_source: Path) -> dict[str, dict[str, Any]]:
     """A dict for initializing a `SOFT7Instance` based on the entity expressed in the
     `soft_entity_init` fixture."""
@@ -135,7 +135,7 @@ def soft_instance_data(soft_instance_data_source: Path) -> dict[str, dict[str, A
     return instance_data
 
 
-@pytest.fixture()
+@pytest.fixture
 def soft_datasource_configs(
     static_folder: Path,
     soft_entity_init: dict[str, Union[str, dict[str, Any]]],

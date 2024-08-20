@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def name_to_config_type_mapping() -> dict[
     Literal["dataresource", "function", "mapping", "parser"],
     type[
