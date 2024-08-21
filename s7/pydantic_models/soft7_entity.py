@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from pathlib import Path
@@ -35,6 +34,7 @@ from pydantic_core import Url
 
 from s7.exceptions import EntityNotFound
 from s7.pydantic_models._utils import (
+    get_dict_from_any_model_input,
     get_dict_from_url_path_or_raw,
 )
 
@@ -176,18 +176,26 @@ class SOFT7EntityProperty(BaseModel):
 
     type: Annotated[
         SOFT7EntityPropertyType,
-        Field(
-            description="A valid property type.",
-        ),
+        Field(description="The type of the described property, e.g., an integer."),
+    ]
+
+    description: Annotated[
+        str, Field(description="A human-readable description of the property.")
     ]
 
     shape: Annotated[
         Optional[list[str]],
-        Field(description="List of dimensions making up the shape of the property."),
-    ] = None
-
-    description: Annotated[
-        Optional[str], Field(description="A human description of the property.")
+        Field(
+            description=(
+                "The dimension of multi-dimensional properties. This is a list of "
+                "dimension expressions referring to the dimensions defined above. For "
+                "instance, if an entity have dimensions with names `H`, `K`, and `L` "
+                "and a property with shape `['K', 'H+1']`, the property of an instance "
+                "of this entity with dimension values `H=2`, `K=2`, `L=6` will have "
+                "shape `[2, 3]`."
+            ),
+            validation_alias=AliasChoices("dims", "shape"),
+        ),
     ] = None
 
     unit: Annotated[
@@ -218,30 +226,10 @@ class SOFT7EntityProperty(BaseModel):
                 `model_validate`.
 
         """
-        if isinstance(data, (bytes, bytearray)):
-            try:
-                data = data.decode()
-            except ValueError:
-                # If we cannot decode the bytes, we give up and let pydantic handle it.
-                return data
-
-        if isinstance(data, str):
-            # Expect the string to be a JSON string, since this is pydantic, supporting
-            # either Python or JSON validation/serialization.
-            try:
-                data = json.loads(data)
-            except json.JSONDecodeError:
-                # If we cannot decode the string, we give up and let pydantic handle it.
-                return data
-
-        if isinstance(data, cls):
-            # If we get an instance of the model itself, we dump it as minimalistically
-            # as possible.
-            data = data.model_dump(exclude_defaults=True, exclude_unset=True)
-
-        # At this point, we expect the data to be a dict.
-        # If it is not, we give up and let pydantic handle it.
-        if not isinstance(data, dict):
+        try:
+            data = get_dict_from_any_model_input(data)
+        except ValueError:
+            # If we cannot handle the data, we give up and let pydantic handle it.
             return data
 
         # If the `type` field is not "ref" or `$ref` is not present, we return the data
@@ -266,7 +254,7 @@ class SOFT7EntityProperty(BaseModel):
             return data
 
         if type_ == "ref" and "$ref" not in data:
-            # Bad data. We can try to see if `ref` is present and assume that is equal
+            # Bad data. We can try to see if `ref` is present and assume it is equal
             # to `$ref`. If it is, we will use it as the type.
             # Otherwise, we will assume this is a mistake for the `type` field and let
             # pydantic handle it.
@@ -279,8 +267,8 @@ class SOFT7EntityProperty(BaseModel):
         if (type_ != "ref" and "$ref" in data) or (type_ == "ref" and "$ref" in data):
             # If `type` is not "ref" but `$ref` is present, this is not standard DLite
             # data, but it is not a reference type either.
-            # We will assume this is a mistake for the `type` field use the `$ref` value
-            # if it's valid.
+            # We will assume this is a mistake for the `type` field and use the `$ref`
+            # value if it's valid.
             # Otherwise, if `type` is "ref" and `$ref` is present, this is standard
             # DLite data, and we will use the `$ref` value as the type.
             ref = data.pop("$ref")
@@ -300,15 +288,22 @@ class SOFT7EntityProperty(BaseModel):
                     new_type = SOFT7IdentityURI(ref)
                 except ValidationError as exc:
                     raise ValueError(
-                        f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
+                        f"Invalid `type` field value {type_!r} and `$ref` value {ref!r}"
                     ) from exc
             else:
+                try:
+                    str(ref)
+                except (TypeError, ValueError):
+                    # If we cannot convert the ref to a string, we give up and let
+                    # pydantic handle it.
+                    return data
+
                 raise ValueError(
-                    f"Invalid `type` field value '{type_}' and `$ref` value '{ref}'"
+                    f"Invalid `type` field value {type_!r} and `$ref` value "
+                    f"{str(ref)!r}"
                 )
 
-            if "type" in data:
-                data["type"] = new_type
+            data["type"] = new_type
 
         # If we get here, we have either succeeded or failed.
         # If we failed, we have no idea what is going on, so we let pydantic handle it.
@@ -327,7 +322,9 @@ class SOFT7Entity(BaseModel):
         ),
     ]
 
-    description: Annotated[str, Field(description="A description of the entity.")] = ""
+    description: Annotated[
+        str, Field(description="Human-readable description of the entity.")
+    ] = ""
 
     dimensions: Annotated[
         Optional[dict[str, str]],
@@ -345,7 +342,7 @@ class SOFT7Entity(BaseModel):
 
     @field_validator("properties", mode="after")
     @classmethod
-    def validate_properties(
+    def _validate_properties(
         cls, properties: dict[str, SOFT7EntityProperty]
     ) -> dict[str, SOFT7EntityProperty]:
         """Validate properties
@@ -367,7 +364,7 @@ class SOFT7Entity(BaseModel):
         return properties
 
     @model_validator(mode="after")
-    def shapes_and_dimensions(self) -> SOFT7Entity:
+    def _shapes_and_dimensions(self) -> SOFT7Entity:
         """Ensure the shape values are dimensions keys."""
         errors: list[tuple[str, str]] = []
 
@@ -406,9 +403,236 @@ class SOFT7Entity(BaseModel):
 
         return self
 
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_namespace_version_name(cls, data: Any) -> Any:
+        """Handle the case of identity being a uri defined from namespace, version and
+        name inputs.
+
+        This will remove 'namespace', 'version' and 'name' from the data and replace
+        them with 'identity' - even if 'identity' (or 'uri') is already present.
+        If the 'identity'/'uri' is present, it must match the 'namespace', 'version' and
+        'name' values - as well as each other (if both are present).
+
+        Parameters:
+            data: The raw input which is often a `dict[str, Any]` but could also be an
+                instance of the model itself (e.g. if
+                `UserModel.model_validate(UserModel.construct(...))` is called) or
+                anything else since you can pass arbitrary objects into
+                `model_validate`.
+
+        """
+        try:
+            data = get_dict_from_any_model_input(data)
+        except ValueError:
+            # If we cannot handle the data, we give up and let pydantic handle it.
+            return data
+
+        # If either of 'namespace', 'version' or 'name' is included:
+        # - Ensure they are all included
+        # - Ensure if 'identity'/'uri' is included, it matches
+        #   <namespace>/<version>/<name>
+        # Finally, replace 'namespace', 'version' and 'name' with 'identity'.
+        namespace = data.pop("namespace", None)
+        version = data.pop("version", None)
+        name = data.pop("name", None)
+
+        if any((namespace, version, name)) and not all((namespace, version, name)):
+            raise ValueError(
+                "If 'namespace', 'version' or 'name' is included (at least one is), "
+                "all must be (they are not)."
+            )
+
+        identity = data.pop("identity", None)
+        uri = data.pop("uri", None)
+
+        if identity and uri and identity != uri:
+            raise ValueError(
+                "Both 'identity' and 'uri' are included; they must match (they do "
+                "not)."
+            )
+
+        # Ensure all are strings (or bytes/bytearray that can be decoded to strings).
+        if name:
+            if not all(
+                isinstance(_, (str, bytes, bytearray))
+                for _ in (namespace, version, name)
+            ):
+                raise ValueError("'namespace', 'version' and 'name' must be strings.")
+
+            if isinstance(namespace, (bytes, bytearray)):
+                try:
+                    namespace = namespace.decode()
+                except ValueError:
+                    # If we cannot decode the bytes, we give up and let pydantic handle
+                    # it.
+                    return data
+
+            if isinstance(version, (bytes, bytearray)):
+                try:
+                    version = version.decode()
+                except ValueError:
+                    # If we cannot decode the bytes, we give up and let pydantic handle
+                    # it.
+                    return data
+
+            if isinstance(name, (bytes, bytearray)):
+                try:
+                    name = name.decode()
+                except ValueError:
+                    # If we cannot decode the bytes, we give up and let pydantic handle
+                    # it.
+                    return data
+
+        if identity or uri:
+            data["identity"] = identity or uri
+
+            # Ensure 'identity'/'uri' is a string (or bytes/bytearray that can be
+            # decoded).
+            if isinstance(data["identity"], (bytes, bytearray)):
+                try:
+                    data["identity"] = data["identity"].decode()
+                except ValueError:
+                    # If we cannot decode the bytes, we give up and let pydantic handle
+                    # it.
+                    return data
+
+            if name and data["identity"] != f"{namespace}/{version}/{name}":
+                raise ValueError(
+                    f"'identity'/'uri' must match '{namespace}/{version}/{name}' (it "
+                    "does not)."
+                )
+
+        elif name:
+            data["identity"] = f"{namespace}/{version}/{name}"
+
+        # else: identity/uri is not present, and namespace, version and name are not
+        # present, so we do nothing - let pydantic handle it (raising ValidationErrors).
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_soft5_inputs(cls, data: Any) -> Any:
+        """Handle the case of data using SOFT5 syntax.
+
+        This is centered around the type of the 'dimensions' and 'properties' fields,
+        which are expected to be lists of dictionaries in SOFT5.
+        This validator function will convert them to the SOFT7 format.
+
+        Parameters:
+            data: The raw input which is often a `dict[str, Any]` but could also be an
+                instance of the model itself (e.g. if
+                `UserModel.model_validate(UserModel.construct(...))` is called) or
+                anything else since you can pass arbitrary objects into
+                `model_validate`.
+
+        """
+        try:
+            data = get_dict_from_any_model_input(data)
+        except ValueError:
+            # If we cannot handle the data, we give up and let pydantic handle it.
+            return data
+
+        # Check if the data is a (valid) SOFT5 entity.
+        if ("dimensions" in data and "properties" in data) and type(
+            data["dimensions"]
+        ) is not type(data["properties"]):
+            # Both 'dimensions' and 'properties' are present, but they are not the same
+            # type, i.e., they are neither valid SOFT7 nor SOFT5 entities.
+            # We will let pydantic handle it.
+            return data
+
+        # If the data is a SOFT5 entity, we convert it to a SOFT7 entity.
+        if "dimensions" in data and isinstance(data["dimensions"], list):
+            dimensions = data.pop("dimensions")
+
+            if not all(isinstance(dimension, dict) for dimension in dimensions):
+                raise ValueError("All dimensions must be dictionaries.")
+
+            if not all(
+                "name" in dimension and "description" in dimension
+                for dimension in dimensions
+            ):
+                raise ValueError(
+                    "All dimensions must have 'name' and 'description' keys."
+                )
+
+            data["dimensions"] = {
+                dimension["name"]: dimension["description"] for dimension in dimensions
+            }
+
+        if "properties" in data and isinstance(data["properties"], list):
+            properties = data.pop("properties")
+
+            if not all(isinstance(property_, dict) for property_ in properties):
+                raise ValueError("All properties must be dictionaries.")
+
+            if (not all("name" in property_ for property_ in properties)) and (
+                not all(
+                    isinstance(property_["name"], (str, bytes, bytearray))
+                    for property_ in properties
+                )
+            ):
+                raise ValueError(
+                    "All properties must have a 'name' key with a string value."
+                )
+
+            # Let pydantic handle any type/model casting.
+            data["properties"] = {
+                property_.pop("name"): property_ for property_ in properties
+            }
+
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_meta_from_dlite(cls, data: Any) -> Any:
+        """Handle the case of data using DLite syntax.
+
+        For now, 'meta' is the only DLite-specific field that we are not already
+        handling ('identity' is 'uri' in DLite, which is handled through aliasing).
+        This validator function will validate 'meta' has the expected value and then
+        discard it.
+
+        Parameters:
+            data: The raw input which is often a `dict[str, Any]` but could also be an
+                instance of the model itself (e.g. if
+                `UserModel.model_validate(UserModel.construct(...))` is called) or
+                anything else since you can pass arbitrary objects into
+                `model_validate`.
+
+        """
+        try:
+            data = get_dict_from_any_model_input(data)
+        except ValueError:
+            # If we cannot handle the data, we give up and let pydantic handle it.
+            return data
+
+        if "meta" in data:
+            meta = data.pop("meta")
+
+            if isinstance(meta, (bytes, bytearray)):
+                try:
+                    meta = meta.decode()
+                except ValueError:
+                    # If we cannot decode the bytes, we give up and let pydantic handle
+                    # it.
+                    return data
+
+            if not isinstance(meta, str):
+                raise ValueError("'meta' is provided. Expected 'meta' to be a string.")
+
+            if meta != "http://onto-ns.com/meta/0.3/EntitySchema":
+                raise ValueError(
+                    "'meta' is provided. Expected 'meta' to be "
+                    f"'http://onto-ns.com/meta/0.3/EntitySchema', got {meta!r}."
+                )
+
+        return data
+
 
 def parse_input_entity(
-    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
+    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str, bytes, bytearray],
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
     if isinstance(entity, SOFT7Entity):
