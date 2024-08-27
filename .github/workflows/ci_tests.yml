@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'push-action/**'  # For the CasperWA/push-protected action
 
 jobs:
   basics:

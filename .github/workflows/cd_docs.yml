@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'push-action/**'  # For the CasperWA/push-protected action
 
   # Run for every new release
   release:
@@ -61,7 +62,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && ( ! startsWith(github.ref_name, 'push-action/') )
 
     needs: build
 
