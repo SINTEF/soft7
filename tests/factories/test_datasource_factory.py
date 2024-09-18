@@ -553,7 +553,7 @@ Attributes:
                 "x-soft7-unit": "Å",
             },
             "soft7___dimensions": {
-                "allOf": [{"$ref": "#/$defs/MolecularSpeciesDataSourceDimensions"}],
+                "$ref": "#/$defs/MolecularSpeciesDataSourceDimensions",
                 "default": {"N": 5},
             },
             "soft7___identity": {
