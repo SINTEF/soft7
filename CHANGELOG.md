@@ -2,15 +2,33 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.0...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.1...HEAD)
 
-## Support different SOFT flavors
+## Remove upper limit for `oteapi-core` dependency
 
-Implement support for different SOFT flavors, specifically, support the [DLite](https://github.com/SINTEF/dlite) flavor of SOFT entities.
+While not recommended, this does make it possible to support the DataSpaces developed at SINTEF.
+In the future a more stringent dependency tree/graph should be implemented for all packages.
 
-### DX
+## [v0.2.1](https://github.com/SINTEF/soft7/tree/v0.2.1) (2024-09-18)
 
-Update dev tools and use [PyPIs Trusted Publishers](https://docs.pypi.org/trusted-publishers/) scheme.
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.0...v0.2.1)
+
+## Remove upper limit for `oteapi-core` dependency
+
+While not recommended, this does make it possible to support the DataSpaces developed at SINTEF.
+In the future a more stringent dependency tree/graph should be implemented for all packages.
+
+**Fixed bugs:**
+
+- Update example OpenAPI specs [\#61](https://github.com/SINTEF/soft7/issues/61)
+- Fix deployment issue [\#57](https://github.com/SINTEF/soft7/issues/57)
+
+**Merged pull requests:**
+
+- Remove upper level version dependency for `oteapi-core` [\#62](https://github.com/SINTEF/soft7/pull/62) ([CasperWA](https://github.com/CasperWA))
+- \[pre-commit.ci\] pre-commit autoupdate [\#60](https://github.com/SINTEF/soft7/pull/60) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#59](https://github.com/SINTEF/soft7/pull/59) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Ensure CI jobs are run for push-protected action branches [\#58](https://github.com/SINTEF/soft7/pull/58) ([CasperWA](https://github.com/CasperWA))
 
 ## [v0.2.0](https://github.com/SINTEF/soft7/tree/v0.2.0) (2024-08-27)
 
