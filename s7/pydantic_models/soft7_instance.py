@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Optional, cast, get_args
 
-import httpx
-import yaml
 from pydantic import (
-    AnyHttpUrl,
     AnyUrl,
     BaseModel,
     ConfigDict,
@@ -20,31 +16,16 @@ from pydantic import (
 )
 from pydantic._internal._repr import PlainRepr, display_as_type
 
-from s7.exceptions import ConfigsNotFound, EntityNotFound, S7EntityError
-from s7.pydantic_models.oteapi import (
-    HashableFunctionConfig,
-    HashableMappingConfig,
-    HashableResourceConfig,
-    default_soft7_ote_function_config,
-)
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
-    SOFT7IdentityURI,
     SOFT7IdentityURIType,
     map_soft_to_py_types,
     parse_identity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    import sys
-    from typing import Any, TypedDict, Union
+    from typing import Union
 
-    if sys.version_info >= (3, 10):
-        from typing import Literal
-    else:
-        from typing_extensions import Literal
-
-    from oteapi.models import GenericConfig
     from pydantic.main import Model
 
     from s7.pydantic_models.soft7_entity import (
@@ -53,28 +34,6 @@ if TYPE_CHECKING:  # pragma: no cover
         SOFT7EntityProperty,
         UnshapedPropertyType,
     )
-
-    class SOFT7InstanceDict(TypedDict):
-        """A dictionary representation of a SOFT7 instance."""
-
-        dimensions: Optional[dict[str, int]]
-        properties: dict[str, Any]
-
-    class GetDataOptionalMapping(TypedDict, total=False):
-        """A dictionary of the various required OTEAPI strategy configurations needed
-        for the _get_data() OTEAPI pipeline.
-        This is a special case where the mapping is implicit, i.e., the mapping is
-        expected to be 1:1 between the data resource and the entity.
-        """
-
-        mapping: HashableMappingConfig
-
-    class GetDataConfigDict(GetDataOptionalMapping):
-        """A dictionary of the various required OTEAPI strategy configurations needed
-        for the _get_data() OTEAPI pipeline."""
-
-        dataresource: HashableResourceConfig
-        function: HashableFunctionConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -189,266 +148,6 @@ class SOFT7EntityInstance(BaseModel):
                 ) from exc
 
         return self
-
-
-def parse_input_entity(
-    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
-) -> SOFT7Entity:
-    """Parse input to a function that expects a SOFT7 entity."""
-    # Handle the case of the entity being a string or a URL
-    if isinstance(entity, (AnyUrl, str)):
-        # If it's a string or URL, we expect to either be:
-        # - A path to a YAML file.
-        # - A SOFT7 entity identity.
-
-        # Check if it is a URL (i.e., a SOFT7 entity identity)
-        try:
-            SOFT7IdentityURI(str(entity))
-        except ValidationError as exc:
-            if not isinstance(entity, str):
-                raise TypeError("Expected entity to be a str at this point") from exc
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            entity_path = Path(entity).resolve()
-
-            if entity_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                entity = yaml.safe_load(entity)
-        else:
-            # If it is a URL, assume it's a SOFT7 entity identity.
-            with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(entity), headers={"Accept": "application/yaml"}
-                )
-
-            if not response.is_success:
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve SOFT7 entity online from {entity}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
-            # JSON is a subset of YAML.
-            entity = yaml.safe_load(response.content)
-
-    # Handle the case of the entity being a path to a YAML file
-    if isinstance(entity, Path):
-        entity_path = entity.resolve()
-
-        if not entity_path.exists():
-            raise EntityNotFound(f"Could not find an entity YAML file at {entity_path}")
-
-        entity = yaml.safe_load(entity_path.read_text(encoding="utf8"))
-
-    # Now the entity is either a SOFT7Entity instance or a dictionary, ready to be
-    # used to create the SOFT7Entity instance.
-    if isinstance(entity, dict):
-        entity = SOFT7Entity(**entity)
-
-    if not isinstance(entity, SOFT7Entity):
-        raise TypeError(
-            f"entity must be a 'SOFT7Entity', instead it was a {type(entity)}"
-        )
-
-    return entity
-
-
-def parse_input_configs(
-    configs: Union[
-        GetDataConfigDict,
-        dict[str, Union[GenericConfig, dict[str, Any], Path, AnyUrl, str]],
-        Path,
-        AnyUrl,
-        str,
-    ],
-    entity_instance: Optional[
-        Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]
-    ] = None,
-) -> GetDataConfigDict:
-    """Parse input to a function that expects a resource config."""
-    name_to_config_type_mapping: dict[
-        str,
-        type[
-            Union[HashableResourceConfig, HashableFunctionConfig, HashableMappingConfig]
-        ],
-    ] = {
-        "dataresource": HashableResourceConfig,
-        "mapping": HashableMappingConfig,
-        "function": HashableFunctionConfig,
-    }
-
-    # Handle the case of configs being a string or URL.
-    if isinstance(configs, (AnyUrl, str)):
-        # Expect it to be either:
-        # - A URL to a JSON/YAML resource online.
-        # - A path to a JSON/YAML resource file.
-        # - A JSON/YAML parseable string.
-
-        # Check if the string is a URL
-        try:
-            AnyHttpUrl(str(configs))
-        except ValidationError as exc:
-            if not isinstance(configs, str):
-                raise TypeError("Expected configs to be a str at this point") from exc
-
-            # If it's not a URL, check whether it is a path to an (existing) file.
-            configs_path = Path(configs).resolve()
-
-            if configs_path.exists():
-                # If it's a path to an existing file, assume it's a JSON/YAML file.
-                configs = yaml.safe_load(configs_path.read_text(encoding="utf8"))
-            else:
-                # If it's not a path to an existing file, assume it's a parseable
-                # JSON/YAML
-                configs = yaml.safe_load(configs)
-        else:
-            # If it is a URL, assume it's a URL to a JSON/YAML resource online.
-            with httpx.Client(follow_redirects=True) as client:
-                response = client.get(
-                    str(configs), headers={"Accept": "application/yaml"}
-                )
-
-            if not response.is_success:
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as error:
-                    raise EntityNotFound(
-                        f"Could not retrieve configurations online from {configs}"
-                    ) from error
-
-            # Using YAML parser, since _if_ the content is JSON, it's still valid YAML.
-            # JSON is a subset of YAML.
-            configs = yaml.safe_load(response.content)
-
-    # Handle the case of configs being a path to a JSON/YAML file.
-    if isinstance(configs, Path):
-        configs_path = configs.resolve()
-
-        if not configs_path.exists():
-            raise ConfigsNotFound(
-                f"Could not find a configs YAML file at {configs_path}"
-            )
-
-        configs = yaml.safe_load(configs_path.read_text(encoding="utf8"))
-
-    # Expect configs to be a dictionary at this point.
-    if not isinstance(configs, dict):
-        raise TypeError(f"configs must be a 'dict', instead it was a {type(configs)}")
-
-    for name, config in configs.items():
-        if name and not isinstance(name, str):
-            raise TypeError("The config name must be a string")
-
-        if name not in name_to_config_type_mapping:
-            raise ValueError(
-                f"The config name {name!r} is not a valid config name. "
-                f"Valid config names are: {', '.join(name_to_config_type_mapping)}"
-            )
-
-        if TYPE_CHECKING:  # pragma: no cover
-            name = cast(Literal["dataresource", "mapping", "function"], name)
-
-        # Handle the case of the config being a string or URL.
-        if isinstance(config, (AnyUrl, str)):
-            # Expect it to be either:
-            # - A URL to a JSON/YAML config online.
-            # - A path to a JSON/YAML config file.
-            # - A JSON/YAML parseable string.
-
-            # Check if the string is a URL
-            try:
-                AnyHttpUrl(str(config))
-            except ValidationError as exc:
-                if not isinstance(config, str):
-                    raise TypeError(
-                        "Expected config to be a str at this point"
-                    ) from exc
-
-                # If it's not a URL, check whether it is a path to an (existing)
-                # file.
-                config_path = Path(config).resolve()
-
-                if config_path.exists():
-                    # If it's a path to an existing file, assume it's a JSON/YAML
-                    # file.
-                    config = yaml.safe_load(  # noqa: PLW2901
-                        config_path.read_text(encoding="utf8")
-                    )
-                else:
-                    # If it's not a path to an existing file, assume it's a
-                    # parseable JSON/YAML
-                    config = yaml.safe_load(config)  # noqa: PLW2901
-            else:
-                # If it is a URL, assume it's a URL to a JSON/YAML resource online.
-                with httpx.Client(follow_redirects=True) as client:
-                    response = client.get(
-                        str(config), headers={"Accept": "application/yaml"}
-                    )
-
-                if not response.is_success:
-                    try:
-                        response.raise_for_status()
-                    except httpx.HTTPStatusError as error:
-                        raise ConfigsNotFound(
-                            f"Could not retrieve {name} config online from {config}"
-                        ) from error
-
-                # Using YAML parser, since _if_ the content is JSON, it's still
-                # valid YAML. JSON is a subset of YAML.
-                config = yaml.safe_load(response.content)  # noqa: PLW2901
-
-        # Ensure all values are Hashable*Config instances if they are dictionaries
-        # or Hashable*Config instances.
-        if isinstance(config, (BaseModel, dict)):
-            try:
-                configs[name] = name_to_config_type_mapping[name](
-                    **(config if isinstance(config, dict) else config.model_dump())
-                )
-            except ValidationError as exc:
-                raise S7EntityError(
-                    f"The {name!r} configuration provided could not be validated "
-                    f"as a proper OTEAPI {name.capitalize()}Config"
-                ) from exc
-
-        # Allow function to be None, as it has a default value.
-        # Otherwise, raise.
-        elif name == "function" and config is None:
-            if entity_instance is None:
-                raise EntityNotFound(
-                    "The entity must be provided if the function config is not "
-                    "provided."
-                )
-            configs[name] = default_soft7_ote_function_config(entity=entity_instance)
-        else:
-            raise TypeError(
-                f"The {name!r} configuration provided is not a valid OTEAPI "
-                f"{name.capitalize()}Config. Got type {type(config)}"
-            )
-
-    # Ensure all required configs are present
-    if "dataresource" not in configs:
-        raise S7EntityError(
-            "The configs provided must contain a Resource configuration"
-        )
-
-    # Set default values if necessary
-    if "function" not in configs:
-        if entity_instance is None:
-            raise EntityNotFound(
-                "The entity must be provided if the function config is not provided."
-            )
-        configs["function"] = default_soft7_ote_function_config(entity=entity_instance)
-
-    if TYPE_CHECKING:  # pragma: no cover
-        configs = cast(GetDataConfigDict, configs)
-
-    return configs
 
 
 def generate_dimensions_docstring(entity: SOFT7Entity) -> str:

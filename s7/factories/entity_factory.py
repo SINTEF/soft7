@@ -4,18 +4,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import AnyUrl, ConfigDict, Field, create_model
 
-from s7.pydantic_models.oteapi import (
-    HashableFunctionConfig,
-    HashableMappingConfig,
-    HashableResourceConfig,
-)
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
     parse_identity,
+    parse_input_entity,
 )
 from s7.pydantic_models.soft7_instance import (
     SOFT7EntityInstance,
@@ -23,7 +19,6 @@ from s7.pydantic_models.soft7_instance import (
     generate_list_property_type,
     generate_model_docstring,
     generate_properties_docstring,
-    parse_input_entity,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -32,14 +27,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from s7.pydantic_models.soft7_entity import (
         ListPropertyType,
     )
-
-    class GetDataConfigDict(TypedDict):
-        """A dictionary of the various required OTEAPI strategy configurations needed
-        for the _get_data() OTEAPI pipeline."""
-
-        dataresource: HashableResourceConfig
-        mapping: HashableMappingConfig
-        function: HashableFunctionConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -53,9 +40,11 @@ def create_entity(
     If the entity instance class has already been created, it will be returned
     as is from the `generated_classes` module.
 
+    TODO: Determine what to do with regards to differing inputs, but similar names.
+
     Parameters:
-        entity: A SOFT7 entity (data model) or a string/path to a YAML file of the
-            entity.
+        entity: A SOFT7 entity (data model). It can be supplied as a URL reference,
+            path or as a raw JSON/YAML string or Python `dict`.
 
     Returns:
         A SOFT7 entity as a pydantic model.

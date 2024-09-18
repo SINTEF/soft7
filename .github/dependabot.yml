@@ -11,7 +11,7 @@ updates:
       - "CI/CD"
       - "skip-changelog"
       - "priority/low"
-    target-branch: "develop"  # Temporary, use "main" when ready
+    target-branch: "main"
     groups:
       actions:
         patterns: ["*"]
@@ -30,7 +30,7 @@ updates:
       - "CI/CD"
       - "skip-changelog"
       - "priority/low"
-    target-branch: "develop"  # Temporary, use "main" when ready
+    target-branch: "main"
     groups:
       dependencies:
         dependency-type: "production"

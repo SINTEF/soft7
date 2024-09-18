@@ -17,8 +17,8 @@ from pydantic import Field, field_validator
 from s7.exceptions import EntityNotFound
 from s7.factories import create_entity
 from s7.pydantic_models.oteapi import HashableFunctionConfig
-from s7.pydantic_models.soft7_entity import parse_identity
-from s7.pydantic_models.soft7_instance import SOFT7EntityInstance, parse_input_entity
+from s7.pydantic_models.soft7_entity import parse_identity, parse_input_entity
+from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 PrefixesType: Any = MappingStrategyConfig.model_fields["prefixes"].rebuild_annotation()
 TriplesType: Any = MappingStrategyConfig.model_fields["triples"].rebuild_annotation()
@@ -70,7 +70,7 @@ class SOFT7GeneratorConfig(AttrDict):
         except (TypeError, EntityNotFound) as exc:
             raise ValueError(
                 f"Invalid value {value!r} for the 'entity' field in "
-                "SOFT7GeneratorConfig."
+                f"SOFT7GeneratorConfig. Internal error: {exc}"
             ) from exc
 
         # Try to retrieve the SOFT7EntityInstance class from the generated_classes

@@ -5,12 +5,12 @@ on:
   push:
     branches:
       - 'main'
-      - 'develop'
+      - 'push-action/**'  # For the CasperWA/push-protected action
 
 jobs:
   basics:
     name: External
-    uses: SINTEF/ci-cd/.github/workflows/ci_tests.yml@v2.7.4
+    uses: SINTEF/ci-cd/.github/workflows/ci_tests.yml@v2.8.2
     with:
       # General
       install_extras: '[dev]'
@@ -22,6 +22,12 @@ jobs:
       python_version_pylint_safety: '3.9'
       run_pylint: false
       run_safety: true
+      # ID: 70612
+      #   Package: Jinja2
+      #   Has been disputed by the maintainer and multiple third parties.
+      #   For more information see: https://github.com/advisories/GHSA-f6pv-j8mr-w6rr
+      safety_options: |
+        --ignore=70612
 
       # Build Python package
       run_build_package: true
@@ -66,3 +72,6 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
         flags: pytest
+        env_vars: PYTHON
+      env:
+        PYTHON: ${{ matrix.python-version }}
