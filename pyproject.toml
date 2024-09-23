@@ -53,7 +53,7 @@ graph = [
 testing = [
     "pytest~=8.2",
     "pytest-cov~=5.0",
-    "pytest-httpx>=0.30,<0.32",
+    "pytest-httpx~=0.31",
     "requests-mock~=1.12",
     "soft7[graph]",
 ]
