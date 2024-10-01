@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from requests_mock import Mocker
 
 
+pytestmark = pytest.mark.httpx_mock(can_send_already_matched_responses=True)
+
+
 def test_create_datasource(
     soft_entity_init: dict[str, str | dict],
     soft_datasource_init: dict[str, Any],
