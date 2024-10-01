@@ -63,7 +63,7 @@ jobs:
         pip install -e .[testing]
 
     - name: Run pytest
-      run: pytest -v -rs --cov=s7 --cov-report=xml --cov-report=term-missing
+      run: pytest -v -rs --cov=s7 --cov-report=xml --cov-report=term-missing --color=yes
 
     - name: Upload code coverage report
       if: github.repository == 'SINTEF/soft7'

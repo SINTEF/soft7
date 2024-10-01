@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from s7.pydantic_models.soft7_entity import SOFT7Entity
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
+pytestmark = pytest.mark.httpx_mock(can_send_already_matched_responses=True)
+
 
 def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
     """Test the `_flatten_mapping()` method."""
