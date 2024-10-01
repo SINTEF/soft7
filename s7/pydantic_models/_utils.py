@@ -150,7 +150,7 @@ def try_load_from_url(
             "assert_dict_exception_msg should be a string when assert_dict is True."
         )
 
-    with httpx.Client(follow_redirects=True) as client:
+    with httpx.Client(follow_redirects=True, timeout=10) as client:
         try:
             response = client.get(
                 str(source),
