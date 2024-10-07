@@ -58,7 +58,7 @@ testing = [
     "soft7[graph]",
 ]
 dev = [
-    "pre-commit>=3.7,<5.0",
+    "pre-commit~=4.0",
     "soft7[docs,graph,testing]",
 ]
 
