@@ -60,26 +60,32 @@ class SOFT7EntityInstance(BaseModel):
             if entity_property_value.shape
         }
 
-        dimensions = self.dimensions.model_copy() if self.dimensions else {}
-        properties = self.properties.model_copy()
-
         for property_name, shape in shaped_properties.items():
-            property_value = getattr(properties, property_name)
+            property_value = getattr(self.properties, property_name)
 
             # Let us ignore None valued properties
             if property_value is None:
                 continue
 
             # Retrieve the dimension values for dimensions in the shape
-            try:
-                literal_dimensions = [
-                    getattr(dimensions, dimension_name) for dimension_name in shape
-                ]
-            except AttributeError as exc:
-                raise ValueError(
-                    f"Property {property_name!r} is shaped, but not all the dimensions "
-                    "are defined"
-                ) from exc
+            if self.dimensions is None:
+                if shape:
+                    raise ValueError(
+                        f"Property {property_name!r} is shaped, but no dimensions are "
+                        "defined for the instance."
+                    )
+                literal_dimensions = []
+            else:
+                try:
+                    literal_dimensions = [
+                        getattr(self.dimensions, dimension_name)
+                        for dimension_name in shape
+                    ]
+                except AttributeError as exc:
+                    raise ValueError(
+                        f"Property {property_name!r} is shaped, but not all the "
+                        "dimensions are defined"
+                    ) from exc
 
             if not all(isinstance(_, int) for _ in literal_dimensions):
                 raise TypeError(
@@ -91,7 +97,7 @@ class SOFT7EntityInstance(BaseModel):
                 literal_dimensions = cast(list[int], literal_dimensions)
 
             # Get the inner most (non-list) Python type/class
-            property_type = properties.model_fields[property_name].annotation
+            property_type = self.properties.model_fields[property_name].annotation
 
             while True:
                 _temp = property_type
