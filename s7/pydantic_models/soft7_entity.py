@@ -30,7 +30,6 @@ from pydantic.functional_validators import (
     model_validator,
 )
 from pydantic.networks import UrlConstraints
-from pydantic_core import Url
 
 from s7.exceptions import EntityNotFound
 from s7.pydantic_models._utils import (
@@ -50,7 +49,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 SOFT7IdentityURIType = Annotated[
-    Url, UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True)
+    AnyUrl,
+    UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True),
 ]
 
 
@@ -78,7 +78,7 @@ def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
         url = url.split("#", maxsplit=1)[0].split("?", maxsplit=1)[0]
         return SOFT7IdentityURIType(url)
 
-    raise TypeError(f"Expected str or Url, got {type(url)}")
+    raise TypeError(f"Expected str or AnyUrl, got {type(url)}")
 
 
 SOFT7EntityPropertyType = Union[
