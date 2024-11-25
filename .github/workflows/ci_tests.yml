@@ -43,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         # Supported Python versions (according to pyproject.toml)
         python-version: ['3.9', '3.10', '3.11', '3.12']
