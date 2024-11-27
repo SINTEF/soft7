@@ -2,12 +2,47 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.1...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.2...HEAD)
 
-## Remove upper limit for `oteapi-core` dependency
+# Fix issue with pydantic v2.10
 
-While not recommended, this does make it possible to support the DataSpaces developed at SINTEF.
-In the future a more stringent dependency tree/graph should be implemented for all packages.
+There are some issues with pydantic's v2.10 concerning `Url` models.
+Since we use the pydantic version specified by `oteapi-core`, we make sure to at least use v0.7.0.dev6, since this ensure v2.10.0 and v2.10.1 is not installed.
+When v2.10.2 comes out, it can be tested on `oteapi-core` before a new release is done.
+
+All other dependencies and dev tools have also been updated.
+
+## [v0.2.2](https://github.com/SINTEF/soft7/tree/v0.2.2) (2024-11-25)
+
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.1...v0.2.2)
+
+# Fix issue with pydantic v2.10
+
+There are some issues with pydantic's v2.10 concerning `Url` models.
+Since we use the pydantic version specified by `oteapi-core`, we make sure to at least use v0.7.0.dev6, since this ensure v2.10.0 and v2.10.1 is not installed.
+When v2.10.2 comes out, it can be tested on `oteapi-core` before a new release is done.
+
+All other dependencies and dev tools have also been updated.
+
+**Merged pull requests:**
+
+- Update pytest-httpx requirement from ~=0.33.0 to \>=0.33,\<0.35 in the dependencies group [\#82](https://github.com/SINTEF/soft7/pull/82) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#81](https://github.com/SINTEF/soft7/pull/81) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump codecov/codecov-action from 4 to 5 in the actions group [\#80](https://github.com/SINTEF/soft7/pull/80) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#79](https://github.com/SINTEF/soft7/pull/79) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#78](https://github.com/SINTEF/soft7/pull/78) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump the dependencies group with 2 updates [\#77](https://github.com/SINTEF/soft7/pull/77) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#76](https://github.com/SINTEF/soft7/pull/76) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pydata-sphinx-theme requirement from ~=0.15.2 to \>=0.15.2,\<0.17.0 in the dependencies group [\#75](https://github.com/SINTEF/soft7/pull/75) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#74](https://github.com/SINTEF/soft7/pull/74) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump SINTEF/ci-cd from 2.8.2 to 2.8.3 in the actions group [\#73](https://github.com/SINTEF/soft7/pull/73) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#72](https://github.com/SINTEF/soft7/pull/72) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#70](https://github.com/SINTEF/soft7/pull/70) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pre-commit requirement from ~=3.7 to ~=4.0 in the dependencies group [\#69](https://github.com/SINTEF/soft7/pull/69) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#68](https://github.com/SINTEF/soft7/pull/68) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pytest-httpx requirement from ~=0.31.1 to ~=0.32.0 in the dependencies group [\#67](https://github.com/SINTEF/soft7/pull/67) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#66](https://github.com/SINTEF/soft7/pull/66) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pytest-httpx requirement from ~=0.30.0 to \>=0.30,\<0.32 in the dependencies group [\#65](https://github.com/SINTEF/soft7/pull/65) ([dependabot[bot]](https://github.com/apps/dependabot))
 
 ## [v0.2.1](https://github.com/SINTEF/soft7/tree/v0.2.1) (2024-09-18)
 
