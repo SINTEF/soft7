@@ -6,10 +6,11 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from pydantic import AnyUrl, ConfigDict, Field, create_model
+from pydantic import ConfigDict, Field, create_model
 
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
+    SOFT7IdentityURIType,
     parse_identity,
     parse_input_entity,
 )
@@ -33,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_entity(
-    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str],
+    entity: Union[SOFT7Entity, dict[str, Any], Path, SOFT7IdentityURIType, str],
 ) -> type[SOFT7EntityInstance]:
     """Create and return a SOFT7 entity as a pydantic model.
 

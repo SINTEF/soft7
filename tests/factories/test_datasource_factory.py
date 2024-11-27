@@ -169,7 +169,7 @@ def test_inspect_created_datasource(
     httpx_mock: HTTPXMock,
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
-    from pydantic import AnyUrl, BaseModel
+    from pydantic import AnyHttpUrl, BaseModel
 
     from s7.factories.datasource_factory import create_datasource
 
@@ -270,7 +270,7 @@ def test_inspect_created_datasource(
         == soft_entity_init["identity"]
         == "http://onto-ns.com/s7/0.1.0/MolecularSpecies"
     )
-    assert datasource.soft7___namespace == AnyUrl("http://onto-ns.com/s7")
+    assert datasource.soft7___namespace == AnyHttpUrl("http://onto-ns.com/s7")
     assert datasource.soft7___version == "0.1.0"
     assert datasource.soft7___name == "MolecularSpecies"
 

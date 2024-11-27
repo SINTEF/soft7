@@ -11,6 +11,7 @@ from typing import (
     Any,
     Optional,
     Union,
+    get_args,
 )
 
 if sys.version_info >= (3, 10):
@@ -20,16 +21,17 @@ else:
 
 from pydantic import (
     AliasChoices,
-    AnyUrl,
+    AnyHttpUrl,
     BaseModel,
     Field,
+    FileUrl,
+    TypeAdapter,
     ValidationError,
 )
 from pydantic.functional_validators import (
     field_validator,
     model_validator,
 )
-from pydantic.networks import UrlConstraints
 
 from s7.exceptions import EntityNotFound
 from s7.pydantic_models._utils import (
@@ -48,10 +50,7 @@ if TYPE_CHECKING:  # pragma: no cover
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
 
 
-SOFT7IdentityURIType = Annotated[
-    AnyUrl,
-    UrlConstraints(allowed_schemes=["http", "https", "file"], host_required=True),
-]
+SOFT7IdentityURIType = Union[AnyHttpUrl, FileUrl]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -76,9 +75,9 @@ def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
     """
     if isinstance(url, str):
         url = url.split("#", maxsplit=1)[0].split("?", maxsplit=1)[0]
-        return SOFT7IdentityURIType(url)
+        return TypeAdapter(SOFT7IdentityURIType).validate_python(url)
 
-    raise TypeError(f"Expected str or AnyUrl, got {type(url)}")
+    raise TypeError(f"Expected str, AnyHttpUrl, or FileUrl, got {type(url)}")
 
 
 SOFT7EntityPropertyType = Union[
@@ -109,7 +108,9 @@ map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
 """Use this with a fallback default of returning the lookup value."""
 
 
-def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, Optional[str], str]:
+def parse_identity(
+    identity: SOFT7IdentityURIType,
+) -> tuple[SOFT7IdentityURIType, Optional[str], str]:
     """Parse the identity into a tuple of (namespace, version, name).
 
     The identity is a URI of the form: `<namespace>/<version>/<name>`.
@@ -168,7 +169,7 @@ def parse_identity(identity: AnyUrl) -> tuple[AnyUrl, Optional[str], str]:
     # Remove version and name from path, including the 2 associated preceding slashes.
     namespace += identity.path.rstrip("/")[: -len(version) - len(name) - 2]
 
-    return AnyUrl(namespace), version or None, name
+    return SOFT7IdentityURI(namespace), version or None, name
 
 
 class SOFT7EntityProperty(BaseModel):
@@ -281,7 +282,7 @@ class SOFT7EntityProperty(BaseModel):
                     # it.
                     return data
 
-            if isinstance(ref, AnyUrl):
+            if isinstance(ref, get_args(SOFT7IdentityURIType)):
                 new_type = ref
             elif isinstance(ref, str):
                 try:
@@ -632,7 +633,9 @@ class SOFT7Entity(BaseModel):
 
 
 def parse_input_entity(
-    entity: Union[SOFT7Entity, dict[str, Any], Path, AnyUrl, str, bytes, bytearray],
+    entity: Union[
+        SOFT7Entity, dict[str, Any], Path, SOFT7IdentityURIType, str, bytes, bytearray
+    ],
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
     if isinstance(entity, SOFT7Entity):

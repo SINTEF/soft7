@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from otelib import OTEClient
-from pydantic import AnyUrl, Field, create_model
+from pydantic import AnyUrl, Field, FileUrl, create_model
 
 from s7.pydantic_models.datasource import (
     DataSourceDimensions,
@@ -28,6 +28,7 @@ from s7.pydantic_models.datasource import (
 )
 from s7.pydantic_models.soft7_entity import (
     SOFT7Entity,
+    SOFT7IdentityURIType,
     parse_identity,
     parse_input_entity,
 )
@@ -196,12 +197,13 @@ def _get_data(
 
 
 def create_datasource(
-    entity: SOFT7Entity | dict[str, Any] | Path | AnyUrl | str,
+    entity: SOFT7Entity | dict[str, Any] | Path | SOFT7IdentityURIType | str,
     configs: (
         GetDataConfigDict
-        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str]
+        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | FileUrl | str]
         | Path
         | AnyUrl
+        | FileUrl
         | str
     ),
     oteapi_url: str | None = None,

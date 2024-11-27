@@ -10,6 +10,7 @@ used to handle SPARQL queries and RDFlib for graph operations.
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 import rdflib
@@ -17,6 +18,8 @@ from jinja2 import Template, TemplateError
 from rdflib.exceptions import Error as RDFLibException
 from SPARQLWrapper import JSON, SPARQLWrapper
 from SPARQLWrapper.SPARQLExceptions import SPARQLWrapperException
+
+LOGGER = logging.getLogger(__name__)
 
 
 def find_parent_node(
@@ -66,7 +69,7 @@ def find_parent_node(
 
         template = Template(template_str)
         query = template.module.sparql_query(class_names, graph_uri)
-        print(query)
+        LOGGER.debug("Query: %s", query)
         sparql.setReturnFormat(JSON)
         sparql.setQuery(query)
 
@@ -90,7 +93,7 @@ def find_parent_node(
             f"Jinja2 template error: {template_error}"
         ) from template_error
 
-    print("Could not find a common parent node.")
+    LOGGER.info("Could not find a common parent node.")
     return None
 
 
@@ -157,7 +160,7 @@ def fetch_and_populate_graph(
            }}
         }}
         """
-        print(query)
+        LOGGER.debug("Query: %s", query)
         sparql.setQuery(query)
 
         results = sparql.query().convert()
@@ -170,7 +173,7 @@ def fetch_and_populate_graph(
                 )
             )
 
-        print("Graph populated with fetched triples.")
+        LOGGER.info("Graph populated with fetched triples.")
 
     except SPARQLWrapperException as wrapper_error:
         raise RuntimeError(
