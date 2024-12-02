@@ -1,5 +1,4 @@
-""" Unit tests for the graph module
-"""
+"""Unit tests for the graph module"""
 
 from __future__ import annotations
 
@@ -8,15 +7,15 @@ from unittest.mock import patch
 
 import pytest
 
-from graph.utils import fetch_and_populate_graph, find_parent_node
-
 
 class TestFindParentNode(unittest.TestCase):
     """Testclass"""
 
-    @patch("graph.utils.SPARQLWrapper")
+    @patch("s7.graph.utils.SPARQLWrapper")
     def test_find_parent_node_success(self, mock_wrapper):
         """Set up the mock for successful return"""
+        from s7.graph.utils import find_parent_node
+
         sparql = mock_wrapper.return_value
         sparql.query().convert.return_value = {
             "results": {
@@ -31,9 +30,11 @@ class TestFindParentNode(unittest.TestCase):
 
         assert result == "http://example.com/Parent"
 
-    @patch("graph.utils.SPARQLWrapper")
+    @patch("s7.graph.utils.SPARQLWrapper")
     def test_find_parent_node_no_parent_found(self, mock_wrapper):
         """Set up the mock for no parent found"""
+        from s7.graph.utils import find_parent_node
+
         sparql = mock_wrapper.return_value
         sparql.query().convert.return_value = {"results": {"bindings": []}}
 
@@ -42,9 +43,11 @@ class TestFindParentNode(unittest.TestCase):
         )
         assert result is None
 
-    @patch("graph.utils.SPARQLWrapper")
+    @patch("s7.graph.utils.SPARQLWrapper")
     def test_find_parent_node_exception(self, mock_wrapper):
         """Simulate a RuntimError exception"""
+        from s7.graph.utils import find_parent_node
+
         sparql = mock_wrapper.return_value
         sparql.query.side_effect = RuntimeError("SPARQL error")
 
@@ -57,10 +60,12 @@ class TestFindParentNode(unittest.TestCase):
 class TestFetchAndPopulateGraph(unittest.TestCase):
     """Testclass"""
 
-    @patch("graph.utils.SPARQLWrapper")
-    @patch("graph.utils.rdflib.Graph")
+    @patch("s7.graph.utils.SPARQLWrapper")
+    @patch("s7.graph.utils.rdflib.Graph")
     def test_fetch_and_populate_graph_success(self, mock_graph, mock_wrapper):
         """Set up mocks"""
+        from s7.graph.utils import fetch_and_populate_graph
+
         sparql = mock_wrapper.return_value
         graph = mock_graph.return_value
         sparql.query().convert.return_value = {
@@ -82,9 +87,11 @@ class TestFetchAndPopulateGraph(unittest.TestCase):
         assert graph.add.called
         assert result == graph
 
-    @patch("graph.utils.SPARQLWrapper")
+    @patch("s7.graph.utils.SPARQLWrapper")
     def test_fetch_and_populate_graph_failure(self, mock_wrapper):
         """Simulate a SPARQLWrapper exception"""
+        from s7.graph.utils import fetch_and_populate_graph
+
         sparql = mock_wrapper.return_value
         sparql.query.side_effect = RuntimeError("SPARQL error")
 

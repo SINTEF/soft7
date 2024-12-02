@@ -34,14 +34,14 @@ if TYPE_CHECKING:
         "dict_GenericConfig",
         "dict_dict",
         "dict_Path",
-        "dict_AnyUrl",
+        "dict_AnyHttpUrl",
         "dict_str_url",
         "dict_str_path",
         "dict_str_json_dump",
         "dict_str_yaml_dump",
         "dict_None",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_json_dump",
@@ -52,14 +52,14 @@ if TYPE_CHECKING:
         "configs:dict_GenericConfig",
         "configs:dict_dict",
         "configs:dict_Path",
-        "configs:dict_AnyUrl",
+        "configs:dict_AnyHttpUrl",
         "configs:dict_str_url",
         "configs:dict_str_path",
         "configs:dict_str_json_dump",
         "configs:dict_str_yaml_dump",
         "configs:dict_None",
         "configs:Path",
-        "configs:AnyUrl",
+        "configs:AnyHttpUrl",
         "configs:str_url",
         "configs:str_path",
         "configs:str_json_dump",
@@ -98,14 +98,14 @@ def test_parse_input_configs(
         "dict_GenericConfig",
         "dict_dict",
         "dict_Path",
-        "dict_AnyUrl",
+        "dict_AnyHttpUrl",
         "dict_str_url",
         "dict_str_path",
         "dict_str_json_dump",
         "dict_str_yaml_dump",
         "dict_None",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_json_dump",
@@ -128,7 +128,7 @@ def test_parse_input_configs(
     from pathlib import Path
 
     import yaml
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.exceptions import EntityNotFound
     from s7.factories.entity_factory import create_entity
@@ -173,11 +173,11 @@ def test_parse_input_configs(
             )
         assert all(isinstance(value, Path) for value in configs.values())
 
-    elif configs_type == "dict_AnyUrl":
+    elif configs_type == "dict_AnyHttpUrl":
         # Create URLs for each config
         configs = {}
         for key, value in expected_configs.items():
-            configs[key] = AnyUrl(f"http://example.org/{key}")
+            configs[key] = AnyHttpUrl(f"http://example.org/{key}")
 
             # Mock HTTP GET call to retrieve the configs online
             httpx_mock.add_response(
@@ -188,7 +188,7 @@ def test_parse_input_configs(
 
     elif configs_type == "dict_str_url":
         # Case of the configuration values being a URL, i.e., same as for
-        # configs_type == "dict_AnyUrl"
+        # configs_type == "dict_AnyHttpUrl"
 
         # Create URLs for each config
         configs = {}
@@ -249,7 +249,7 @@ def test_parse_input_configs(
             encoding="utf-8",
         )
 
-    elif configs_type == "AnyUrl":
+    elif configs_type == "AnyHttpUrl":
         # Mock HTTP GET call to retrieve the configs online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
@@ -257,10 +257,10 @@ def test_parse_input_configs(
             json=soft_datasource_configs_raw,
         )
 
-        configs = AnyUrl("http://example.org/configs")
+        configs = AnyHttpUrl("http://example.org/configs")
 
     elif configs_type == "str_url":
-        # Case of it being a URL, i.e., same as for configs_type == "AnyUrl"
+        # Case of it being a URL, i.e., same as for configs_type == "AnyHttpUrl"
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
             method="GET",
@@ -340,24 +340,24 @@ def test_parse_input_configs(
     "configs_type",
     [
         "dict_Path",
-        "dict_AnyUrl",
+        "dict_AnyHttpUrl",
         "dict_str_url",
         "dict_str_path",
         "dict_str_dump",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_dump",
     ],
     ids=[
         "configs:dict_Path",
-        "configs:dict_AnyUrl",
+        "configs:dict_AnyHttpUrl",
         "configs:dict_str_url",
         "configs:dict_str_path",
         "configs:dict_str_dump",
         "configs:Path",
-        "configs:AnyUrl",
+        "configs:AnyHttpUrl",
         "configs:str_url",
         "configs:str_path",
         "configs:str_dump",
@@ -366,12 +366,12 @@ def test_parse_input_configs(
 def test_parse_input_configs_yaml_errors(
     configs_type: Literal[
         "dict_Path",
-        "dict_AnyUrl",
+        "dict_AnyHttpUrl",
         "dict_str_url",
         "dict_str_path",
         "dict_str_dump",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_dump",
@@ -385,7 +385,7 @@ def test_parse_input_configs_yaml_errors(
     from pathlib import Path
 
     import yaml
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.exceptions import ConfigsNotFound
     from s7.pydantic_models.datasource import parse_input_configs
@@ -418,13 +418,13 @@ def test_parse_input_configs_yaml_errors(
             r"\(expecting a JSON/YAML format\)\.$"
         )
 
-    elif configs_type in ("dict_AnyUrl", "dict_str_url"):
+    elif configs_type in ("dict_AnyHttpUrl", "dict_str_url"):
         # Create URLs for each config
         configs = {}
         for key in config_keys:
             configs[key] = (
-                AnyUrl(f"http://example.org/{key}")
-                if configs_type == "dict_AnyUrl"
+                AnyHttpUrl(f"http://example.org/{key}")
+                if configs_type == "dict_AnyHttpUrl"
                 else f"http://example.org/{key}"
             )
 
@@ -462,7 +462,7 @@ def test_parse_input_configs_yaml_errors(
             rf"{re.escape(str(Path(configs)))} \(expecting a JSON/YAML format\)\.$"
         )
 
-    elif configs_type in ("AnyUrl", "str_url"):
+    elif configs_type in ("AnyHttpUrl", "str_url"):
         # Mock HTTP GET call to retrieve the configs online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
@@ -471,8 +471,8 @@ def test_parse_input_configs_yaml_errors(
         )
 
         configs = (
-            AnyUrl("http://example.org/configs")
-            if configs_type == "AnyUrl"
+            AnyHttpUrl("http://example.org/configs")
+            if configs_type == "AnyHttpUrl"
             else "http://example.org/configs"
         )
 
@@ -498,27 +498,27 @@ def test_parse_input_configs_yaml_errors(
 @pytest.mark.parametrize(
     "configs_type",
     [
-        "dict_AnyUrl",
+        "dict_AnyHttpUrl",
         "dict_str_url",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
     ],
     ids=[
-        "configs:dict_AnyUrl",
+        "configs:dict_AnyHttpUrl",
         "configs:dict_str_url",
-        "configs:AnyUrl",
+        "configs:AnyHttpUrl",
         "configs:str_url",
     ],
 )
 def test_parse_input_configs_http_error(
-    configs_type: Literal["dict_AnyUrl", "dict_str_url", "AnyUrl", "str_url"],
+    configs_type: Literal["dict_AnyHttpUrl", "dict_str_url", "AnyHttpUrl", "str_url"],
     httpx_mock: HTTPXMock,
 ) -> None:
     """Ensure a proper error message occurs if an HTTP error occurs."""
     import re
 
     from httpx import HTTPError
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.exceptions import ConfigsNotFound
     from s7.pydantic_models.datasource import parse_input_configs
@@ -535,19 +535,19 @@ def test_parse_input_configs_http_error(
     )
 
     # Prepare input according to configs_type
-    if configs_type in ("dict_AnyUrl", "dict_str_url"):
+    if configs_type in ("dict_AnyHttpUrl", "dict_str_url"):
         # Create URLs for each config
         configs = {
             key: (
-                AnyUrl(f"{bad_url}/{key}")
-                if configs_type == "dict_AnyUrl"
+                AnyHttpUrl(f"{bad_url}/{key}")
+                if configs_type == "dict_AnyHttpUrl"
                 else f"{bad_url}/{key}"
             )
             for key in config_keys
         }
 
-    elif configs_type in ("AnyUrl", "str_url"):
-        configs = AnyUrl(bad_url) if configs_type == "AnyUrl" else bad_url
+    elif configs_type in ("AnyHttpUrl", "str_url"):
+        configs = AnyHttpUrl(bad_url) if configs_type == "AnyHttpUrl" else bad_url
 
     else:
         pytest.fail(f"Unexpected configs type: {configs_type}")
@@ -772,7 +772,7 @@ def test_parse_input_configs_missing_configs(
     [
         ("dict_dict", ""),
         ("dict_Path", ""),
-        ("dict_AnyUrl", ""),
+        ("dict_AnyHttpUrl", ""),
         ("dict_str_url", ""),
         ("dict_str_path", ""),
         ("dict_str_json_dump", ""),
@@ -781,10 +781,10 @@ def test_parse_input_configs_missing_configs(
         ("Path", "whole-name"),
         ("Path", "whole-type-key"),
         ("Path", "whole-type-value"),
-        ("AnyUrl", "part"),
-        ("AnyUrl", "whole-name"),
-        ("AnyUrl", "whole-type-key"),
-        ("AnyUrl", "whole-type-value"),
+        ("AnyHttpUrl", "part"),
+        ("AnyHttpUrl", "whole-name"),
+        ("AnyHttpUrl", "whole-type-key"),
+        ("AnyHttpUrl", "whole-type-value"),
         ("str_url", "part"),
         ("str_url", "whole-name"),
         ("str_url", "whole-type-key"),
@@ -805,7 +805,7 @@ def test_parse_input_configs_missing_configs(
     ids=[
         "configs:dict_dict",
         "configs:dict_Path",
-        "configs:dict_AnyUrl",
+        "configs:dict_AnyHttpUrl",
         "configs:dict_str_url",
         "configs:dict_str_path",
         "configs:dict_str_json_dump",
@@ -814,10 +814,10 @@ def test_parse_input_configs_missing_configs(
         "configs:Path-whole-name",
         "configs:Path-whole-type-key",
         "configs:Path-whole-type-value",
-        "configs:AnyUrl-part",
-        "configs:AnyUrl-whole-name",
-        "configs:AnyUrl-whole-type-key",
-        "configs:AnyUrl-whole-type-value",
+        "configs:AnyHttpUrl-part",
+        "configs:AnyHttpUrl-whole-name",
+        "configs:AnyHttpUrl-whole-type-key",
+        "configs:AnyHttpUrl-whole-type-value",
         "configs:str_url-part",
         "configs:str_url-whole-name",
         "configs:str_url-whole-type-key",
@@ -840,13 +840,13 @@ def test_parse_input_configs_malformed_configs(
     configs_type: Literal[
         "dict_dict",
         "dict_Path",
-        "dict_AnyUrl",
+        "dict_AnyHttpUrl",
         "dict_str_url",
         "dict_str_path",
         "dict_str_json_dump",
         "dict_str_yaml_dump",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_json_dump",
@@ -863,7 +863,7 @@ def test_parse_input_configs_malformed_configs(
     import re
 
     import yaml
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.exceptions import S7EntityError
     from s7.pydantic_models.datasource import parse_input_configs
@@ -938,7 +938,7 @@ def test_parse_input_configs_malformed_configs(
         if configs_type == "dict_str_path":
             configs = {key: str(value) for key, value in configs.items()}
 
-    elif configs_type in ("dict_AnyUrl", "dict_str_url"):
+    elif configs_type in ("dict_AnyHttpUrl", "dict_str_url"):
         # Mock HTTP GET call to retrieve the configs online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org/.*"),
@@ -948,8 +948,8 @@ def test_parse_input_configs_malformed_configs(
 
         configs = {
             key: (
-                AnyUrl(f"http://example.org/{key}")
-                if configs_type == "dict_AnyUrl"
+                AnyHttpUrl(f"http://example.org/{key}")
+                if configs_type == "dict_AnyHttpUrl"
                 else f"http://example.org/{key}"
             )
             for key in config_keys
@@ -971,7 +971,7 @@ def test_parse_input_configs_malformed_configs(
         if configs_type == "str_path":
             configs = str(configs.resolve())
 
-    elif configs_type in ("AnyUrl", "str_url"):
+    elif configs_type in ("AnyHttpUrl", "str_url"):
         # Mock HTTP GET call to retrieve the configs online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
@@ -980,8 +980,8 @@ def test_parse_input_configs_malformed_configs(
         )
 
         configs = (
-            AnyUrl("http://example.org/configs")
-            if configs_type == "AnyUrl"
+            AnyHttpUrl("http://example.org/configs")
+            if configs_type == "AnyHttpUrl"
             else "http://example.org/configs"
         )
 
