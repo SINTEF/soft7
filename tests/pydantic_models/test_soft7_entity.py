@@ -62,7 +62,7 @@ def test_entity_shapes_and_dimensions(
         "SOFT7Entity",
         "dict",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_json_dump",
@@ -76,7 +76,7 @@ def test_parse_input_entity(
         "SOFT7Entity",
         "dict",
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_json_dump",
@@ -91,7 +91,7 @@ def test_parse_input_entity(
     from pathlib import Path
 
     import yaml
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.pydantic_models.soft7_entity import SOFT7Entity, parse_input_entity
 
@@ -109,7 +109,7 @@ def test_parse_input_entity(
         assert isinstance(soft_entity_init_source, Path)
         entity = parse_input_entity(soft_entity_init_source)
 
-    elif entity_type == "AnyUrl":
+    elif entity_type == "AnyHttpUrl":
         # Mock HTTP GET call to retrieve the entity online
         httpx_mock.add_response(
             url=str(expected_entity.identity),
@@ -117,10 +117,10 @@ def test_parse_input_entity(
             json=soft_entity_raw,
         )
 
-        entity = parse_input_entity(AnyUrl(str(expected_entity.identity)))
+        entity = parse_input_entity(AnyHttpUrl(str(expected_entity.identity)))
 
     elif entity_type == "str_url":
-        # Case of it being a URL, i.e., same as for entity_type == "AnyUrl"
+        # Case of it being a URL, i.e., same as for entity_type == "AnyHttpUrl"
         httpx_mock.add_response(
             url=str(expected_entity.identity),
             method="GET",
@@ -152,14 +152,14 @@ def test_parse_input_entity(
     "entity_type",
     [
         "Path",
-        "AnyUrl",
+        "AnyHttpUrl",
         "str_url",
         "str_path",
         "str_dump",
     ],
 )
 def test_parse_input_entity_yaml_errors(
-    entity_type: Literal["Path", "AnyUrl", "str_url", "str_path", "str_dump"],
+    entity_type: Literal["Path", "AnyHttpUrl", "str_url", "str_path", "str_dump"],
     raw_format: Literal["json", "yaml"],
     httpx_mock: HTTPXMock,
     tmp_path: Path,
@@ -169,7 +169,7 @@ def test_parse_input_entity_yaml_errors(
     from pathlib import Path
 
     import yaml
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.exceptions import EntityNotFound
     from s7.pydantic_models.soft7_entity import parse_input_entity
@@ -197,7 +197,7 @@ def test_parse_input_entity_yaml_errors(
             r"\(expecting a JSON/YAML format\)\.$"
         )
 
-    elif entity_type in ("AnyUrl", "str_url"):
+    elif entity_type in ("AnyHttpUrl", "str_url"):
         # Mock HTTP GET call to retrieve the entity online
         httpx_mock.add_response(
             url=re.compile(r"^http://example\.org.*"),
@@ -206,8 +206,8 @@ def test_parse_input_entity_yaml_errors(
         )
 
         test_entity_input = (
-            AnyUrl("http://example.org")
-            if entity_type == "AnyUrl"
+            AnyHttpUrl("http://example.org")
+            if entity_type == "AnyHttpUrl"
             else "http://example.org"
         )
 

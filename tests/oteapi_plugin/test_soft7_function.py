@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Union
 
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
     from pytest_httpx import HTTPXMock
 
     from s7.pydantic_models.soft7_entity import SOFT7Entity
@@ -25,7 +25,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
 
     from oteapi.models import AttrDict, MappingConfig
     from oteapi.strategies.mapping.mapping import MappingStrategy
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.oteapi_plugin.soft7_function import RDFTriple, SOFT7Generator
     from s7.pydantic_models.oteapi import default_soft7_ote_function_config
@@ -139,40 +139,46 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
         for _ in [
             (
                 {
-                    "namespace": AnyUrl(
+                    "namespace": AnyHttpUrl(
                         mapping_config.prefixes["optimade"].rstrip("#")
                     ),
                     "concept": "data.id",
                 },
                 {"namespace": "", "concept": ""},
                 {
-                    "namespace": AnyUrl(mapping_config.prefixes["soft7"].rstrip("#")),
+                    "namespace": AnyHttpUrl(
+                        mapping_config.prefixes["soft7"].rstrip("#")
+                    ),
                     "concept": "properties.id",
                 },
             ),
             (
                 {
-                    "namespace": AnyUrl(
+                    "namespace": AnyHttpUrl(
                         mapping_config.prefixes["optimade"].rstrip("#")
                     ),
                     "concept": "data.type",
                 },
                 {"namespace": "", "concept": ""},
                 {
-                    "namespace": AnyUrl(mapping_config.prefixes["soft7"].rstrip("#")),
+                    "namespace": AnyHttpUrl(
+                        mapping_config.prefixes["soft7"].rstrip("#")
+                    ),
                     "concept": "properties.type",
                 },
             ),
             (
                 {
-                    "namespace": AnyUrl(
+                    "namespace": AnyHttpUrl(
                         mapping_config.prefixes["optimade"].rstrip("#")
                     ),
                     "concept": "data.attributes",
                 },
                 {"namespace": "", "concept": ""},
                 {
-                    "namespace": AnyUrl(mapping_config.prefixes["soft7"].rstrip("#")),
+                    "namespace": AnyHttpUrl(
+                        mapping_config.prefixes["soft7"].rstrip("#")
+                    ),
                     "concept": "properties.attributes",
                 },
             ),
@@ -190,7 +196,7 @@ def _generate_entity_test_cases() -> tuple[
     list[str],
     list[
         str,
-        AnyUrl,
+        AnyHttpUrl,
         SOFT7Entity,
         str,
         dict[str, Any],
@@ -199,14 +205,17 @@ def _generate_entity_test_cases() -> tuple[
     ],
 ]:
     """Generate test cases for the `test_dataclass_validation()` test."""
+    from pathlib import Path
+
     import yaml
-    from pydantic import AnyUrl
+    from pydantic import AnyHttpUrl
 
     from s7.factories.entity_factory import create_entity
     from s7.pydantic_models.soft7_entity import SOFT7Entity
-    from tests.conftest import static_folder
 
-    test_data_entity_path = static_folder() / "soft_datasource_entity.yaml"
+    static_folder = Path(__file__).parent.parent / "static"
+
+    test_data_entity_path = static_folder / "soft_datasource_entity.yaml"
     test_data_entity = yaml.safe_load(test_data_entity_path.read_text(encoding="utf-8"))
     test_entity = SOFT7Entity(**test_data_entity)
 
@@ -214,7 +223,7 @@ def _generate_entity_test_cases() -> tuple[
         # identity as a string
         test_data_entity["identity"],
         # identity as a URL
-        AnyUrl(test_data_entity["identity"]),
+        AnyHttpUrl(test_data_entity["identity"]),
         # Entity as a SOFT7Entity instance
         test_entity,
         # Entity as a JSON-serialized string
@@ -236,19 +245,19 @@ def _generate_entity_test_cases() -> tuple[
 def test_dataclass_validation(
     functionType: str,
     entity: Union[
-        str, type[SOFT7EntityInstance], dict[str, Any], Path, AnyUrl, SOFT7Entity
+        str, type[SOFT7EntityInstance], dict[str, Any], Path, AnyHttpUrl, SOFT7Entity
     ],
     httpx_mock: HTTPXMock,
     soft_entity_init: dict[str, Union[str, dict]],
 ) -> None:
     """Check the dataclass instantiates correctly (and validates) with different input
     types."""
-    from pydantic import AnyUrl, ValidationError
+    from pydantic import AnyHttpUrl, ValidationError
 
     from s7.oteapi_plugin.soft7_function import SOFT7Generator
     from s7.pydantic_models.soft7_entity import SOFT7IdentityURI
 
-    if isinstance(entity, (AnyUrl, str)):
+    if isinstance(entity, (AnyHttpUrl, str)):
         try:
             SOFT7IdentityURI(str(entity))
         except ValidationError:
