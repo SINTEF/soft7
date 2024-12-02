@@ -2,15 +2,49 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.2...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.0...HEAD)
 
-# Fix issue with pydantic v2.10
+# New `graph` module
 
-There are some issues with pydantic's v2.10 concerning `Url` models.
-Since we use the pydantic version specified by `oteapi-core`, we make sure to at least use v0.7.0.dev6, since this ensure v2.10.0 and v2.10.1 is not installed.
-When v2.10.2 comes out, it can be tested on `oteapi-core` before a new release is done.
+Perform RDF graph operations, specifically meant for usage with SOFT7 and semantic interoperability utilizing the `s7.graph` module.
 
-All other dependencies and dev tools have also been updated.
+The main underlying technology is [RDFLib](https://rdflib.readthedocs.io/) and [SPARQLWrapper](https://sparqlwrapper.readthedocs.io/).
+
+## Support Python 3.13
+
+CI tests and official package metadata support for Python 3.13 has been added.
+
+## Support Pydantic v2.10
+
+There were several changes to the networking models in pydantic v2.10 - this update remedies most of these changes.
+
+**Implemented enhancements:**
+
+- Test support for Python 3.13 [\#71](https://github.com/SINTEF/soft7/issues/71)
+
+## [v0.3.0](https://github.com/SINTEF/soft7/tree/v0.3.0) (2024-12-02)
+
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.2.2...v0.3.0)
+
+# New `graph` module
+
+Perform RDF graph operations, specifically meant for usage with SOFT7 and semantic interoperability utilizing the `s7.graph` module.
+
+The main underlying technology is [RDFLib](https://rdflib.readthedocs.io/) and [SPARQLWrapper](https://sparqlwrapper.readthedocs.io/).
+
+## Support Python 3.13
+
+CI tests and official package metadata support for Python 3.13 has been added.
+
+## Support Pydantic v2.10
+
+There were several changes to the networking models in pydantic v2.10 - this update remedies most of these changes.
+
+**Merged pull requests:**
+
+- Bump the dependencies group with 2 updates [\#87](https://github.com/SINTEF/soft7/pull/87) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Move in graphs to s7 package [\#86](https://github.com/SINTEF/soft7/pull/86) ([CasperWA](https://github.com/CasperWA))
+- Test with Python 3.13 [\#85](https://github.com/SINTEF/soft7/pull/85) ([CasperWA](https://github.com/CasperWA))
 
 ## [v0.2.2](https://github.com/SINTEF/soft7/tree/v0.2.2) (2024-11-25)
 
