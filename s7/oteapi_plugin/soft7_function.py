@@ -60,7 +60,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def entity_lookup(
-    identity: Union[SOFT7IdentityURIType, str]
+    identity: Union[SOFT7IdentityURIType, str],
 ) -> type[SOFT7EntityInstance]:
     """Lookup and return a SOFT7 Entity Instance class."""
     import s7.factories.generated_classes as cls_module
