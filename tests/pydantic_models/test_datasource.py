@@ -442,7 +442,7 @@ def test_parse_input_configs_yaml_errors(
 
     elif configs_type == "dict_str_dump":
         # A raw JSON/YAML dump of the configs
-        configs = {key: bad_inputs[raw_format] for key in config_keys}
+        configs = dict.fromkeys(config_keys, bad_inputs[raw_format])
 
         error_msg = (
             rf"^Could not parse the ({'|'.join(config_keys)}) config string as OTEAPI "
