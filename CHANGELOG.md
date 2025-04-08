@@ -2,25 +2,49 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.0...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.1...HEAD)
 
-# New `graph` module
+## Update core dependencies
 
-Perform RDF graph operations, specifically meant for usage with SOFT7 and semantic interoperability utilizing the `s7.graph` module.
+Specifically, this patch update is for supporting the latest pydantic v2.11, which deprecates certain attributes, when accessing them from instances.
 
-The main underlying technology is [RDFLib](https://rdflib.readthedocs.io/) and [SPARQLWrapper](https://sparqlwrapper.readthedocs.io/).
+### DX
 
-## Support Python 3.13
+Developer tools and GitHub Actions have also been updated.
 
-CI tests and official package metadata support for Python 3.13 has been added.
+## [v0.3.1](https://github.com/SINTEF/soft7/tree/v0.3.1) (2025-04-08)
 
-## Support Pydantic v2.10
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.0...v0.3.1)
 
-There were several changes to the networking models in pydantic v2.10 - this update remedies most of these changes.
+## Update core dependencies
 
-**Implemented enhancements:**
+Specifically, this patch update is for supporting the latest pydantic v2.11, which deprecates certain attributes, when accessing them from instances.
 
-- Test support for Python 3.13 [\#71](https://github.com/SINTEF/soft7/issues/71)
+### DX
+
+Developer tools and GitHub Actions have also been updated.
+
+**Merged pull requests:**
+
+- \[pre-commit.ci\] pre-commit autoupdate [\#107](https://github.com/SINTEF/soft7/pull/107) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#106](https://github.com/SINTEF/soft7/pull/106) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#105](https://github.com/SINTEF/soft7/pull/105) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#104](https://github.com/SINTEF/soft7/pull/104) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump SINTEF/ci-cd from 2.9.1 to 2.9.2 in the actions group [\#103](https://github.com/SINTEF/soft7/pull/103) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#102](https://github.com/SINTEF/soft7/pull/102) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#101](https://github.com/SINTEF/soft7/pull/101) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump SINTEF/ci-cd from 2.9.0 to 2.9.1 in the actions group [\#100](https://github.com/SINTEF/soft7/pull/100) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#99](https://github.com/SINTEF/soft7/pull/99) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#98](https://github.com/SINTEF/soft7/pull/98) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#97](https://github.com/SINTEF/soft7/pull/97) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#96](https://github.com/SINTEF/soft7/pull/96) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump SINTEF/ci-cd from 2.8.3 to 2.9.0 in the actions group [\#95](https://github.com/SINTEF/soft7/pull/95) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#94](https://github.com/SINTEF/soft7/pull/94) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#93](https://github.com/SINTEF/soft7/pull/93) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#92](https://github.com/SINTEF/soft7/pull/92) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#91](https://github.com/SINTEF/soft7/pull/91) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#90](https://github.com/SINTEF/soft7/pull/90) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#89](https://github.com/SINTEF/soft7/pull/89) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
 
 ## [v0.3.0](https://github.com/SINTEF/soft7/tree/v0.3.0) (2024-12-02)
 
@@ -39,6 +63,10 @@ CI tests and official package metadata support for Python 3.13 has been added.
 ## Support Pydantic v2.10
 
 There were several changes to the networking models in pydantic v2.10 - this update remedies most of these changes.
+
+**Implemented enhancements:**
+
+- Test support for Python 3.13 [\#71](https://github.com/SINTEF/soft7/issues/71)
 
 **Merged pull requests:**
 
