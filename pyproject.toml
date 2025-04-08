@@ -99,6 +99,10 @@ minversion = "8.1"
 addopts = "-rs --cov=s7 --cov-report=term-missing:skip-covered --no-cov-on-fail"
 filterwarnings = [
     "error",  # Fail on any warning
+
+    # Ignore deprecation of accessing the 'model_fields' attribute on an instance.
+    # There is not apparent way out of this in the case of the `s7.pydantic_models.datasource.CallableAttributesBaseModel`.
+    "ignore:.*Accessing the 'model_fields' attribute on the instance is deprecated.*:pydantic.warnings.PydanticDeprecatedSince211",
 ]
 
 [tool.ruff.lint]

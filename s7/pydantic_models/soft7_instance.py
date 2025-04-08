@@ -97,7 +97,9 @@ class SOFT7EntityInstance(BaseModel):
                 literal_dimensions = cast(list[int], literal_dimensions)
 
             # Get the inner most (non-list) Python type/class
-            property_type = self.properties.model_fields[property_name].annotation
+            property_type = self.properties.__class__.model_fields[
+                property_name
+            ].annotation
 
             while True:
                 _temp = property_type

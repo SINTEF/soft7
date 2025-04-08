@@ -106,7 +106,7 @@ def create_entity(
                 title=property_name.replace(" ", "_"),
                 json_schema_extra={
                     f"x-soft7-{field}": getattr(property_value, field)
-                    for field in property_value.model_fields
+                    for field in property_value.__class__.model_fields
                     if (
                         field not in ("description", "type")
                         and getattr(property_value, field)
