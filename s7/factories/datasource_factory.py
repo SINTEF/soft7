@@ -280,7 +280,7 @@ def create_datasource(
             Field(data_source_dimensions, repr=False, exclude=True),
         ),
         "identity": (
-            entity.model_fields["identity"].rebuild_annotation(),
+            SOFT7Entity.model_fields["identity"].rebuild_annotation(),
             Field(entity.identity, repr=False, exclude=True),
         ),
         "namespace": (AnyUrl, Field(namespace, repr=False, exclude=True)),
@@ -306,7 +306,7 @@ def create_datasource(
                 title=property_name.replace(" ", "_"),
                 json_schema_extra={
                     f"x-soft7-{field}": getattr(property_value, field)
-                    for field in property_value.model_fields
+                    for field in property_value.__class__.model_fields
                     if (
                         field not in ("description", "type")
                         and getattr(property_value, field)

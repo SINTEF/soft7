@@ -251,7 +251,7 @@ def test_inspect_created_datasource(
         )
 
     ## Check the data source's data is correctly resolved
-    for field_name in datasource.model_fields:
+    for field_name in datasource.__class__.model_fields:
         if field_name.startswith("soft7___"):
             # Avoid checking metadata
             continue
@@ -317,11 +317,11 @@ def test_inspect_created_datasource(
 
     # Check there are no excluded fields
     assert len(dimensions_repr_fields.split(", ")) == len(
-        dimensions_metadata.model_fields
+        dimensions_metadata.__class__.model_fields
     )
 
     # Check the dimensions are correctly resolved
-    for dimension_name in dimensions_metadata.model_fields:
+    for dimension_name in dimensions_metadata.__class__.model_fields:
         assert (
             getattr(dimensions_metadata, dimension_name)
             == soft_datasource_init["dimensions"][dimension_name]
@@ -660,8 +660,8 @@ def test_cacheing_model_attribute_results(
     )
 
     # Get one of the datasource's attributes and check the cache
-    assert len(datasource.model_fields) > 1
-    for attribute_name in datasource.model_fields:
+    assert len(datasource.__class__.model_fields) > 1
+    for attribute_name in datasource.__class__.model_fields:
         if attribute_name.startswith("soft7___"):
             continue
         break
@@ -1173,7 +1173,7 @@ def test_get_nonexisting_property(
     )
 
     # Try to get a non-existing property
-    assert "non_existing_property" not in datasource.model_fields
+    assert "non_existing_property" not in datasource.__class__.model_fields
     with pytest.raises(
         AttributeError,
         match=(
