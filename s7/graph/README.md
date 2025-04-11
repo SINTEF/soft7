@@ -43,9 +43,9 @@ sparqlWrapper.setHTTPAuth(BASIC)
 sparqlWrapper.setCredentials(username, password)
 
 parent_node = find_parent_node(
-    sparql=sparqlWrapper,  
+    sparql=sparqlWrapper,
     class_names=["http://example.com/class1", "http://example.com/class2"],
-    graph_uri="http://example.com/graph"
+    graph_uri="http://example.com/graph",
 )
 ```
 
@@ -78,7 +78,7 @@ Fetches and populates an RDF graph with triples related to a specified parent no
 rdf_graph = fetch_and_populate_graph(
     sparql=sparqlWrapper,
     graph_uri="http://example.com/graph",
-    parent_node="http://example.com/parentClass"
+    parent_node="http://example.com/parentClass",
 )
 ```
 

@@ -24,13 +24,7 @@ from s7.pydantic_models.soft7_entity import (
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 if TYPE_CHECKING:  # pragma: no cover
-    import sys
-    from typing import Optional, Union
-
-    if sys.version_info < (3, 12):
-        from typing_extensions import TypedDict
-    else:
-        from typing import TypedDict
+    from typing import TypedDict, Union
 
     from oteapi.strategies.mapping.mapping import MappingStrategyConfig
 
@@ -60,7 +54,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def entity_lookup(
-    identity: Union[SOFT7IdentityURIType, str],
+    identity: SOFT7IdentityURIType | str,
 ) -> type[SOFT7EntityInstance]:
     """Lookup and return a SOFT7 Entity Instance class."""
     import s7.factories.generated_classes as cls_module
@@ -402,7 +396,7 @@ class SOFT7Generator:
         return refs
 
     def _generate_entity_instance(
-        self, entity_cls: type[SOFT7EntityInstance], data_path: Optional[str] = None
+        self, entity_cls: type[SOFT7EntityInstance], data_path: str | None = None
     ) -> SOFT7EntityInstance:
         """(Recursively) Generate the SOFT7 Entity instance.
 
@@ -531,11 +525,11 @@ class SOFT7Generator:
         data_path_parts = data_path.split(".")
 
         def __recursively_get_parsed_datum(
-            data: Union[ParsedDataPropertyType, dict[str, ParsedDataPropertyType]],
+            data: ParsedDataPropertyType | dict[str, ParsedDataPropertyType],
             depth: int = 0,
-        ) -> Union[
-            ParsedDataType, ParsedDataPropertyType, dict[str, ParsedDataPropertyType]
-        ]:
+        ) -> (
+            ParsedDataType | ParsedDataPropertyType | dict[str, ParsedDataPropertyType]
+        ):
             """Recursively get the parsed data from the parsed data dict."""
             try:
                 next_part = data_path_parts[depth]

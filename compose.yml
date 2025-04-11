@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   oteapi:
     image: ghcr.io/emmc-asbl/oteapi:${DOCKER_OTEAPI_VERSION:-latest}
@@ -9,8 +7,7 @@ services:
       OTEAPI_REDIS_TYPE: redis
       OTEAPI_REDIS_HOST: redis
       OTEAPI_REDIS_PORT: 6379
-      OTEAPI_prefix: "${OTEAPI_prefix:-/api/v1}"
-      OTEAPI_INCLUDE_REDISADMIN: "${OTEAPI_INCLUDE_REDISADMIN:-False}"
+      OTEAPI_PREFIX: "${OTEAPI_PREFIX:-/api/v1}"
       OTEAPI_EXPOSE_SECRETS: "${OTEAPI_EXPOSE_SECRETS:-True}"
       OTEAPI_AUTHENTICAION_DEPENDENCIES:
       OTEAPI_PLUGIN_PACKAGES: "-v -e /soft7"
@@ -20,6 +17,7 @@ services:
       - otenet
     volumes:
       - "${PWD}:/soft7"
+    stop_grace_period: 1s
 
   redis:
     image: redis:latest
@@ -28,21 +26,8 @@ services:
     networks:
       - otenet
 
-  agraph:
-    image: franzinc/agraph:v7.2.0
-    volumes:
-      - agraph-data:/agraph/data
-      - ./agraph.cfg:/agraph/etc/agraph.cfg
-    ports:
-      - "10000-10035:10000-10035"
-    restart: on-failure
-    shm_size: 4g
-    networks:
-      - otenet
-
 volumes:
   redis-persist:
-  agraph-data:
 
 networks:
   otenet:

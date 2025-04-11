@@ -68,6 +68,6 @@ mapping_config = {
         ("optimade:data.id", "", "soft7:properties.id"),
         ("optimade:data.type", "", "soft7:properties.type"),
         ("optimade:data.attributes", "", "soft7:properties."),
-    }
+    },
 }
 ```

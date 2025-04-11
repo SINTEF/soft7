@@ -7,20 +7,14 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    import sys
     from pathlib import Path
-    from typing import Any, Union
-
-    if sys.version_info >= (3, 10):
-        from typing import Literal
-    else:
-        from typing_extensions import Literal
+    from typing import Any, Literal
 
     from pytest_httpx import HTTPXMock
 
 
 def test_entity_shapes_and_dimensions(
-    soft_entity_init: dict[str, Union[str, dict[str, Any]]],
+    soft_entity_init: dict[str, str | dict[str, Any]],
 ) -> None:
     """Ensure the validator `shapes_and_dimensions` enforces the desired rules."""
     from s7.pydantic_models.soft7_entity import SOFT7Entity
@@ -70,7 +64,7 @@ def test_entity_shapes_and_dimensions(
     ],
 )
 def test_parse_input_entity(
-    soft_entity_init: dict[str, Union[str, dict[str, Any]]],
+    soft_entity_init: dict[str, str | dict[str, Any]],
     soft_entity_init_source: Path,
     entity_type: Literal[
         "SOFT7Entity",
