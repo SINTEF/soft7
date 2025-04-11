@@ -7,14 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    import sys
     from pathlib import Path
-    from typing import Any
-
-    if sys.version_info >= (3, 10):
-        from typing import Literal
-    else:
-        from typing_extensions import Literal
+    from typing import Any, Literal
 
     from pytest_httpx import HTTPXMock
     from requests_mock import Mocker

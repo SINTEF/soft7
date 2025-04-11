@@ -12,15 +12,9 @@ from pydantic import AnyUrl, BaseModel, ValidationError
 from s7.exceptions import EntityNotFound, S7EntityError
 
 if TYPE_CHECKING:  # pragma: no cover
-    import sys
-    from typing import Any
+    from typing import Any, Literal
 
     from s7.exceptions import S7EntityError
-
-    if sys.version_info >= (3, 10):
-        from typing import Literal
-    else:
-        from typing_extensions import Literal
 
 
 def is_valid_url(url: str | AnyUrl) -> bool:

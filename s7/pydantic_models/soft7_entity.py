@@ -3,21 +3,15 @@
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Optional,
+    Literal,
     Union,
     get_args,
 )
-
-if sys.version_info >= (3, 10):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 from pydantic import (
     AliasChoices,
@@ -110,7 +104,7 @@ map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
 
 def parse_identity(
     identity: SOFT7IdentityURIType,
-) -> tuple[SOFT7IdentityURIType, Optional[str], str]:
+) -> tuple[SOFT7IdentityURIType, str | None, str]:
     """Parse the identity into a tuple of (namespace, version, name).
 
     The identity is a URI of the form: `<namespace>/<version>/<name>`.
@@ -185,7 +179,7 @@ class SOFT7EntityProperty(BaseModel):
     ]
 
     shape: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         Field(
             description=(
                 "The dimension of multi-dimensional properties. This is a list of "
@@ -200,7 +194,7 @@ class SOFT7EntityProperty(BaseModel):
     ] = None
 
     unit: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description=(
                 "The unit of the property. Would typically refer to other ontologies, "
@@ -328,7 +322,7 @@ class SOFT7Entity(BaseModel):
     ] = ""
 
     dimensions: Annotated[
-        Optional[dict[str, str]],
+        dict[str, str] | None,
         Field(
             description=(
                 "A dictionary or model of dimension names (key) and descriptions "
@@ -633,9 +627,15 @@ class SOFT7Entity(BaseModel):
 
 
 def parse_input_entity(
-    entity: Union[
-        SOFT7Entity, dict[str, Any], Path, SOFT7IdentityURIType, str, bytes, bytearray
-    ],
+    entity: (
+        SOFT7Entity
+        | dict[str, Any]
+        | Path
+        | SOFT7IdentityURIType
+        | str
+        | bytes
+        | bytearray
+    ),
 ) -> SOFT7Entity:
     """Parse input to a function that expects a SOFT7 entity."""
     if isinstance(entity, SOFT7Entity):

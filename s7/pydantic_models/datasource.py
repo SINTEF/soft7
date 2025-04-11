@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from pydantic import (
     AnyUrl,
@@ -29,13 +29,7 @@ from s7.pydantic_models.oteapi import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    import sys
-    from typing import TypedDict, Union
-
-    if sys.version_info >= (3, 10):
-        from typing import Literal
-    else:
-        from typing_extensions import Literal
+    from typing import Literal, TypedDict
 
     from oteapi.models import GenericConfig
     from pydantic import SerializerFunctionWrapHandler
@@ -230,7 +224,7 @@ class SOFT7DataSource(CallableAttributesBaseModel):
     soft7___identity: AnyUrl
 
     soft7___namespace: str
-    soft7___version: Optional[str]
+    soft7___version: str | None
     soft7___name: str
 
 
@@ -254,27 +248,27 @@ class DataSourceDimensions(CallableAttributesBaseModel):
 
 
 def parse_input_configs(
-    configs: Union[
-        GetDataConfigDict,
-        dict[str, Optional[Union[GenericConfig, dict[str, Any], Path, AnyUrl, str]]],
-        Path,
-        AnyUrl,
-        str,
-    ],
-    entity_instance: Optional[
-        Union[type[SOFT7EntityInstance], SOFT7IdentityURIType, str]
-    ] = None,
+    configs: (
+        GetDataConfigDict
+        | dict[str, GenericConfig | dict[str, Any] | Path | AnyUrl | str | None]
+        | Path
+        | AnyUrl
+        | str
+    ),
+    entity_instance: None | (
+        type[SOFT7EntityInstance] | SOFT7IdentityURIType | str
+    ) = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects OTEAPI configs."""
     name_to_config_type_mapping: dict[
         str,
         type[
-            Union[
-                HashableFunctionConfig,
-                HashableMappingConfig,
-                HashableParserConfig,
-                HashableResourceConfig,
-            ],
+            (
+                HashableFunctionConfig
+                | HashableMappingConfig
+                | HashableParserConfig
+                | HashableResourceConfig
+            ),
         ],
     ] = {
         "dataresource": HashableResourceConfig,

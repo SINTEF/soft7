@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, ClassVar, Optional, cast, get_args
+from typing import TYPE_CHECKING, ClassVar, cast, get_args
 
 from pydantic import (
     AnyUrl,
@@ -24,7 +24,6 @@ from s7.pydantic_models.soft7_entity import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Union
 
     from pydantic.main import Model
 
@@ -48,7 +47,7 @@ class SOFT7EntityInstance(BaseModel):
     # Will not be part of fields on the instance
     entity: ClassVar[SOFT7Entity]
 
-    dimensions: Optional[BaseModel] = None
+    dimensions: BaseModel | None = None
     properties: BaseModel
 
     @model_validator(mode="after")
@@ -184,9 +183,7 @@ def generate_dimensions_docstring(entity: SOFT7Entity) -> str:
 
 def generate_properties_docstring(
     entity: SOFT7Entity,
-    property_types: Union[
-        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
-    ],
+    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
 ) -> str:
     """Generated a docstring for the properties model."""
     _, _, name = parse_identity(entity.identity)
@@ -213,9 +210,7 @@ def generate_properties_docstring(
 
 def generate_model_docstring(
     entity: SOFT7Entity,
-    property_types: Union[
-        dict[str, type[PropertyType]], dict[str, type[ListPropertyType]]
-    ],
+    property_types: dict[str, type[PropertyType]] | dict[str, type[ListPropertyType]],
 ) -> str:
     """Generated a docstring for the data source model."""
     namespace, version, name = parse_identity(entity.identity)
@@ -265,9 +260,9 @@ def generate_property_type(
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
-    ] = map_soft_to_py_types.get(
+    property_type: (
+        type[UnshapedPropertyType] | SOFT7IdentityURIType
+    ) = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 
@@ -281,7 +276,7 @@ def generate_property_type(
         # Go through the dimensions in reversed order and nest the property type in on
         # itself.
         for dimension_name in reversed(value.shape):
-            dimension: Optional[int] = getattr(dimensions, dimension_name, None)
+            dimension: int | None = getattr(dimensions, dimension_name, None)
 
             if dimension is None:
                 raise ValueError(
@@ -311,9 +306,9 @@ def generate_list_property_type(value: SOFT7EntityProperty) -> type[ListProperty
     from s7.factories import create_entity
 
     # Get the Python type for the property as defined by SOFT7 data types.
-    property_type: Union[
-        type[UnshapedPropertyType], SOFT7IdentityURIType
-    ] = map_soft_to_py_types.get(
+    property_type: (
+        type[UnshapedPropertyType] | SOFT7IdentityURIType
+    ) = map_soft_to_py_types.get(
         value.type, value.type  # type: ignore[arg-type]
     )
 

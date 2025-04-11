@@ -52,7 +52,7 @@ if TYPE_CHECKING:  # pragma: no cover
     class SOFT7InstanceDict(TypedDict):
         """A dictionary representation of a SOFT7 instance."""
 
-        dimensions: Optional[dict[str, int]]
+        dimensions: dict[str, int] | None
         properties: dict[str, Any]
 
 

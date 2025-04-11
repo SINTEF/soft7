@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-from typing import Annotated, Optional, Union
-
-if sys.version_info >= (3, 10):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
+from typing import Annotated, Literal
 
 import yaml
 from oteapi.datacache import DataCache
@@ -38,7 +32,7 @@ class YAMLConfig(AttrDict):
     """
 
     downloadUrl: Annotated[
-        Optional[HostlessAnyUrl],
+        HostlessAnyUrl | None,
         Field(description=ResourceConfig.model_fields["downloadUrl"].description),
     ] = None
 
@@ -48,7 +42,7 @@ class YAMLConfig(AttrDict):
     ] = "application/yaml"
 
     datacache_config: Annotated[
-        Optional[DataCacheConfig],
+        DataCacheConfig | None,
         Field(
             description=(
                 "Configuration for the data cache for storing the downloaded file "
@@ -75,7 +69,7 @@ class YAMLParseResult(AttrDict):
     """Class for returning values from YAML Parse."""
 
     content: Annotated[
-        Union[dict, list[dict]], Field(description="Content of the YAML document.")
+        dict | list[dict], Field(description="Content of the YAML document.")
     ]
 
 

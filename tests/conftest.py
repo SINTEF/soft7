@@ -8,7 +8,7 @@ import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any, Union
+    from typing import Any
 
 
 def static_folder() -> Path:
@@ -42,7 +42,7 @@ def soft_entity_init_source(static_folder: Path) -> Path:
 @pytest.fixture
 def soft_entity_init(
     soft_entity_init_source: Path,
-) -> dict[str, Union[str, dict[str, Any]]]:
+) -> dict[str, str | dict[str, Any]]:
     """A dict for initializing a `SOFT7Entity`."""
     import yaml
 
@@ -138,7 +138,7 @@ def soft_instance_data(soft_instance_data_source: Path) -> dict[str, dict[str, A
 @pytest.fixture
 def soft_datasource_configs(
     static_folder: Path,
-    soft_entity_init: dict[str, Union[str, dict[str, Any]]],
+    soft_entity_init: dict[str, str | dict[str, Any]],
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],

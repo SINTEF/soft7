@@ -11,7 +11,6 @@ used to handle SPARQL queries and RDFlib for graph operations.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import rdflib
 from jinja2 import Template, TemplateError
@@ -101,7 +100,7 @@ def fetch_and_populate_graph(
     sparql: SPARQLWrapper,
     graph_uri: str,
     parent_node: str,
-    graph: Optional[rdflib.Graph] = None,
+    graph: rdflib.Graph | None = None,
 ) -> rdflib.Graph | None:
     """
     Fetches RDF triples related to a specified parent node from a SPARQL endpoint and
