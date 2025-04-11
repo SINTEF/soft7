@@ -2,15 +2,51 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.1...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.4.0...HEAD)
 
-## Update core dependencies
+# Drop Python 3.9 & support OTE v1
 
-Specifically, this patch update is for supporting the latest pydantic v2.11, which deprecates certain attributes, when accessing them from instances.
+This release drops Python 3.9 support.
+This is in trend with the support for OTEAPI Core and OTELib v1, which has recently been released. These have also dropped Python 3.9 support.
 
-### DX
+## Remove AllegroGraph from the Docker Compose file
 
-Developer tools and GitHub Actions have also been updated.
+AllegroGraph as well as the accompanying configuration file has been removed from the Docker Compose file.
+
+## DX
+
+The dev tools have been updated and `markdownlint-cli2` and `blacken-docs` have been added.
+The code base has been updated after upping the minimum version for pyupgrade to 3.10.
+
+**Implemented enhancements:**
+
+- Upgrade to OTE v1 [\#110](https://github.com/SINTEF/soft7/issues/110)
+
+**Closed issues:**
+
+- Drop Python 3.9 [\#111](https://github.com/SINTEF/soft7/issues/111)
+
+## [v0.4.0](https://github.com/SINTEF/soft7/tree/v0.4.0) (2025-04-11)
+
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.1...v0.4.0)
+
+# Drop Python 3.9 & support OTE v1
+
+This release drops Python 3.9 support.
+This is in trend with the support for OTEAPI Core and OTELib v1, which has recently been released. These have also dropped Python 3.9 support.
+
+## Remove AllegroGraph from the Docker Compose file
+
+AllegroGraph as well as the accompanying configuration file has been removed from the Docker Compose file.
+
+## DX
+
+The dev tools have been updated and `markdownlint-cli2` and `blacken-docs` have been added.
+The code base has been updated after upping the minimum version for pyupgrade to 3.10.
+
+**Merged pull requests:**
+
+- Use non-dev OTE versions [\#109](https://github.com/SINTEF/soft7/pull/109) ([CasperWA](https://github.com/CasperWA))
 
 ## [v0.3.1](https://github.com/SINTEF/soft7/tree/v0.3.1) (2025-04-08)
 
