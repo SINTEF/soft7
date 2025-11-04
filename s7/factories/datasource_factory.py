@@ -256,7 +256,7 @@ def create_datasource(
         else {}
     )
 
-    DataSourceDimensionsModel = create_model(
+    DataSourceDimensionsModel = create_model(  # type: ignore[call-overload]
         f"{name.replace(' ', '')}DataSourceDimensions",
         __config__=None,
         __doc__=generate_dimensions_docstring(entity),
@@ -326,7 +326,7 @@ def create_datasource(
             "metadata fields."
         )
 
-    DataSourceModel = create_model(
+    DataSourceModel = create_model(  # type: ignore[call-overload]
         f"{name.replace(' ', '')}DataSource",
         __config__=None,
         __doc__=generate_model_docstring(entity, property_types),
