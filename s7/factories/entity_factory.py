@@ -75,7 +75,7 @@ def create_entity(
     )
 
     if dimensions:
-        Dimensions = create_model(
+        Dimensions = create_model(  # type: ignore[call-overload]
             f"{name.replace(' ', '')}EntityDimensions",
             __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
             __doc__=generate_dimensions_docstring(entity),
@@ -115,7 +115,7 @@ def create_entity(
         for property_name, property_value in entity.properties.items()
     }
 
-    Properties = create_model(
+    Properties = create_model(  # type: ignore[call-overload]
         f"{name.replace(' ', '')}EntityProperties",
         __config__=ConfigDict(extra="forbid", frozen=True, validate_default=False),
         __doc__=generate_properties_docstring(entity, property_types),
