@@ -1,2 +1,1 @@
-pip<25.4  # temporary
 pip-tools==7.5.2
