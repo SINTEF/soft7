@@ -1,2 +1,2 @@
-pip<25.3  # temporary
-pip-tools==7.5.1
+pip<25.4  # temporary
+pip-tools==7.5.2
