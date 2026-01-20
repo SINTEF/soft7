@@ -202,9 +202,7 @@ def test_inspect_created_datasource(
     # confirmation that the content here matches the fixture.
     # The type of the properties are derived from the `soft_datasource_init` fixture,
     # in the sense of dimensionality.
-    assert (
-        datasource.__doc__
-        == """MolecularSpecies
+    assert datasource.__doc__ == """MolecularSpecies
 
     A bare-bones entity for testing.
 
@@ -225,7 +223,6 @@ def test_inspect_created_datasource(
         radius (tuple[float, float, float, float, float]): Atomic radius.
 
     """
-    )
 
     ## Check the data source's attribute values are currently (lambda) functions
     # Get the data source's representation
@@ -277,9 +274,7 @@ def test_inspect_created_datasource(
     # Checked against the `soft_entity_init`'s values - check the fixture for
     # confirmation that the content here matches the fixture.
     # The type of the dimensions is always `int`.
-    assert (
-        dimensions_metadata.__doc__
-        == """MolecularSpeciesDimensions
+    assert dimensions_metadata.__doc__ == """MolecularSpeciesDimensions
 
     Dimensions for the MolecularSpecies SOFT7 data source.
 
@@ -289,7 +284,6 @@ def test_inspect_created_datasource(
         N (int): Number of elements.
 
     """
-    )
     # Check the dimensions values are currently (lambda) functions
     # Get the dimensions' representation
     dimensions_repr = repr(dimensions_metadata)
