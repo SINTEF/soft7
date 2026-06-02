@@ -149,7 +149,8 @@ def try_load_from_url(
             response = client.get(
                 str(source),
                 headers={"Accept": "application/yaml, application/json"},
-            ).raise_for_status()
+            )
+            response.raise_for_status()
         except (httpx2.HTTPStatusError, httpx2.HTTPError) as error:
             raise exception_cls(exception_msg) from error
 
