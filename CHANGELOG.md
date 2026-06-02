@@ -2,7 +2,113 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.4.0...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.5.0...HEAD)
+
+## Use `httpx2`
+
+Starlette (the underlying framework used by FastAPI) have started to rely on [HTTPX2](https://httpx2.pydantic.dev). This seems like a good choice to move to, since it is a fork of HTTPX and will be maintained by the Pydantic team.
+
+This has required the update from `pytest-httpx` to `httpx2-pytest` as well. The latter being a fork of the former, but supporting HTTPX2.
+
+## Miscellaneous
+
+Updated GitHub Actions, development tools, and minimum expected requirements.
+
+**Closed issues:**
+
+- Use HTTPX2 [\#184](https://github.com/SINTEF/soft7/issues/184)
+
+## [v0.5.0](https://github.com/SINTEF/soft7/tree/v0.5.0) (2026-06-02)
+
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.4.0...v0.5.0)
+
+## Use `httpx2`
+
+Starlette (the underlying framework used by FastAPI) have started to rely on [HTTPX2](https://httpx2.pydantic.dev). This seems like a good choice to move to, since it is a fork of HTTPX and will be maintained by the Pydantic team.
+
+This has required the update from `pytest-httpx` to `httpx2-pytest` as well. The latter being a fork of the former, but supporting HTTPX2.
+
+## Miscellaneous
+
+Updated GitHub Actions, development tools, and minimum expected requirements.
+
+**Merged pull requests:**
+
+- Update HTTPX -\> HTTPX2 [\#185](https://github.com/SINTEF/soft7/pull/185) ([CasperWA](https://github.com/CasperWA))
+- \[pre-commit.ci\] pre-commit autoupdate [\#183](https://github.com/SINTEF/soft7/pull/183) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#182](https://github.com/SINTEF/soft7/pull/182) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pydata-sphinx-theme requirement from ~=0.17.0 to \>=0.17,\<0.19 in the packages group across 1 directory [\#181](https://github.com/SINTEF/soft7/pull/181) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#180](https://github.com/SINTEF/soft7/pull/180) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#179](https://github.com/SINTEF/soft7/pull/179) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#178](https://github.com/SINTEF/soft7/pull/178) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump the actions group with 2 updates [\#177](https://github.com/SINTEF/soft7/pull/177) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#176](https://github.com/SINTEF/soft7/pull/176) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/upload-pages-artifact from 4 to 5 in the actions group [\#175](https://github.com/SINTEF/soft7/pull/175) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#174](https://github.com/SINTEF/soft7/pull/174) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/github-script from 8 to 9 in the actions group [\#173](https://github.com/SINTEF/soft7/pull/173) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Update pydata-sphinx-theme requirement from ~=0.16.1 to \>=0.16.1,\<0.18.0 in the packages group across 1 directory [\#172](https://github.com/SINTEF/soft7/pull/172) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#171](https://github.com/SINTEF/soft7/pull/171) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump the actions group across 1 directory with 2 updates [\#170](https://github.com/SINTEF/soft7/pull/170) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/deploy-pages from 4 to 5 in the actions group [\#168](https://github.com/SINTEF/soft7/pull/168) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#167](https://github.com/SINTEF/soft7/pull/167) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#166](https://github.com/SINTEF/soft7/pull/166) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#165](https://github.com/SINTEF/soft7/pull/165) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#164](https://github.com/SINTEF/soft7/pull/164) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/download-artifact from 7 to 8 in the actions group [\#163](https://github.com/SINTEF/soft7/pull/163) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#162](https://github.com/SINTEF/soft7/pull/162) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#161](https://github.com/SINTEF/soft7/pull/161) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump pip-tools from 7.5.2 to 7.5.3 in /.github/utils in the packages group across 1 directory [\#160](https://github.com/SINTEF/soft7/pull/160) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#159](https://github.com/SINTEF/soft7/pull/159) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#158](https://github.com/SINTEF/soft7/pull/158) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#157](https://github.com/SINTEF/soft7/pull/157) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#156](https://github.com/SINTEF/soft7/pull/156) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#155](https://github.com/SINTEF/soft7/pull/155) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#154](https://github.com/SINTEF/soft7/pull/154) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/download-artifact from 6 to 7 in the actions group [\#153](https://github.com/SINTEF/soft7/pull/153) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#152](https://github.com/SINTEF/soft7/pull/152) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pytest-httpx requirement from ~=0.35.0 to \>=0.35,\<0.37 in the packages group across 1 directory [\#151](https://github.com/SINTEF/soft7/pull/151) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#150](https://github.com/SINTEF/soft7/pull/150) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#149](https://github.com/SINTEF/soft7/pull/149) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump the packages group across 1 directory with 2 updates [\#148](https://github.com/SINTEF/soft7/pull/148) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/checkout from 5 to 6 in the actions group [\#147](https://github.com/SINTEF/soft7/pull/147) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#146](https://github.com/SINTEF/soft7/pull/146) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#145](https://github.com/SINTEF/soft7/pull/145) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump the packages group across 2 directories with 2 updates [\#144](https://github.com/SINTEF/soft7/pull/144) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/download-artifact from 5 to 6 in the actions group [\#143](https://github.com/SINTEF/soft7/pull/143) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#142](https://github.com/SINTEF/soft7/pull/142) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#141](https://github.com/SINTEF/soft7/pull/141) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#140](https://github.com/SINTEF/soft7/pull/140) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#139](https://github.com/SINTEF/soft7/pull/139) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#138](https://github.com/SINTEF/soft7/pull/138) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pytest-cov requirement from ~=6.1 to \>=6.1,\<8.0 in the packages group [\#137](https://github.com/SINTEF/soft7/pull/137) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#136](https://github.com/SINTEF/soft7/pull/136) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/github-script from 7 to 8 in the actions group [\#135](https://github.com/SINTEF/soft7/pull/135) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/setup-python from 5 to 6 in the actions group [\#134](https://github.com/SINTEF/soft7/pull/134) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#133](https://github.com/SINTEF/soft7/pull/133) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/upload-pages-artifact from 3 to 4 in the actions group [\#132](https://github.com/SINTEF/soft7/pull/132) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#131](https://github.com/SINTEF/soft7/pull/131) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#130](https://github.com/SINTEF/soft7/pull/130) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/checkout from 4 to 5 in the actions group [\#129](https://github.com/SINTEF/soft7/pull/129) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#128](https://github.com/SINTEF/soft7/pull/128) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump actions/download-artifact from 4 to 5 in the actions group [\#127](https://github.com/SINTEF/soft7/pull/127) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#126](https://github.com/SINTEF/soft7/pull/126) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#125](https://github.com/SINTEF/soft7/pull/125) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#124](https://github.com/SINTEF/soft7/pull/124) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#123](https://github.com/SINTEF/soft7/pull/123) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#122](https://github.com/SINTEF/soft7/pull/122) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#121](https://github.com/SINTEF/soft7/pull/121) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#120](https://github.com/SINTEF/soft7/pull/120) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#119](https://github.com/SINTEF/soft7/pull/119) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#118](https://github.com/SINTEF/soft7/pull/118) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#117](https://github.com/SINTEF/soft7/pull/117) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#116](https://github.com/SINTEF/soft7/pull/116) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#115](https://github.com/SINTEF/soft7/pull/115) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Drop safety in favor of pip-audit [\#114](https://github.com/SINTEF/soft7/pull/114) ([CasperWA](https://github.com/CasperWA))
+- \[pre-commit.ci\] pre-commit autoupdate [\#113](https://github.com/SINTEF/soft7/pull/113) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+
+## [v0.4.0](https://github.com/SINTEF/soft7/tree/v0.4.0) (2025-04-11)
+
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.1...v0.4.0)
 
 # Drop Python 3.9 & support OTE v1
 
@@ -25,24 +131,6 @@ The code base has been updated after upping the minimum version for pyupgrade to
 **Closed issues:**
 
 - Drop Python 3.9 [\#111](https://github.com/SINTEF/soft7/issues/111)
-
-## [v0.4.0](https://github.com/SINTEF/soft7/tree/v0.4.0) (2025-04-11)
-
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.3.1...v0.4.0)
-
-# Drop Python 3.9 & support OTE v1
-
-This release drops Python 3.9 support.
-This is in trend with the support for OTEAPI Core and OTELib v1, which has recently been released. These have also dropped Python 3.9 support.
-
-## Remove AllegroGraph from the Docker Compose file
-
-AllegroGraph as well as the accompanying configuration file has been removed from the Docker Compose file.
-
-## DX
-
-The dev tools have been updated and `markdownlint-cli2` and `blacken-docs` have been added.
-The code base has been updated after upping the minimum version for pyupgrade to 3.10.
 
 **Merged pull requests:**
 
