@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Literal
 
-    from pytest_httpx import HTTPXMock
+    from pytest_httpx2 import HTTPXMock
 
     from s7.pydantic_models.datasource import GetDataConfigDict
     from s7.pydantic_models.oteapi import (
@@ -511,7 +511,7 @@ def test_parse_input_configs_http_error(
     """Ensure a proper error message occurs if an HTTP error occurs."""
     import re
 
-    from httpx import HTTPError
+    from httpx2 import HTTPError
     from pydantic import AnyHttpUrl
 
     from s7.exceptions import ConfigsNotFound

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Literal
 
-    from pytest_httpx import HTTPXMock
+    from pytest_httpx2 import HTTPXMock
     from requests_mock import Mocker
 
 
