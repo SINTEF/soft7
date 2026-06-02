@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, overload
 
-import httpx
+import httpx2
 import yaml
 from pydantic import AnyUrl, BaseModel, ValidationError
 
@@ -144,13 +144,13 @@ def try_load_from_url(
             "assert_dict_exception_msg should be a string when assert_dict is True."
         )
 
-    with httpx.Client(follow_redirects=True, timeout=10) as client:
+    with httpx2.Client(follow_redirects=True, timeout=10) as client:
         try:
             response = client.get(
                 str(source),
                 headers={"Accept": "application/yaml, application/json"},
             ).raise_for_status()
-        except (httpx.HTTPStatusError, httpx.HTTPError) as error:
+        except (httpx2.HTTPStatusError, httpx2.HTTPError) as error:
             raise exception_cls(exception_msg) from error
 
     return try_load_from_json_yaml(

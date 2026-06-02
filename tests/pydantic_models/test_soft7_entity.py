@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Literal
 
-    from pytest_httpx import HTTPXMock
+    from pytest_httpx2 import HTTPXMock
 
 
 def test_entity_shapes_and_dimensions(
@@ -228,7 +228,7 @@ def test_parse_input_entity_http_error(httpx_mock: HTTPXMock) -> None:
     """Ensure a proper error message occurs if an HTTP error occurs."""
     import re
 
-    from httpx import HTTPError
+    from httpx2 import HTTPError
 
     from s7.exceptions import EntityNotFound
     from s7.pydantic_models.soft7_entity import parse_input_entity

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from pydantic import AnyHttpUrl
-    from pytest_httpx import HTTPXMock
+    from pytest_httpx2 import HTTPXMock
 
     from s7.pydantic_models.soft7_entity import SOFT7Entity
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
