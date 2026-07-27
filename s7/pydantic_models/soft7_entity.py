@@ -37,8 +37,8 @@ if TYPE_CHECKING:  # pragma: no cover
     UnshapedPropertyType = Union[
         str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
     ]
-    ShapedPropertyType = tuple[Union["ShapedPropertyType", UnshapedPropertyType], ...]
-    ShapedListPropertyType = list[Union["ShapedListPropertyType", UnshapedPropertyType]]
+    ShapedPropertyType = tuple["ShapedPropertyType" | UnshapedPropertyType, ...]
+    ShapedListPropertyType = list["ShapedListPropertyType" | UnshapedPropertyType]
 
     PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
     ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]

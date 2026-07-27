@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from oteapi.strategies.mapping.mapping import MappingStrategyConfig
 
     ParsedDataType = Any
-    ListParsedDataType = list[Union["ListParsedDataType", ParsedDataType]]
+    ListParsedDataType = list["ListParsedDataType" | ParsedDataType]
 
     ParsedDataPropertyType = Union[ParsedDataType, ListParsedDataType]
 
