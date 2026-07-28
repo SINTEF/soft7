@@ -9,7 +9,6 @@ from typing import (
     Annotated,
     Any,
     Literal,
-    Union,
     get_args,
 )
 
@@ -34,17 +33,17 @@ from s7.pydantic_models._utils import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    UnshapedPropertyType = Union[
-        str, float, int, complex, dict, bool, bytes, bytearray, BaseModel
-    ]
+    UnshapedPropertyType = (
+        str | float | int | complex | dict | bool | bytes | bytearray | BaseModel
+    )
     ShapedPropertyType = tuple["ShapedPropertyType" | UnshapedPropertyType, ...]
     ShapedListPropertyType = list["ShapedListPropertyType" | UnshapedPropertyType]
 
-    PropertyType = Union[UnshapedPropertyType, ShapedPropertyType]
-    ListPropertyType = Union[UnshapedPropertyType, ShapedListPropertyType]
+    PropertyType = UnshapedPropertyType | ShapedPropertyType
+    ListPropertyType = UnshapedPropertyType | ShapedListPropertyType
 
 
-SOFT7IdentityURIType = Union[AnyHttpUrl, FileUrl]
+SOFT7IdentityURIType = AnyHttpUrl | FileUrl
 
 
 LOGGER = logging.getLogger(__name__)
@@ -74,9 +73,9 @@ def SOFT7IdentityURI(url: str) -> SOFT7IdentityURIType:
     raise TypeError(f"Expected str, AnyHttpUrl, or FileUrl, got {type(url)}")
 
 
-SOFT7EntityPropertyType = Union[
-    SOFT7IdentityURIType,
-    Literal[
+SOFT7EntityPropertyType = (
+    SOFT7IdentityURIType
+    | Literal[
         "string",
         "str",
         "float",
@@ -86,8 +85,8 @@ SOFT7EntityPropertyType = Union[
         "boolean",
         "bytes",
         "bytearray",
-    ],
-]
+    ]
+)
 map_soft_to_py_types: dict[str, type[UnshapedPropertyType]] = {
     "string": str,
     "str": str,
@@ -376,8 +375,10 @@ class SOFT7Entity(BaseModel):
                     errors.append(
                         (
                             property_name,
-                            "Contains shape dimensions that are not defined in "
-                            f"'dimensions': {wrong_dimensions}",
+                            (
+                                "Contains shape dimensions that are not defined in "
+                                f"'dimensions': {wrong_dimensions}"
+                            ),
                         )
                     )
         else:
