@@ -14,8 +14,6 @@ from s7.exceptions import EntityNotFound, S7EntityError
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any, Literal
 
-    from s7.exceptions import S7EntityError
-
 
 def is_valid_url(url: str | AnyUrl) -> bool:
     """Check if the URL is valid."""
@@ -69,13 +67,13 @@ def try_load_from_json_yaml(
     if not isinstance(exception_cls, type) and not issubclass(
         exception_cls, S7EntityError
     ):
-        raise ValueError("exception_cls should be a subclass of S7EntityError.")
+        raise TypeError("exception_cls should be a subclass of S7EntityError.")
 
     if not isinstance(exception_msg, str):
-        raise ValueError("exception_msg should be a string.")
+        raise TypeError("exception_msg should be a string.")
 
     if assert_dict and not isinstance(assert_dict_exception_msg, str):
-        raise ValueError(
+        raise TypeError(
             "assert_dict_exception_msg should be a string when assert_dict is True."
         )
 
@@ -134,13 +132,13 @@ def try_load_from_url(
     if not isinstance(exception_cls, type) and not issubclass(
         exception_cls, S7EntityError
     ):
-        raise ValueError("exception_cls should be a subclass of S7EntityError.")
+        raise TypeError("exception_cls should be a subclass of S7EntityError.")
 
     if not isinstance(exception_msg, str):
-        raise ValueError("exception_msg should be a string.")
+        raise TypeError("exception_msg should be a string.")
 
     if assert_dict and not isinstance(assert_dict_exception_msg, str):
-        raise ValueError(
+        raise TypeError(
             "assert_dict_exception_msg should be a string when assert_dict is True."
         )
 
@@ -184,10 +182,10 @@ def get_dict_from_url_path_or_raw(
     if not isinstance(exception_cls, type) and not issubclass(
         exception_cls, S7EntityError
     ):
-        raise ValueError("exception_cls should be a subclass of S7EntityError.")
+        raise TypeError("exception_cls should be a subclass of S7EntityError.")
 
     if not isinstance(parameter_name, str) or not isinstance(concept_name, str):
-        raise ValueError("parameter_name and concept_name should be strings.")
+        raise TypeError("parameter_name and concept_name should be strings.")
 
     # Handle source as bytes or bytearray (raw JSON/YAML string)
     if isinstance(source, (bytes, bytearray)):
@@ -298,9 +296,7 @@ def get_dict_from_any_model_input(data: Any) -> dict[Any, Any]:
         return data.model_dump(exclude_defaults=True, exclude_unset=True)
 
     if not isinstance(data, (AnyUrl, str, Path, bytes, bytearray)):
-        raise ValueError(
-            f"Input data is not valid for model input. Type: {type(data)}."
-        )
+        raise TypeError(f"Input data is not valid for model input. Type: {type(data)}.")
 
     return get_dict_from_url_path_or_raw(
         data,

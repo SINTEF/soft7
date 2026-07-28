@@ -255,8 +255,8 @@ def parse_input_configs(
         | AnyUrl
         | str
     ),
-    entity_instance: None | (
-        type[SOFT7EntityInstance] | SOFT7IdentityURIType | str
+    entity_instance: (
+        type[SOFT7EntityInstance] | SOFT7IdentityURIType | str | None
     ) = None,
 ) -> GetDataConfigDict:
     """Parse input to a function that expects OTEAPI configs."""

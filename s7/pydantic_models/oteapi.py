@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import TYPE_CHECKING
 
 from oteapi.models import (
     FunctionConfig,
@@ -16,9 +15,6 @@ from pydantic import AnyUrl
 
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
-
-if TYPE_CHECKING:  # pragma: no cover
-    pass
 
 
 class HashableMixin:

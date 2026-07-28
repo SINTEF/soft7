@@ -284,7 +284,10 @@ def create_datasource(
             Field(entity.identity, repr=False, exclude=True),
         ),
         "namespace": (AnyUrl, Field(namespace, repr=False, exclude=True)),
-        "version": (Optional[str], Field(version, repr=False, exclude=True)),
+        "version": (
+            Optional[str],  # noqa: UP045
+            Field(version, repr=False, exclude=True),
+        ),
         "name": (str, Field(name, repr=False, exclude=True)),
     }
 

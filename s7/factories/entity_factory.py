@@ -65,7 +65,7 @@ def create_entity(
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         {
             dimension_name: (
-                Optional[int],
+                Optional[int],  # noqa: UP045
                 Field(None, description=dimension_description),
             )
             for dimension_name, dimension_description in entity.dimensions.items()
@@ -97,7 +97,7 @@ def create_entity(
         # Value must be a (<type>, <default>) or (<type>, <FieldInfo>) tuple
         # Note, Field() returns a FieldInfo instance (but is set to return an Any type).
         property_name: (
-            Optional[property_types[property_name]],
+            Optional[property_types[property_name]],  # noqa: UP045
             Field(
                 None,
                 description=property_value.description or "",

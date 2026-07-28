@@ -24,16 +24,16 @@ from s7.pydantic_models.soft7_entity import (
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import TypedDict, Union
+    from typing import TypedDict
 
     from oteapi.strategies.mapping.mapping import MappingStrategyConfig
 
     ParsedDataType = Any
-    ListParsedDataType = list[Union["ListParsedDataType", ParsedDataType]]
+    ListParsedDataType = list["ListParsedDataType" | ParsedDataType]
 
-    ParsedDataPropertyType = Union[ParsedDataType, ListParsedDataType]
+    ParsedDataPropertyType = ParsedDataType | ListParsedDataType
 
-    SOFT7IdentityURITypeOrStr = Union[SOFT7IdentityURIType, str]
+    SOFT7IdentityURITypeOrStr = SOFT7IdentityURIType | str
 
     class RDFTriplePart(TypedDict):
         """A part of a RDF triple, i.e., either a subject, predicate or object."""
@@ -87,7 +87,7 @@ def entity_lookup(
             f"{'subclass of ' if entity_name != 'SOFT7EntityInstance' else ''}"
             f"SOFT7EntityInstance."
         )
-        raise ValueError(error_message)
+        raise TypeError(error_message)
 
     return cls
 
@@ -604,7 +604,7 @@ class SOFT7Generator:
                 # We do not expect other container types than dict and list (for now),
                 # so we raise an error - expecting the given data path to either be
                 # invalid or missing from the parsed data.
-                raise ValueError(
+                raise TypeError(
                     f"Data path {data_path!r} is either invalid or missing from the "
                     "parsed data."
                 )

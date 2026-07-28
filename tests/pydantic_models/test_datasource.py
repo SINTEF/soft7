@@ -311,8 +311,10 @@ def test_parse_input_configs(
             # `None` is only allowed if "function" is already defined
             should_raise = (
                 EntityNotFound,
-                r"^The entity must be provided if the function config is not "
-                r"provided\.$",
+                (
+                    r"^The entity must be provided if the function config is not "
+                    r"provided\.$"
+                ),
             )
 
     # Run `parse_input_configs()`
@@ -739,8 +741,10 @@ def test_parse_input_configs_missing_configs(
     elif missing_config == "dataresource,parser":
         error_specifics = (
             S7EntityError,
-            r"^The configs provided must contain a Data Resource configuration "
-            r"and a Parser configuration$",
+            (
+                r"^The configs provided must contain a Data Resource configuration "
+                r"and a Parser configuration$"
+            ),
         )
 
     else:
@@ -873,17 +877,22 @@ def test_parse_input_configs_malformed_configs(
     if configs_value_kind in ("", "part"):
         error_info = (
             S7EntityError,
-            rf"^The (\"|')({'|'.join(config_keys)})(\"|') configuration provided could "
-            r"not be validated as a proper OTEAPI "
-            rf"({'|'.join(_.capitalize() for _ in config_keys)})Config$",
+            (
+                rf"^The (\"|')({'|'.join(config_keys)})(\"|') configuration provided "
+                r"could not be validated as a proper OTEAPI "
+                rf"({'|'.join(_.capitalize() for _ in config_keys)})Config$"
+            ),
         )
     elif configs_value_kind == "whole-name":
         # Here, we are providing `bad_config_name` and expect an error due to an
         # unsupported key name
         error_info = (
             ValueError,
-            rf"^The config name {next(iter(bad_config_name))!r} is not a valid config "
-            rf"name\. Valid config names are: {', '.join(sorted(config_keys))}$",
+            (
+                rf"^The config name {next(iter(bad_config_name))!r} is not a valid "
+                r"config name\. Valid config names are: "
+                rf"{', '.join(sorted(config_keys))}$"
+            ),
         )
     elif configs_value_kind == "whole-type-key":
         # Here, we are providing `bad_config_type_key` and expect an error due to an
@@ -894,9 +903,12 @@ def test_parse_input_configs_malformed_configs(
         # unsupported value type
         error_info = (
             TypeError,
-            rf"^The (\"|')({'|'.join(config_keys)})(\"|') configuration provided is "
-            rf"not a valid OTEAPI {'|'.join(_.capitalize() for _ in config_keys)}"
-            rf"Config. Got type {int}$",
+            (
+                rf"^The (\"|')({'|'.join(config_keys)})(\"|') configuration provided "
+                r"is not a valid OTEAPI "
+                rf"{'|'.join(_.capitalize() for _ in config_keys)}Config. Got type "
+                rf"{int}$"
+            ),
         )
     else:
         pytest.fail(f"Unexpected configs value kind: {configs_value_kind}")
@@ -995,8 +1007,10 @@ def test_parse_input_configs_malformed_configs(
         if configs_value_kind == "whole-type-key" and configs_type == "str_json_dump":
             error_info = (
                 ValueError,
-                r"^The config name '2' is not a valid config name\. Valid config names "
-                rf"are: {', '.join(sorted(config_keys))}$",
+                (
+                    r"^The config name '2' is not a valid config name\. Valid config "
+                    rf"names are: {', '.join(sorted(config_keys))}$"
+                ),
             )
 
     else:
