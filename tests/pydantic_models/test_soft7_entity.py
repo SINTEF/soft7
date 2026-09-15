@@ -76,7 +76,7 @@ def test_parse_input_entity(
         "str_json_dump",
         "str_yaml_dump",
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
 ) -> None:
     """Ensure the `parse_input_entity` function instantiates a SOFT7Entity as
     intended."""
@@ -105,7 +105,7 @@ def test_parse_input_entity(
 
     elif entity_type == "AnyHttpUrl":
         # Mock HTTP GET call to retrieve the entity online
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=str(expected_entity.identity),
             method="GET",
             json=soft_entity_raw,
@@ -115,7 +115,7 @@ def test_parse_input_entity(
 
     elif entity_type == "str_url":
         # Case of it being a URL, i.e., same as for entity_type == "AnyHttpUrl"
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=str(expected_entity.identity),
             method="GET",
             json=soft_entity_raw,
@@ -155,7 +155,7 @@ def test_parse_input_entity(
 def test_parse_input_entity_yaml_errors(
     entity_type: Literal["Path", "AnyHttpUrl", "str_url", "str_path", "str_dump"],
     raw_format: Literal["json", "yaml"],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     tmp_path: Path,
 ) -> None:
     """Ensure a proper error message occurs if a YAML/JSON parsing fails."""
@@ -193,7 +193,7 @@ def test_parse_input_entity_yaml_errors(
 
     elif entity_type in ("AnyHttpUrl", "str_url"):
         # Mock HTTP GET call to retrieve the entity online
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org.*"),
             method="GET",
             text=bad_inputs[raw_format],
@@ -224,7 +224,7 @@ def test_parse_input_entity_yaml_errors(
         parse_input_entity(test_entity_input)
 
 
-def test_parse_input_entity_http_error(httpx_mock: HTTPXMock) -> None:
+def test_parse_input_entity_http_error(httpx2_mock: HTTPXMock) -> None:
     """Ensure a proper error message occurs if an HTTP error occurs."""
     import re
 
@@ -236,7 +236,7 @@ def test_parse_input_entity_http_error(httpx_mock: HTTPXMock) -> None:
     bad_url = "http://example.org"
 
     # Mock HTTP GET call to retrieve the entity online
-    httpx_mock.add_exception(
+    httpx2_mock.add_exception(
         HTTPError("404 Not Found"),
         url=re.compile(r"^http://example\.org.*"),
         method="Get",

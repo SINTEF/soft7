@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from requests_mock import Mocker
 
 
-pytestmark = pytest.mark.httpx_mock(can_send_already_matched_responses=True)
+pytestmark = pytest.mark.httpx2_mock(can_send_already_matched_responses=True)
 
 
 def test_create_datasource(
@@ -24,7 +24,7 @@ def test_create_datasource(
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
     requests_mock: Mocker,
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Test a straight forward call to create_datasource()."""
@@ -41,7 +41,7 @@ def test_create_datasource(
     oteapi_url = f"{default_oteapi_url}{rest_api_prefix}"
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -160,7 +160,7 @@ def test_inspect_created_datasource(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
 ) -> None:
     """Test the generated data source contains the expected attributes and metadata."""
     from pydantic import AnyHttpUrl, BaseModel
@@ -168,7 +168,7 @@ def test_inspect_created_datasource(
     from s7.factories.datasource_factory import create_datasource
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -326,14 +326,14 @@ def test_serialize_python_datasource(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Check the data source contents when serialized to a Python dict."""
     from s7.factories.datasource_factory import create_datasource
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -372,7 +372,7 @@ def test_serialize_json_datasource(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Check the data source contents when serialized to JSON."""
@@ -381,7 +381,7 @@ def test_serialize_json_datasource(
     from s7.factories.datasource_factory import create_datasource
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -421,14 +421,14 @@ def test_datasource_json_schema(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     static_folder: Path,
 ) -> None:
     """Check the generated JSON Schema for the data source."""
     from s7.factories.datasource_factory import create_datasource
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -604,7 +604,7 @@ def test_cacheing_model_attribute_results(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
 ) -> None:
     """Test the DataSource attribute results are cached in the model."""
     import json
@@ -612,7 +612,7 @@ def test_cacheing_model_attribute_results(
     from s7.factories.datasource_factory import create_datasource
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -671,7 +671,7 @@ def test_pipeline_cache(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
 ) -> None:
     """Test the pipeline cache functions as intended."""
     import json
@@ -681,7 +681,7 @@ def test_pipeline_cache(
     assert CACHE == {}, json.dumps(CACHE, indent=2)
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -778,7 +778,7 @@ def test_pipeline_cache(
     # that the key/value-pairs are mixed up a bit.
 
     # Mock configs
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url="http://example.org/soft7_configs",
         json={
@@ -851,7 +851,7 @@ def test_bad_pipeline_response(
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
     requests_mock: Mocker,
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     static_folder: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -873,7 +873,7 @@ def test_bad_pipeline_response(
     oteapi_url = f"{default_oteapi_url}{rest_api_prefix}"
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -1023,7 +1023,7 @@ def test_get_nonexisting_property(
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
     requests_mock: Mocker,
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test an error is raised when trying to get a non-existing property.
@@ -1043,7 +1043,7 @@ def test_get_nonexisting_property(
     oteapi_url = f"{default_oteapi_url}{rest_api_prefix}"
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,
@@ -1205,7 +1205,7 @@ def test_try_to_overwrite_metadata_fields(
     soft_datasource_entity_mapping_init: dict[
         str, dict[str, str] | list[tuple[str, str, str]]
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     tmp_path: Path,
     metadata_field: Literal["soft7___non_existing", "soft7___name"],
 ) -> None:
@@ -1244,7 +1244,7 @@ def test_try_to_overwrite_metadata_fields(
     modified_datasource_content_path.write_text(yaml.safe_dump(soft_datasource_content))
 
     # Mock SOFT7Entity identity URL
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         method="GET",
         url=soft_entity_init["identity"],
         json=soft_entity_init,

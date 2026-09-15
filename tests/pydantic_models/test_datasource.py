@@ -111,7 +111,7 @@ def test_parse_input_configs(
         "SOFT7IdentityURIType",
         "str",
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     tmp_path: Path,
 ) -> None:
     """Ensure the `parse_input_configs` function instantiates a GetDataConfigDict as
@@ -174,7 +174,7 @@ def test_parse_input_configs(
             configs[key] = AnyHttpUrl(f"http://example.org/{key}")
 
             # Mock HTTP GET call to retrieve the configs online
-            httpx_mock.add_response(
+            httpx2_mock.add_response(
                 url=re.compile(rf"^http://example\.org/{key}.*"),
                 method="GET",
                 json=value.model_dump(mode="json"),
@@ -190,7 +190,7 @@ def test_parse_input_configs(
             configs[key] = f"http://example.org/{key}"
 
             # Mock HTTP GET call to retrieve the configs online
-            httpx_mock.add_response(
+            httpx2_mock.add_response(
                 url=re.compile(rf"^http://example\.org/{key}.*"),
                 method="GET",
                 json=value.model_dump(mode="json"),
@@ -245,7 +245,7 @@ def test_parse_input_configs(
 
     elif configs_type == "AnyHttpUrl":
         # Mock HTTP GET call to retrieve the configs online
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
             method="GET",
             json=soft_datasource_configs_raw,
@@ -255,7 +255,7 @@ def test_parse_input_configs(
 
     elif configs_type == "str_url":
         # Case of it being a URL, i.e., same as for configs_type == "AnyHttpUrl"
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
             method="GET",
             json=soft_datasource_configs_raw,
@@ -373,7 +373,7 @@ def test_parse_input_configs_yaml_errors(
         "str_dump",
     ],
     raw_format: Literal["json", "yaml"],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     tmp_path: Path,
 ) -> None:
     """Ensure a proper error message occurs if a YAML/JSON parsing fails."""
@@ -427,7 +427,7 @@ def test_parse_input_configs_yaml_errors(
         # Mock HTTP GET call to retrieve the configs online.
         # Mock once and at the root domain, since the error will raise before all
         # configs will be checked.
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org/.*"),
             method="GET",
             text=bad_inputs[raw_format],
@@ -460,7 +460,7 @@ def test_parse_input_configs_yaml_errors(
 
     elif configs_type in ("AnyHttpUrl", "str_url"):
         # Mock HTTP GET call to retrieve the configs online
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
             method="GET",
             text=bad_inputs[raw_format],
@@ -508,7 +508,7 @@ def test_parse_input_configs_yaml_errors(
 )
 def test_parse_input_configs_http_error(
     configs_type: Literal["dict_AnyHttpUrl", "dict_str_url", "AnyHttpUrl", "str_url"],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
 ) -> None:
     """Ensure a proper error message occurs if an HTTP error occurs."""
     import re
@@ -524,7 +524,7 @@ def test_parse_input_configs_http_error(
     bad_url = "http://example.org"
 
     # Mock HTTP GET call to raise an HTTP error
-    httpx_mock.add_exception(
+    httpx2_mock.add_exception(
         HTTPError("404 Not Found"),
         url=re.compile(rf"^{re.escape(bad_url)}.*"),
         method="GET",
@@ -853,7 +853,7 @@ def test_parse_input_configs_malformed_configs(
     configs_value_kind: Literal[
         "", "part", "whole-name", "whole-type-key", "whole-type-value"
     ],
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     tmp_path: Path,
 ) -> None:
     """Ensure a proper error message occurs if the configs are malformed."""
@@ -946,7 +946,7 @@ def test_parse_input_configs_malformed_configs(
 
     elif configs_type in ("dict_AnyHttpUrl", "dict_str_url"):
         # Mock HTTP GET call to retrieve the configs online
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org/.*"),
             method="GET",
             text=yaml.safe_dump(next(iter(bad_configs.values()))),
@@ -979,7 +979,7 @@ def test_parse_input_configs_malformed_configs(
 
     elif configs_type in ("AnyHttpUrl", "str_url"):
         # Mock HTTP GET call to retrieve the configs online
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=re.compile(r"^http://example\.org/configs.*"),
             method="GET",
             text=yaml.safe_dump(source),
