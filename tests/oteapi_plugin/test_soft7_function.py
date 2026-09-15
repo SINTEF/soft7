@@ -16,10 +16,10 @@ if TYPE_CHECKING:
     from s7.pydantic_models.soft7_entity import SOFT7Entity
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
-pytestmark = pytest.mark.httpx_mock(can_send_already_matched_responses=True)
+pytestmark = pytest.mark.httpx2_mock(can_send_already_matched_responses=True)
 
 
-def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
+def test__flatten_mapping(httpx2_mock: HTTPXMock, static_folder: Path) -> None:
     """Test the `_flatten_mapping()` method."""
     import json
 
@@ -32,7 +32,7 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
 
     # Mock the external URL calls
     # Data source
-    # httpx_mock.add_response(
+    # httpx2_mock.add_response(
     #     url="https://optimade.materialsproject.org/v1/structures/mp-1228448",
     #     method="GET",
     #     json=json.loads(
@@ -41,26 +41,26 @@ def test__flatten_mapping(httpx_mock: HTTPXMock, static_folder: Path) -> None:
     # )
 
     # Entities
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructure",
         method="GET",
         json=json.loads((static_folder / "onto-ns_OPTIMADEStructure.json").read_text()),
     )
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructureAttributes",
         method="GET",
         json=json.loads(
             (static_folder / "onto-ns_OPTIMADEStructureAttributes.json").read_text()
         ),
     )
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructureSpecies",
         method="GET",
         json=json.loads(
             (static_folder / "onto-ns_OPTIMADEStructureSpecies.json").read_text()
         ),
     )
-    httpx_mock.add_response(
+    httpx2_mock.add_response(
         url="http://onto-ns.com/meta/1.0/OPTIMADEStructureAssembly",
         method="GET",
         json=json.loads(
@@ -252,7 +252,7 @@ def test_dataclass_validation(
         | AnyHttpUrl
         | SOFT7Entity
     ),
-    httpx_mock: HTTPXMock,
+    httpx2_mock: HTTPXMock,
     soft_entity_init: dict[str, str | dict],
 ) -> None:
     """Check the dataclass instantiates correctly (and validates) with different input
@@ -270,7 +270,7 @@ def test_dataclass_validation(
         else:
             # This is a valid SOFT7IdentityURI.
             # Setup a mock URL response.
-            httpx_mock.add_response(
+            httpx2_mock.add_response(
                 url=str(entity),
                 method="GET",
                 json=soft_entity_init,
