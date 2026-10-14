@@ -113,7 +113,7 @@ class SOFT7EntityInstance(BaseModel):
                 )
 
             # Sanity checks
-            if not issubclass(property_type, BaseModel):
+            if not issubclass(property_type, BaseModel):  # type: ignore[arg-type]
                 # Ensure the property type matches the property type defined in the
                 # entity.
                 try:
@@ -139,10 +139,10 @@ class SOFT7EntityInstance(BaseModel):
             for literal_dimension in reversed(literal_dimensions):
                 # The literal dimension defines the number of times the property type is
                 # repeated.
-                property_type = conlist(
-                    property_type,
-                    min_length=literal_dimension,
-                    max_length=literal_dimension,
+                property_type = conlist(  # type: ignore[arg-type]
+                    property_type,  # type: ignore[arg-type]
+                    min_length=literal_dimension,  # type: ignore[arg-type]
+                    max_length=literal_dimension,  # type: ignore[arg-type]
                 )
 
             # Validate the property value against the property type
