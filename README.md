@@ -1,8 +1,31 @@
 # SOFT7
 
+## Installation
+
+Install the core `soft7` package, which supports SOFT7 entities and entity instances, with:
+
+```shell
+pip install soft7
+```
+
+Some functionality depends on optional dependencies, which are grouped into extras:
+
+- `oteapi`: SOFT7 data sources (`s7.factories.create_datasource()`) and the SOFT7 OTEAPI plugin.
+  These rely on [OTEAPI Core](https://github.com/EMMC-ASBL/oteapi-core) and [OTELib](https://github.com/EMMC-ASBL/otelib).
+- `graph`: Utilities for working with SOFT7 entities as knowledge graphs (`s7.graph`).
+
+To install `soft7` with an extra, e.g., `oteapi`, run:
+
+```shell
+pip install soft7[oteapi]
+```
+
+If you use functionality that requires a missing extra, an `ImportError` is raised that says which extra to install.
+
 ## OTEAPI plugin
 
 The `soft7` packages comes with an [OTEAPI](https://github.com/EMMC-ASBL/oteapi-core) plugin that allows one to convert any core parser data to a SOFT7 Entity instance.
+The plugin requires the `oteapi` extra (see [Installation](#installation)).
 
 To use the plugin, call the `'soft7'` `functionType` function strategy.
 

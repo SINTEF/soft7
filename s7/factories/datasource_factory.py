@@ -9,6 +9,8 @@ Parts 2 and 3 are together considered to produce the "specific parser".
 Parts 1 through 3 are provided through a single dictionary based on the
 `ResourceConfig` from `oteapi.models`.
 
+This requires the `oteapi` extra to be installed.
+
 """
 
 from __future__ import annotations
@@ -18,8 +20,14 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from otelib import OTEClient
 from pydantic import AnyUrl, Field, FileUrl, create_model
+
+from s7.exceptions import MissingExtra
+
+try:
+    from otelib import OTEClient
+except ImportError as exc:
+    raise MissingExtra("oteapi", "Creating SOFT7 data sources") from exc
 
 from s7.pydantic_models.datasource import (
     DataSourceDimensions,

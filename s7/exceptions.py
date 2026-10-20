@@ -33,3 +33,14 @@ class InsufficientData(SOFT7FunctionError, ValueError):
 
 class InvalidMapping(SOFT7FunctionError, ValueError):
     """Raised when the mapping is invalid."""
+
+
+class MissingExtra(S7Error, ImportError):
+    """Raised when functionality requiring a non-installed package extra is used."""
+
+    def __init__(self, extra: str, feature: str) -> None:
+        self.extra = extra
+        super().__init__(
+            f"{feature} requires the {extra!r} extra to be installed. Install it "
+            f"with: pip install 'soft7[{extra}]'"
+        )
