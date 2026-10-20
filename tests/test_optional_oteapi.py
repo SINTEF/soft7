@@ -122,26 +122,59 @@ def test_oteapi_functionality_without_oteapi(import_statement: str) -> None:
     assert isinstance(exc.value, ImportError)
 
 
-@pytest.mark.parametrize(
-    "import_statement",
-    [
-        "import s7.factories.datasource_factory",
-        "import s7.pydantic_models.oteapi",
-    ],
-)
-def test_broken_oteapi_dependency_not_masked(import_statement: str) -> None:
+def test_broken_oteapi_dependency_not_masked() -> None:
     """Ensure a broken dependency of an installed `oteapi` extra is not reported as a
-    missing extra."""
+    missing extra.
+
+    This reaches the guard in `s7.pydantic_models.oteapi`, since `otelib` itself
+    does not import `pydantic_settings`.
+    """
     pytest.importorskip("otelib", reason="Requires the 'oteapi' extra.")
 
-    # Simulate a missing dependency of `oteapi`/`otelib`, not the packages themselves.
+    # Simulate a missing dependency of `oteapi`, not the packages themselves.
     with _blocked_modules("pydantic_settings"):
         from s7.exceptions import MissingExtra
 
         with pytest.raises(ModuleNotFoundError, match="pydantic_settings") as exc:
-            exec(import_statement)  # noqa: S102
+            import s7.pydantic_models.oteapi  # noqa: F401
 
         assert not isinstance(exc.value, MissingExtra)
+
+
+def test_oteapi_core_without_otelib() -> None:
+    """Ensure the plugin works with only `oteapi-core` (as in the OTEAPI Service
+    image), while `create_datasource()` reports the missing extra."""
+    pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
+
+    with _blocked_modules("otelib"):
+        import s7.oteapi_plugin.soft7_function
+        import s7.oteapi_plugin.yaml_parser  # noqa: F401
+        from s7.exceptions import MissingExtra
+
+        with pytest.raises(MissingExtra, match=r"pip install 'soft7\[oteapi\]'"):
+            from s7.factories import create_datasource  # noqa: F401
+
+
+@pytest.mark.parametrize(
+    ("error", "translated"),
+    [
+        (ModuleNotFoundError("", name="oteapi"), True),
+        (ModuleNotFoundError("", name="oteapi.models"), True),
+        (ModuleNotFoundError("", name="pydantic_settings"), False),
+        (ModuleNotFoundError(""), False),
+        (ImportError("cannot import name 'X' from 'oteapi.models'"), False),
+    ],
+)
+def test_raise_if_extra_missing(error: ImportError, translated: bool) -> None:
+    """Ensure only a missing extra package is translated to `MissingExtra`."""
+    from s7.exceptions import MissingExtra, raise_if_extra_missing
+
+    packages = ("oteapi", "otelib")
+    if translated:
+        with pytest.raises(MissingExtra):
+            raise_if_extra_missing(error, "oteapi", "Feature", packages)
+    else:
+        assert raise_if_extra_missing(error, "oteapi", "Feature", packages) is None
 
 
 def test_missing_extra_pickle() -> None:
