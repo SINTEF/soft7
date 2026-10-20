@@ -31,13 +31,9 @@ dynamic = ["version"]
 
 dependencies = [
     "httpx2>=2.3,<3",
-    "oteapi-core~=1.0",
-    "otelib~=1.0",
+    "pydantic~=2.14",
     "pyyaml~=6.0",
 ]
-
-# Other dependencies governed by oteapi-core:
-# - pydantic
 
 [project.optional-dependencies]
 docs = [
@@ -50,6 +46,10 @@ graph = [
     "rdflib~=7.1",
     "sparqlwrapper~=2.0",
 ]
+oteapi = [
+    "oteapi-core~=1.0",
+    "otelib~=1.0",
+]
 testing = [
     "httpx2-pytest>=1,<3",
     "pytest~=9.0",
@@ -59,7 +59,7 @@ testing = [
 ]
 dev = [
     "pre-commit~=4.2",
-    "soft7[docs,graph,testing]",
+    "soft7[docs,graph,oteapi,testing]",
 ]
 
 [project.urls]
@@ -71,6 +71,7 @@ Changelog = "https://github.com/SINTEF/soft7/blob/main/CHANGELOG.md"
 Package = "https://pypi.org/project/soft7"
 
 # Register OTEAPI strategies
+# These are only loaded by OTEAPI Core, i.e., they require the `oteapi` extra.
 [project.entry-points."oteapi.function"]
 "soft7.soft7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
 "soft7.SOFT7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"

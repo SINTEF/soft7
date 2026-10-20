@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from requests_mock import Mocker
 
 
+pytest.importorskip("otelib", reason="Requires the 'oteapi' extra.")
+
 pytestmark = pytest.mark.httpx2_mock(can_send_already_matched_responses=True)
 
 

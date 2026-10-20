@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from s7.pydantic_models.soft7_entity import SOFT7Entity
     from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
+pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
+
 pytestmark = pytest.mark.httpx2_mock(can_send_already_matched_responses=True)
 
 

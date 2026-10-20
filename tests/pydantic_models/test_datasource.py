@@ -21,6 +21,9 @@ if TYPE_CHECKING:
     )
 
 
+pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
+
+
 @pytest.mark.parametrize(
     "configs_type",
     [

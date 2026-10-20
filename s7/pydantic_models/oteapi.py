@@ -1,20 +1,29 @@
-"""Customized OTEAPI pydantic models."""
+"""Customized OTEAPI pydantic models.
+
+This requires the `oteapi` extra to be installed.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Hashable
 
-from oteapi.models import (
-    FunctionConfig,
-    GenericConfig,
-    MappingConfig,
-    ParserConfig,
-    ResourceConfig,
-)
 from pydantic import AnyUrl
 
+from s7.exceptions import raise_if_extra_missing
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
+
+try:
+    from oteapi.models import (
+        FunctionConfig,
+        GenericConfig,
+        MappingConfig,
+        ParserConfig,
+        ResourceConfig,
+    )
+except ImportError as exc:
+    raise_if_extra_missing(exc, "oteapi", "Using OTEAPI configurations", ("oteapi",))
+    raise
 
 
 class HashableMixin:

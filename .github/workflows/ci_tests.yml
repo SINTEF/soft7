@@ -60,8 +60,23 @@ jobs:
         #   DiskCache (python-diskcache) through 5.6.3 uses Python pickle for serialization by default.
         #   An attacker with write access to the cache directory can achieve arbitrary code execution
         #   when a victim application reads from the cache.
+        #
+        # CVE-2026-112395, CVE-2026-112397, CVE-2026-112400, CVE-2026-112404,
+        # CVE-2026-112895, CVE-2026-112896, CVE-2026-112897, CVE-2026-112899: Pillow 12.3.0
+        #   Various issues fixed in Pillow 13.0.0.
+        #   Pillow is not used by SOFT7. It is a dependency of OTEAPI Core (in the
+        #   optional `oteapi` extra), which caps it at `Pillow<13`.
+        #   Remove these ignores when OTEAPI Core allows `Pillow>=13`.
         ignore-vulns: |
           CVE-2025-69872
+          CVE-2026-112395
+          CVE-2026-112397
+          CVE-2026-112400
+          CVE-2026-112404
+          CVE-2026-112895
+          CVE-2026-112896
+          CVE-2026-112897
+          CVE-2026-112899
 
   pytest:
     name: pytest
@@ -72,6 +87,13 @@ jobs:
       matrix:
         # Supported Python versions (according to pyproject.toml)
         python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
+        extras: ['oteapi,testing']
+        include:
+          # Ensure SOFT7 works without the optional OTEAPI dependencies
+          - python-version: '3.11'
+            extras: 'testing'
+          - python-version: '3.15'
+            extras: 'testing'
 
     steps:
     - name: Checkout repository
@@ -86,7 +108,7 @@ jobs:
       run: |
         python -m pip install -U pip
         pip install -U setuptools wheel
-        pip install -e .[testing]
+        pip install -e .[${{ matrix.extras }}]
 
     - name: Run pytest
       run: pytest -v -rs --cov=s7 --cov-report=xml --cov-report=term-missing --color=yes
@@ -98,6 +120,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
         flags: pytest
-        env_vars: PYTHON
+        env_vars: PYTHON,EXTRAS
       env:
         PYTHON: ${{ matrix.python-version }}
+        EXTRAS: ${{ matrix.extras }}
