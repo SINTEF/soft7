@@ -2,21 +2,96 @@
 
 ## [Unreleased](https://github.com/SINTEF/soft7/tree/HEAD)
 
-[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.5.0...HEAD)
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.6.0...HEAD)
 
-## Use `httpx2`
+## Optional OTEAPI dependencies
 
-Starlette (the underlying framework used by FastAPI) have started to rely on [HTTPX2](https://httpx2.pydantic.dev). This seems like a good choice to move to, since it is a fork of HTTPX and will be maintained by the Pydantic team.
+`oteapi-core` and `otelib` are no longer hard dependencies of SOFT7. They now live in a new opt-in `oteapi` extra, so the core package is considerably lighter for users who only work with SOFT7 entities and entity instances.
 
-This has required the update from `pytest-httpx` to `httpx2-pytest` as well. The latter being a fork of the former, but supporting HTTPX2.
+Install the extra to use SOFT7 data sources ( `s7.factories.create_datasource()` ) or the SOFT7 OTEAPI plugin:
+
+`pip install 'soft7[oteapi]'`
+
+Using OTEAPI functionality without the extra raises `s7.exceptions.MissingExtra`, an `ImportError` that says how to install it. `pydantic` is now an explicit dependency, since it was previously only pulled in through `oteapi-core`.
+
+## Python support
+
+Python 3.10 is no longer supported. SOFT7 now requires Python 3.11 or later and is tested on Python 3.14 and 3.15.
+
+## Upgrading
+
+If you use data sources or the OTEAPI plugin, change `soft7` to `soft7[oteapi]` in your requirements. Otherwise there are no code changes.
 
 ## Miscellaneous
 
-Updated GitHub Actions, development tools, and minimum expected requirements.
+Updated documentation tooling (Sphinx 9), CI workflows, and development tools.
 
-**Closed issues:**
+**Implemented enhancements:**
 
-- Use HTTPX2 [\#184](https://github.com/SINTEF/soft7/issues/184)
+- Make `oteapi-core` \(and `otelib`\) an opt-in `oteapi` extra [\#217](https://github.com/SINTEF/soft7/issues/217)
+
+## [v0.6.0](https://github.com/SINTEF/soft7/tree/v0.6.0) (2026-10-20)
+
+[Full Changelog](https://github.com/SINTEF/soft7/compare/v0.5.0...v0.6.0)
+
+## Optional OTEAPI dependencies
+
+`oteapi-core` and `otelib` are no longer hard dependencies of SOFT7. They now live in a new opt-in `oteapi` extra, so the core package is considerably lighter for users who only work with SOFT7 entities and entity instances.
+
+Install the extra to use SOFT7 data sources ( `s7.factories.create_datasource()` ) or the SOFT7 OTEAPI plugin:
+
+`pip install 'soft7[oteapi]'`
+
+Using OTEAPI functionality without the extra raises `s7.exceptions.MissingExtra`, an `ImportError` that says how to install it. `pydantic` is now an explicit dependency, since it was previously only pulled in through `oteapi-core`.
+
+## Python support
+
+Python 3.10 is no longer supported. SOFT7 now requires Python 3.11 or later and is tested on Python 3.14 and 3.15.
+
+## Upgrading
+
+If you use data sources or the OTEAPI plugin, change `soft7` to `soft7[oteapi]` in your requirements. Otherwise there are no code changes.
+
+## Miscellaneous
+
+Updated documentation tooling (Sphinx 9), CI workflows, and development tools.
+
+**Implemented enhancements:**
+
+- Make OTEAPI dependencies an opt-in `oteapi` extra [\#218](https://github.com/SINTEF/soft7/pull/218) ([CasperWA](https://github.com/CasperWA))
+
+**Merged pull requests:**
+
+- \[pre-commit.ci\] pre-commit autoupdate [\#216](https://github.com/SINTEF/soft7/pull/216) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump the packages group across 1 directory with 2 updates [\#215](https://github.com/SINTEF/soft7/pull/215) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Drop Python 3.10 support [\#214](https://github.com/SINTEF/soft7/pull/214) ([CasperWA](https://github.com/CasperWA))
+- \[pre-commit.ci\] pre-commit autoupdate [\#213](https://github.com/SINTEF/soft7/pull/213) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump pip-tools from 7.6.1 to 7.6.2 in /.github/utils in the packages group across 1 directory [\#212](https://github.com/SINTEF/soft7/pull/212) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#211](https://github.com/SINTEF/soft7/pull/211) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#210](https://github.com/SINTEF/soft7/pull/210) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#209](https://github.com/SINTEF/soft7/pull/209) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#208](https://github.com/SINTEF/soft7/pull/208) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update httpx2-pytest requirement from ~=1.0 to \>=1,\<3 in the packages group across 1 directory [\#207](https://github.com/SINTEF/soft7/pull/207) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#206](https://github.com/SINTEF/soft7/pull/206) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#205](https://github.com/SINTEF/soft7/pull/205) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#204](https://github.com/SINTEF/soft7/pull/204) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#203](https://github.com/SINTEF/soft7/pull/203) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump pip-tools from 7.6.0 to 7.6.1 in /.github/utils in the packages group across 1 directory [\#202](https://github.com/SINTEF/soft7/pull/202) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#201](https://github.com/SINTEF/soft7/pull/201) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update flit-core requirement from \<4,\>=3.4 to \>=3.4,\<5 in the packages group across 1 directory [\#200](https://github.com/SINTEF/soft7/pull/200) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#199](https://github.com/SINTEF/soft7/pull/199) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#198](https://github.com/SINTEF/soft7/pull/198) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump pip-tools from 7.5.3 to 7.6.0 in /.github/utils in the packages group across 1 directory [\#197](https://github.com/SINTEF/soft7/pull/197) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/setup-python from 6 to 7 in the actions group [\#196](https://github.com/SINTEF/soft7/pull/196) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#195](https://github.com/SINTEF/soft7/pull/195) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#194](https://github.com/SINTEF/soft7/pull/194) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#193](https://github.com/SINTEF/soft7/pull/193) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#192](https://github.com/SINTEF/soft7/pull/192) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Update pydata-sphinx-theme requirement from ~=0.18.0 to \>=0.18,\<0.20 in the packages group across 1 directory [\#191](https://github.com/SINTEF/soft7/pull/191) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/checkout from 6 to 7 in the actions group [\#190](https://github.com/SINTEF/soft7/pull/190) ([dependabot[bot]](https://github.com/apps/dependabot))
+- \[pre-commit.ci\] pre-commit autoupdate [\#189](https://github.com/SINTEF/soft7/pull/189) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- \[pre-commit.ci\] pre-commit autoupdate [\#188](https://github.com/SINTEF/soft7/pull/188) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- Bump codecov/codecov-action from 6 to 7 in the actions group [\#187](https://github.com/SINTEF/soft7/pull/187) ([dependabot[bot]](https://github.com/apps/dependabot))
 
 ## [v0.5.0](https://github.com/SINTEF/soft7/tree/v0.5.0) (2026-06-02)
 
@@ -31,6 +106,10 @@ This has required the update from `pytest-httpx` to `httpx2-pytest` as well. The
 ## Miscellaneous
 
 Updated GitHub Actions, development tools, and minimum expected requirements.
+
+**Closed issues:**
+
+- Use HTTPX2 [\#184](https://github.com/SINTEF/soft7/issues/184)
 
 **Merged pull requests:**
 
