@@ -60,8 +60,22 @@ jobs:
         #   DiskCache (python-diskcache) through 5.6.3 uses Python pickle for serialization by default.
         #   An attacker with write access to the cache directory can achieve arbitrary code execution
         #   when a victim application reads from the cache.
+        #
+        # CVE-2026-112395, CVE-2026-112397, CVE-2026-112400, CVE-2026-112404,
+        # CVE-2026-112895, CVE-2026-112896, CVE-2026-112897, CVE-2026-112899: Pillow 12.3.0
+        #   Various issues fixed in Pillow 13.0.0.
+        #   Pillow is not used by SOFT7. It is a dependency of OTEAPI Core (in the
+        #   optional `oteapi` extra), which caps it at `Pillow<13`.
         ignore-vulns: |
           CVE-2025-69872
+          CVE-2026-112395
+          CVE-2026-112397
+          CVE-2026-112400
+          CVE-2026-112404
+          CVE-2026-112895
+          CVE-2026-112896
+          CVE-2026-112897
+          CVE-2026-112899
 
   pytest:
     name: pytest
