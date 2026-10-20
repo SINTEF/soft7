@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import pickle
 import sys
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pytest
@@ -23,13 +25,12 @@ def _is_reloaded_module(name: str) -> bool:
     )
 
 
-@pytest.fixture
-def _without_oteapi() -> Generator[None]:
-    """Make the `oteapi` extra packages non-importable.
+@contextmanager
+def _blocked_modules(*blocked: str) -> Generator[None]:
+    """Make the `blocked` packages non-importable.
 
     All `s7` modules are removed from `sys.modules` so they are imported anew without
-    access to the `oteapi` extra packages. The original modules are restored after the
-    test.
+    access to the blocked packages. The original modules are restored afterwards.
     """
     saved_modules = {
         name: module
@@ -39,8 +40,9 @@ def _without_oteapi() -> Generator[None]:
     for name in saved_modules:
         del sys.modules[name]
 
-    for package in OTEAPI_EXTRA_PACKAGES:
+    for package in blocked:
         # A `None` value in `sys.modules` makes an import raise ModuleNotFoundError.
+        saved_modules.setdefault(package, sys.modules.get(package))  # type: ignore[arg-type]
         sys.modules[package] = None  # type: ignore[assignment]
 
     try:
@@ -48,7 +50,18 @@ def _without_oteapi() -> Generator[None]:
     finally:
         for name in [name for name in sys.modules if _is_reloaded_module(name)]:
             del sys.modules[name]
-        sys.modules.update(saved_modules)
+        for name, module in saved_modules.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+
+
+@pytest.fixture
+def _without_oteapi() -> Generator[None]:
+    """Make the `oteapi` extra packages non-importable."""
+    with _blocked_modules(*OTEAPI_EXTRA_PACKAGES):
+        yield
 
 
 @pytest.mark.usefixtures("_without_oteapi")
@@ -107,6 +120,40 @@ def test_oteapi_functionality_without_oteapi(import_statement: str) -> None:
 
     assert exc.value.extra == "oteapi"
     assert isinstance(exc.value, ImportError)
+
+
+@pytest.mark.parametrize(
+    "import_statement",
+    [
+        "import s7.factories.datasource_factory",
+        "import s7.pydantic_models.oteapi",
+    ],
+)
+def test_broken_oteapi_dependency_not_masked(import_statement: str) -> None:
+    """Ensure a broken dependency of an installed `oteapi` extra is not reported as a
+    missing extra."""
+    pytest.importorskip("otelib", reason="Requires the 'oteapi' extra.")
+
+    # Simulate a missing dependency of `oteapi`/`otelib`, not the packages themselves.
+    with _blocked_modules("pydantic_settings"):
+        from s7.exceptions import MissingExtra
+
+        with pytest.raises(ModuleNotFoundError, match="pydantic_settings") as exc:
+            exec(import_statement)  # noqa: S102
+
+        assert not isinstance(exc.value, MissingExtra)
+
+
+def test_missing_extra_pickle() -> None:
+    """Ensure `MissingExtra` survives pickling, e.g., across process boundaries."""
+    from s7.exceptions import MissingExtra
+
+    error = MissingExtra("oteapi", "Using OTEAPI")
+    restored = pickle.loads(pickle.dumps(error))
+
+    assert isinstance(restored, MissingExtra)
+    assert (restored.extra, restored.feature) == ("oteapi", "Using OTEAPI")
+    assert str(restored) == str(error)
 
 
 def test_lazy_create_datasource() -> None:

@@ -17,10 +17,10 @@ Some functionality depends on optional dependencies, which are grouped into extr
 To install `soft7` with an extra, e.g., `oteapi`, run:
 
 ```shell
-pip install soft7[oteapi]
+pip install 'soft7[oteapi]'
 ```
 
-If you use functionality that requires a missing extra, an `ImportError` is raised that says which extra to install.
+If you use `oteapi` functionality without the extra installed, an `ImportError` (`s7.exceptions.MissingExtra`) is raised that says how to install it.
 
 ## OTEAPI plugin
 

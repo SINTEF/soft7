@@ -22,12 +22,15 @@ from typing import TYPE_CHECKING, Optional
 
 from pydantic import AnyUrl, Field, FileUrl, create_model
 
-from s7.exceptions import MissingExtra
+from s7.exceptions import raise_if_extra_missing
 
 try:
     from otelib import OTEClient
 except ImportError as exc:
-    raise MissingExtra("oteapi", "Creating SOFT7 data sources") from exc
+    raise_if_extra_missing(
+        exc, "oteapi", "Creating SOFT7 data sources", ("oteapi", "otelib")
+    )
+    raise
 
 from s7.pydantic_models.datasource import (
     DataSourceDimensions,

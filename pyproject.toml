@@ -31,7 +31,7 @@ dynamic = ["version"]
 
 dependencies = [
     "httpx2>=2.3,<3",
-    "pydantic~=2.11",
+    "pydantic~=2.14",
     "pyyaml~=6.0",
 ]
 

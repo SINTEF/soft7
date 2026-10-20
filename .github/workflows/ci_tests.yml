@@ -66,6 +66,7 @@ jobs:
         #   Various issues fixed in Pillow 13.0.0.
         #   Pillow is not used by SOFT7. It is a dependency of OTEAPI Core (in the
         #   optional `oteapi` extra), which caps it at `Pillow<13`.
+        #   Remove these ignores when OTEAPI Core allows `Pillow>=13`.
         ignore-vulns: |
           CVE-2025-69872
           CVE-2026-112395

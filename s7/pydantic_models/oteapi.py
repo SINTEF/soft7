@@ -9,7 +9,7 @@ from collections.abc import Hashable
 
 from pydantic import AnyUrl
 
-from s7.exceptions import MissingExtra
+from s7.exceptions import raise_if_extra_missing
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
 
@@ -22,7 +22,8 @@ try:
         ResourceConfig,
     )
 except ImportError as exc:
-    raise MissingExtra("oteapi", "Using OTEAPI configurations") from exc
+    raise_if_extra_missing(exc, "oteapi", "Using OTEAPI configurations", ("oteapi",))
+    raise
 
 
 class HashableMixin:
