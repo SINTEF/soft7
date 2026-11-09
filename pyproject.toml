@@ -38,7 +38,7 @@ dependencies = [
 [project.optional-dependencies]
 docs = [
     "myst-nb~=1.2",
-    "pydata-sphinx-theme~=0.23.0",
+    "pydata-sphinx-theme>=0.23,<0.25",
     "sphinx~=9.0",
 ]
 graph = [
