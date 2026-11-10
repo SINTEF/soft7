@@ -222,7 +222,7 @@ class SOFT7EntityProperty(BaseModel):
         """
         try:
             data = get_dict_from_any_model_input(data)
-        except ValueError:
+        except (ValueError, TypeError):
             # If we cannot handle the data, we give up and let pydantic handle it.
             return data
 
@@ -420,7 +420,7 @@ class SOFT7Entity(BaseModel):
         """
         try:
             data = get_dict_from_any_model_input(data)
-        except ValueError:
+        except (ValueError, TypeError):
             # If we cannot handle the data, we give up and let pydantic handle it.
             return data
 
@@ -525,7 +525,7 @@ class SOFT7Entity(BaseModel):
         """
         try:
             data = get_dict_from_any_model_input(data)
-        except ValueError:
+        except (ValueError, TypeError):
             # If we cannot handle the data, we give up and let pydantic handle it.
             return data
 
@@ -600,7 +600,7 @@ class SOFT7Entity(BaseModel):
         """
         try:
             data = get_dict_from_any_model_input(data)
-        except ValueError:
+        except (ValueError, TypeError):
             # If we cannot handle the data, we give up and let pydantic handle it.
             return data
 
