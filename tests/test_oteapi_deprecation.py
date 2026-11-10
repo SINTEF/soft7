@@ -124,6 +124,25 @@ def test_import_warning_attributed_to_importer(
     assert records[0].filename == __file__
 
 
+@pytest.mark.parametrize("importer", ["s7.graphtools.utils", "s7", "s7_extension"])
+def test_import_from_s7_namespace_extension(
+    importer: str, fresh_s7: Callable[[], type[Warning]]
+) -> None:
+    """Ensure modules extending the `s7` namespace, e.g., `s7.graphtools` from SOFT7
+    GraphTools, are warned when importing a deprecated module.
+
+    Only SOFT7's own OTEAPI-related modules are considered internal importers.
+    """
+    pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
+    category = fresh_s7()
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        exec("import s7.pydantic_models.oteapi", {"__name__": importer})  # noqa: S102
+
+    assert len(_oteapi_warnings(records, category)) == 1
+
+
 def test_datasource_factory_import_is_silent(
     fresh_s7: Callable[[], type[Warning]],
 ) -> None:

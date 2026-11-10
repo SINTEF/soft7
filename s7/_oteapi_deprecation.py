@@ -13,6 +13,23 @@ from s7.exceptions import OTEAPIDeprecationWarning
 
 OTEAPI_REMOVAL_ISSUE = "https://github.com/SINTEF/soft7/issues/222"
 
+_OTEAPI_IMPORTERS = frozenset(
+    {
+        "s7.factories",  # Lazily imports `create_datasource()`
+        "s7.factories.datasource_factory",
+        "s7.oteapi_plugin",
+        "s7.pydantic_models.datasource",
+        "s7.pydantic_models.oteapi",
+    }
+)
+"""SOFT7 modules that may import the deprecated modules without a warning.
+
+These are explicitly listed, instead of considering all `s7.*` modules, since other
+packages may extend the `s7` namespace, e.g., `s7.graphtools` from
+[SOFT7 GraphTools](https://github.com/SemanticMatter/s7_graphtools). These should
+still be warned.
+"""
+
 
 def warn_oteapi_deprecated(feature: str, *, stacklevel: int = 2) -> None:
     """Emit an `OTEAPIDeprecationWarning` for `feature`.
@@ -44,9 +61,9 @@ def _is_import_machinery(filename: str) -> bool:
 def warn_oteapi_deprecated_module(module: str) -> None:
     """Emit an `OTEAPIDeprecationWarning` for importing `module`.
 
-    The warning is only emitted when `module` is imported from outside SOFT7, so that
-    importing one deprecated module does not result in a cascade of warnings from the
-    deprecated modules it imports in turn.
+    The warning is not emitted when `module` is imported by SOFT7's own
+    OTEAPI-related modules, so that importing one deprecated module does not result in
+    a cascade of warnings from the deprecated modules it imports in turn.
 
     Important:
         This must be called from the top level of the module being deprecated.
@@ -62,7 +79,7 @@ def warn_oteapi_deprecated_module(module: str) -> None:
         frame = frame.f_back
 
     importer = frame.f_globals.get("__name__", "") if frame is not None else ""
-    if importer == "s7" or importer.startswith("s7."):
+    if importer in _OTEAPI_IMPORTERS or importer.startswith("s7.oteapi_plugin."):
         return
 
     # Relative to this function, stack level 2 is the deprecated module's body and 3
