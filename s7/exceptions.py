@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import Any
+
 
 class S7Error(Exception):
     """Base class for all SOFT7 exceptions."""
@@ -15,24 +20,36 @@ class EntityNotFound(S7EntityError, FileNotFoundError):
     """Raised when an entity is or can not be found."""
 
 
-class ConfigsNotFound(S7EntityError, FileNotFoundError):
-    """Raised when the configs are or can not be found."""
+class OTEAPIDeprecationWarning(DeprecationWarning):
+    """Warning for SOFT7 functionality relying on OTEAPI, which will be removed.
+
+    See https://github.com/SINTEF/soft7/issues/222.
+    """
 
 
-class S7OTEAPIPluginError(S7Error):
-    """Base class for all SOFT7 OTEAPI plugin exceptions."""
+_DEPRECATED_OTEAPI_EXCEPTIONS = (
+    "ConfigsNotFound",
+    "InsufficientData",
+    "InvalidMapping",
+    "S7OTEAPIPluginError",
+    "SOFT7FunctionError",
+)
+"""Deprecated exceptions only used by OTEAPI-related functionality.
+
+They live in `s7._oteapi_exceptions` and are lazily retrieved by `__getattr__()`.
+"""
 
 
-class SOFT7FunctionError(S7OTEAPIPluginError):
-    """Base class for all JSON to SOFT7 Entity OTEAPI parse strategy exceptions."""
+def __getattr__(name: str) -> Any:
+    """Retrieve the deprecated OTEAPI-related exceptions with a deprecation warning."""
+    if name in _DEPRECATED_OTEAPI_EXCEPTIONS:
+        from s7 import _oteapi_exceptions
+        from s7._oteapi_deprecation import warn_oteapi_deprecated
 
+        warn_oteapi_deprecated(f"`s7.exceptions.{name}`")
+        return getattr(_oteapi_exceptions, name)
 
-class InsufficientData(SOFT7FunctionError, ValueError):
-    """Raised when the data is insufficient to generate a SOFT7 entity."""
-
-
-class InvalidMapping(SOFT7FunctionError, ValueError):
-    """Raised when the mapping is invalid."""
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class MissingExtra(S7Error, ImportError):

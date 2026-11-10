@@ -23,6 +23,12 @@ if TYPE_CHECKING:
 
 pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
 
+# OTEAPI-related functionality is deprecated (see #222). The deprecation warnings
+# themselves are tested in tests/test_oteapi_deprecation.py.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::s7.exceptions.OTEAPIDeprecationWarning"
+)
+
 
 @pytest.mark.parametrize(
     "configs_type",

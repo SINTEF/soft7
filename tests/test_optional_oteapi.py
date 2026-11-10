@@ -147,7 +147,11 @@ def test_oteapi_core_without_otelib() -> None:
     pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
 
     with _blocked_modules("otelib"):
-        import s7.oteapi_plugin.soft7_function
+        # The OTEAPI plugin is deprecated.
+        # Note, `s7` is re-imported, i.e., `s7.exceptions.OTEAPIDeprecationWarning` is
+        # a new class, hence the check for its `DeprecationWarning` base class.
+        with pytest.warns(DeprecationWarning, match=r"'s7\.oteapi_plugin' module"):
+            import s7.oteapi_plugin.soft7_function
         import s7.oteapi_plugin.yaml_parser  # noqa: F401
         from s7.exceptions import MissingExtra
 

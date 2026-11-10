@@ -1,4 +1,11 @@
-"""Everything to do with the special SOFT model Data Source."""
+"""Everything to do with the special SOFT model Data Source.
+
+This requires the `oteapi` extra to be installed.
+
+Deprecated:
+    All OTEAPI-related functionality is deprecated and will be removed,
+    see https://github.com/SINTEF/soft7/issues/222.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +23,9 @@ from pydantic import (
 )
 from pydantic.functional_serializers import model_serializer
 
-from s7.exceptions import ConfigsNotFound, EntityNotFound, S7EntityError
+from s7._oteapi_deprecation import warn_oteapi_deprecated_module
+from s7._oteapi_exceptions import ConfigsNotFound
+from s7.exceptions import EntityNotFound, S7EntityError
 from s7.pydantic_models._utils import (
     get_dict_from_url_path_or_raw,
 )
@@ -55,6 +64,8 @@ if TYPE_CHECKING:  # pragma: no cover
         function: HashableFunctionConfig
         parser: HashableParserConfig
 
+
+warn_oteapi_deprecated_module(__name__)
 
 LOGGER = logging.getLogger(__name__)
 

@@ -29,6 +29,10 @@ updates:
       - "skip-changelog"
       - "priority/low"
     target-branch: "main"
+    ignore:
+      # The `oteapi` extra is deprecated and will be removed (see #222)
+      - dependency-name: "oteapi-core"
+      - dependency-name: "otelib"
     groups:
       packages:
         applies-to: version-updates

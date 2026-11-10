@@ -50,33 +50,13 @@ jobs:
         pip install -U -r .github/utils/requirements_audit.txt
 
     - name: Prepare for pip-audit
-      run: pip-compile --output-file="${{ runner.temp }}/requirements.txt" --all-extras --allow-unsafe --verbose --color "${{ github.workspace }}/pyproject.toml"
+      # The deprecated `oteapi` extra is not audited (see #222).
+      run: pip-compile --output-file="${{ runner.temp }}/requirements.txt" --extra=dev --extra=docs --extra=graph --extra=testing --allow-unsafe --verbose --color "${{ github.workspace }}/pyproject.toml"
 
     - name: Run pip-audit
       uses: pypa/gh-action-pip-audit@v1.1.0
       with:
         inputs: '${{ runner.temp }}/requirements.txt'
-        # CVE-2025-69872: DiskCache 5.6.3
-        #   DiskCache (python-diskcache) through 5.6.3 uses Python pickle for serialization by default.
-        #   An attacker with write access to the cache directory can achieve arbitrary code execution
-        #   when a victim application reads from the cache.
-        #
-        # CVE-2026-112395, CVE-2026-112397, CVE-2026-112400, CVE-2026-112404,
-        # CVE-2026-112895, CVE-2026-112896, CVE-2026-112897, CVE-2026-112899: Pillow 12.3.0
-        #   Various issues fixed in Pillow 13.0.0.
-        #   Pillow is not used by SOFT7. It is a dependency of OTEAPI Core (in the
-        #   optional `oteapi` extra), which caps it at `Pillow<13`.
-        #   Remove these ignores when OTEAPI Core allows `Pillow>=13`.
-        ignore-vulns: |
-          CVE-2025-69872
-          CVE-2026-112395
-          CVE-2026-112397
-          CVE-2026-112400
-          CVE-2026-112404
-          CVE-2026-112895
-          CVE-2026-112896
-          CVE-2026-112897
-          CVE-2026-112899
 
   pytest:
     name: pytest
@@ -87,13 +67,13 @@ jobs:
       matrix:
         # Supported Python versions (according to pyproject.toml)
         python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
-        extras: ['oteapi,testing']
+        extras: ['testing']
         include:
-          # Ensure SOFT7 works without the optional OTEAPI dependencies
+          # Legacy: Ensure the deprecated OTEAPI-related functionality still works,
+          # and emits deprecation warnings. Remove together with the `oteapi` extra
+          # (see #222).
           - python-version: '3.11'
-            extras: 'testing'
-          - python-version: '3.15'
-            extras: 'testing'
+            extras: 'oteapi,testing'
 
     steps:
     - name: Checkout repository

@@ -46,6 +46,7 @@ graph = [
     "rdflib~=7.1",
     "sparqlwrapper~=2.0",
 ]
+# Deprecated: All OTEAPI-related functionality will be removed (see #222).
 oteapi = [
     "oteapi-core~=1.0",
     "otelib~=1.0",
@@ -59,7 +60,7 @@ testing = [
 ]
 dev = [
     "pre-commit~=4.2",
-    "soft7[docs,graph,oteapi,testing]",
+    "soft7[docs,graph,testing]",
 ]
 
 [project.urls]
@@ -72,6 +73,7 @@ Package = "https://pypi.org/project/soft7"
 
 # Register OTEAPI strategies
 # These are only loaded by OTEAPI Core, i.e., they require the `oteapi` extra.
+# Deprecated: All OTEAPI-related functionality will be removed (see #222).
 [project.entry-points."oteapi.function"]
 "soft7.soft7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
 "soft7.SOFT7" = "s7.oteapi_plugin.soft7_function:SOFT7Generator"
