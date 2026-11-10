@@ -16,7 +16,12 @@ if TYPE_CHECKING:
 
 pytest.importorskip("otelib", reason="Requires the 'oteapi' extra.")
 
-pytestmark = pytest.mark.httpx2_mock(can_send_already_matched_responses=True)
+# OTEAPI-related functionality is deprecated (see #222). The deprecation warnings
+# themselves are tested in tests/test_oteapi_deprecation.py.
+pytestmark = [
+    pytest.mark.httpx2_mock(can_send_already_matched_responses=True),
+    pytest.mark.filterwarnings("ignore::s7.exceptions.OTEAPIDeprecationWarning"),
+]
 
 
 def test_create_datasource(

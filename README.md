@@ -10,8 +10,9 @@ pip install soft7
 
 Some functionality depends on optional dependencies, which are grouped into extras:
 
-- `oteapi`: SOFT7 data sources (`s7.factories.create_datasource()`) and the SOFT7 OTEAPI plugin.
+- `oteapi` (**deprecated**): SOFT7 data sources (`s7.factories.create_datasource()`) and the SOFT7 OTEAPI plugin.
   These rely on [OTEAPI Core](https://github.com/EMMC-ASBL/oteapi-core) and [OTELib](https://github.com/EMMC-ASBL/otelib).
+  All OTEAPI-related functionality is deprecated and will be removed in a future version, see [#222](https://github.com/SINTEF/soft7/issues/222).
 - `graph`: Utilities for working with SOFT7 entities as knowledge graphs (`s7.graph`).
 
 To install `soft7` with an extra, e.g., `oteapi`, run:
@@ -23,6 +24,13 @@ pip install 'soft7[oteapi]'
 If you use `oteapi` functionality without the extra installed, an `ImportError` (`s7.exceptions.MissingExtra`) is raised that says how to install it.
 
 ## OTEAPI plugin
+
+> [!WARNING]
+> The SOFT7 OTEAPI plugin, SOFT7 data sources, and the Docker Compose setup for the OTEAPI Service are deprecated.
+> They will be removed in a future version, together with all other OTEAPI-related functionality, see [#222](https://github.com/SINTEF/soft7/issues/222).
+> Using them emits an `s7.exceptions.OTEAPIDeprecationWarning`.
+> This is a `DeprecationWarning`, which Python hides by default, unless it is triggered directly by code in `__main__`, e.g., a script or a notebook.
+> To show it in all cases, e.g., in an OTEAPI Service, run Python with `-W default::DeprecationWarning` or set the environment variable `PYTHONWARNINGS=default::DeprecationWarning`.
 
 The `soft7` packages comes with an [OTEAPI](https://github.com/EMMC-ASBL/oteapi-core) plugin that allows one to convert any core parser data to a SOFT7 Entity instance.
 The plugin requires the `oteapi` extra (see [Installation](#installation)).

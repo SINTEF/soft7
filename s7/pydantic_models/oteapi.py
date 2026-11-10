@@ -1,6 +1,10 @@
 """Customized OTEAPI pydantic models.
 
 This requires the `oteapi` extra to be installed.
+
+Deprecated:
+    All OTEAPI-related functionality is deprecated and will be removed,
+    see https://github.com/SINTEF/soft7/issues/222.
 """
 
 from __future__ import annotations
@@ -9,6 +13,7 @@ from collections.abc import Hashable
 
 from pydantic import AnyUrl
 
+from s7._oteapi_deprecation import warn_oteapi_deprecated_module
 from s7.exceptions import raise_if_extra_missing
 from s7.pydantic_models.soft7_entity import SOFT7IdentityURI, SOFT7IdentityURIType
 from s7.pydantic_models.soft7_instance import SOFT7EntityInstance
@@ -24,6 +29,8 @@ try:
 except ImportError as exc:
     raise_if_extra_missing(exc, "oteapi", "Using OTEAPI configurations", ("oteapi",))
     raise
+
+warn_oteapi_deprecated_module(__name__)
 
 
 class HashableMixin:

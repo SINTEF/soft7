@@ -11,6 +11,10 @@ Parts 1 through 3 are provided through a single dictionary based on the
 
 This requires the `oteapi` extra to be installed.
 
+Deprecated:
+    All OTEAPI-related functionality is deprecated and will be removed,
+    see https://github.com/SINTEF/soft7/issues/222.
+
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from typing import TYPE_CHECKING, Optional
 
 from pydantic import AnyUrl, Field, FileUrl, create_model
 
+from s7._oteapi_deprecation import warn_oteapi_deprecated
 from s7.exceptions import raise_if_extra_missing
 
 try:
@@ -237,8 +242,14 @@ def create_datasource(
     Returns:
         An instance of a SOFT7 Data Source wrapped as a pydantic data model.
 
+    Deprecated:
+        SOFT7 data sources rely on OTEAPI, which is deprecated and will be removed,
+        see https://github.com/SINTEF/soft7/issues/222.
+
     """
     import s7.factories.generated_classes as module_namespace
+
+    warn_oteapi_deprecated("`s7.factories.create_datasource()`")
 
     entity = parse_input_entity(entity)
     configs = parse_input_configs(configs, entity_instance=entity.identity)

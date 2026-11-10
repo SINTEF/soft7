@@ -9,11 +9,7 @@ from oteapi.models import AttrDict
 from pydantic import AnyUrl, Field, ValidationError
 from pydantic.dataclasses import dataclass
 
-# from pydantic.dataclasses import dataclass
-from s7.exceptions import (
-    InvalidMapping,
-    SOFT7FunctionError,
-)
+from s7._oteapi_exceptions import InvalidMapping, SOFT7FunctionError
 from s7.factories import create_entity
 from s7.oteapi_plugin.models import SOFT7FunctionConfig
 from s7.pydantic_models.soft7_entity import (

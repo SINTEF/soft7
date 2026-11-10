@@ -1,3 +1,6 @@
+# DEPRECATED: The SOFT7 OTEAPI plugin is deprecated and will be removed, together
+# with this OTEAPI Service setup and all other OTEAPI-related functionality.
+# See https://github.com/SINTEF/soft7/issues/222
 services:
   oteapi:
     image: ghcr.io/emmc-asbl/oteapi:${DOCKER_OTEAPI_VERSION:-latest}

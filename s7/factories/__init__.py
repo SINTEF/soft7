@@ -19,6 +19,9 @@ def __getattr__(name: str) -> Any:
 
     It requires the `oteapi` extra, which should not be needed to use
     `create_entity()`.
+
+    `create_datasource()` is deprecated together with all other OTEAPI-related
+    functionality, see https://github.com/SINTEF/soft7/issues/222.
     """
     if name == "create_datasource":
         from .datasource_factory import create_datasource
