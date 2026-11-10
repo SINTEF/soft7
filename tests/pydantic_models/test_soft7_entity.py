@@ -303,3 +303,62 @@ def test_parse_input_entity_bad_type() -> None:
         match=rf"^Expected entity to be a str at this point, instead got {list}\.$",
     ):
         parse_input_entity(bad_input)
+
+
+def test_union_with_list_validates_list_of_entities(
+    soft_entity_init: dict[str, str | dict[str, Any]],
+) -> None:
+    """Regression test: validating a list against `list[SOFT7Entity] | SOFT7Entity`.
+
+    The "before" model validators used to only catch `ValueError` when converting the
+    input to a dict. A list input to `SOFT7Entity` (tried as a union member) then
+    raised a `TypeError`, which pydantic does not turn into a `ValidationError`, and
+    this broke the whole union validation.
+    """
+    from pydantic import TypeAdapter
+
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
+    adapter = TypeAdapter(list[SOFT7Entity] | SOFT7Entity)
+
+    result = adapter.validate_python([soft_entity_init])
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], SOFT7Entity)
+
+    # A single entity should still validate to a single entity.
+    single = adapter.validate_python(soft_entity_init)
+    assert isinstance(single, SOFT7Entity)
+
+
+@pytest.mark.parametrize("bad_input", [[], [{}], [1, 2, 3], 1, 1.5, None])
+def test_model_validate_non_dict_input_raises_validation_error(
+    bad_input: Any,
+    soft_entity_init: dict[str, str | dict[str, Any]],
+) -> None:
+    """Regression test: bad input types must raise `ValidationError`, not `TypeError`.
+
+    Also checks a list containing a valid entity, which is not a valid input for
+    `SOFT7Entity` itself.
+    """
+    from pydantic import ValidationError
+
+    from s7.pydantic_models.soft7_entity import SOFT7Entity
+
+    with pytest.raises(ValidationError):
+        SOFT7Entity.model_validate(bad_input)
+
+    with pytest.raises(ValidationError):
+        SOFT7Entity.model_validate([soft_entity_init])
+
+
+def test_property_model_validate_non_dict_input_raises_validation_error() -> None:
+    """Regression test: `SOFT7EntityProperty` must raise `ValidationError` for
+    non-dict input (e.g., a list), not `TypeError`."""
+    from pydantic import ValidationError
+
+    from s7.pydantic_models.soft7_entity import SOFT7EntityProperty
+
+    with pytest.raises(ValidationError):
+        SOFT7EntityProperty.model_validate([{"type": "int", "description": "x"}])
