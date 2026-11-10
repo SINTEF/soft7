@@ -124,6 +124,42 @@ def test_import_warning_attributed_to_importer(
     assert records[0].filename == __file__
 
 
+def test_dynamic_import_warning_attributed_to_caller(
+    fresh_s7: Callable[[], type[Warning]],
+) -> None:
+    """Ensure the import deprecation warning points to the code calling
+    `importlib.import_module()` or loading an entry point, not into `importlib`."""
+    import inspect
+    from importlib.metadata import entry_points
+
+    pytest.importorskip("oteapi", reason="Requires the 'oteapi' extra.")
+    category = fresh_s7()
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        lineno = inspect.currentframe().f_lineno + 1  # type: ignore[union-attr]
+        importlib.import_module("s7.pydantic_models.oteapi")
+
+    [record] = _oteapi_warnings(records, category)
+    assert (record.filename, record.lineno) == (__file__, lineno)
+
+    # Entry points registered for OTEAPI Core (see pyproject.toml)
+    [entry_point] = [
+        entry_point
+        for entry_point in entry_points(group="oteapi.function")
+        if entry_point.name == "soft7.soft7"
+    ]
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        lineno = inspect.currentframe().f_lineno + 1  # type: ignore[union-attr]
+        entry_point.load()
+
+    [record] = _oteapi_warnings(records, category)
+    assert "'s7.oteapi_plugin' module" in str(record.message)
+    assert (record.filename, record.lineno) == (__file__, lineno)
+
+
 @pytest.mark.parametrize("importer", ["s7.graphtools.utils", "s7", "s7_extension"])
 def test_import_from_s7_namespace_extension(
     importer: str, fresh_s7: Callable[[], type[Warning]]
@@ -244,14 +280,71 @@ def test_deprecated_exceptions_from_import() -> None:
         assert issubclass(exception, SOFT7FunctionError)
         assert issubclass(exception, ValueError)
 
-    # Raising, catching and pickling does not emit (further) warnings
+    # Raising and catching does not emit (further) warnings
+    with pytest.raises(SOFT7FunctionError, match="Invalid mapping"):
+        raise InvalidMapping("Invalid mapping")
+
+    # The classes are still presented as part of `s7.exceptions`
+    assert repr(InvalidMapping) == "<class 's7.exceptions.InvalidMapping'>"
+
+    # Pickling looks up the class through `s7.exceptions`, i.e., it warns
     error = InvalidMapping("Invalid mapping")
-    restored = pickle.loads(pickle.dumps(error))
+    with pytest.warns(OTEAPIDeprecationWarning):
+        pickled = pickle.dumps(error)
+    with pytest.warns(OTEAPIDeprecationWarning):
+        restored = pickle.loads(pickled)
+
     assert isinstance(restored, InvalidMapping)
     assert str(restored) == str(error)
 
-    with pytest.raises(SOFT7FunctionError, match="Invalid mapping"):
-        raise restored
+    # Previous versions of SOFT7 can unpickle it
+    assert b"s7.exceptions" in pickled
+    assert b"_oteapi_exceptions" not in pickled
+
+
+def test_unpickle_deprecated_exception_from_previous_version() -> None:
+    """Ensure deprecated exceptions pickled by a previous SOFT7 version can be
+    unpickled."""
+    import pickle
+
+    from s7._oteapi_exceptions import InvalidMapping
+    from s7.exceptions import OTEAPIDeprecationWarning
+
+    # `pickle.dumps(InvalidMapping("Invalid mapping"), protocol=4)` with SOFT7 v0.6.0
+    pickled = (
+        b"\x80\x04\x95:\x00\x00\x00\x00\x00\x00\x00\x8c\rs7.exceptions\x94\x8c"
+        b"\x0eInvalidMapping\x94\x93\x94\x8c\x0fInvalid mapping\x94\x85\x94R\x94."
+    )
+
+    with pytest.warns(OTEAPIDeprecationWarning):
+        restored = pickle.loads(pickled)
+
+    assert type(restored) is InvalidMapping
+    assert str(restored) == "Invalid mapping"
+
+
+def test_exceptions_star_import() -> None:
+    """Ensure `from s7.exceptions import *` exports the public, non-deprecated names
+    only, without emitting deprecation warnings."""
+    import s7.exceptions
+
+    namespace: dict[str, Any] = {}
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        exec("from s7.exceptions import *", namespace)  # noqa: S102
+
+    assert not _oteapi_warnings(records, s7.exceptions.OTEAPIDeprecationWarning)
+
+    namespace.pop("__builtins__")
+    assert set(namespace) == {
+        "EntityNotFound",
+        "MissingExtra",
+        "OTEAPIDeprecationWarning",
+        "S7EntityError",
+        "S7Error",
+        "raise_if_extra_missing",
+    }
+    assert not set(namespace) & set(DEPRECATED_EXCEPTIONS)
 
 
 def test_unknown_exceptions_attribute() -> None:

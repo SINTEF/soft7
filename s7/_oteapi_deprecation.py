@@ -6,6 +6,8 @@ https://github.com/SINTEF/soft7/issues/222.
 
 from __future__ import annotations
 
+import importlib
+import os
 import sys
 import warnings
 
@@ -50,20 +52,42 @@ def warn_oteapi_deprecated(feature: str, *, stacklevel: int = 2) -> None:
     )
 
 
-def _is_import_machinery(filename: str) -> bool:
-    """Whether a frame's file belongs to the import machinery.
+_IMPORTLIB_DIR = os.path.dirname(importlib.__file__) + os.sep  # noqa: PTH120
 
-    This mirrors how `warnings` skips frames when applying a `stacklevel`.
+
+def _is_skipped_by_warnings(filename: str) -> bool:
+    """Whether `warnings` skips a frame from `filename` when applying a `stacklevel`.
+
+    This mirrors the check used by CPython's `warnings` module.
     """
     return "importlib" in filename and "_bootstrap" in filename
+
+
+def _is_importlib(filename: str) -> bool:
+    """Whether a frame from `filename` belongs to the `importlib` package.
+
+    This includes the frozen import machinery, `importlib.import_module()`, and
+    `importlib.metadata.EntryPoint.load()`.
+    """
+    return _is_skipped_by_warnings(filename) or filename.startswith(_IMPORTLIB_DIR)
 
 
 def warn_oteapi_deprecated_module(module: str) -> None:
     """Emit an `OTEAPIDeprecationWarning` for importing `module`.
 
+    The warning is attributed to the code importing `module`, skipping all of
+    `importlib`. That is, for `importlib.import_module()` and entry point loading, the
+    warning points to the code calling these functions.
+
     The warning is not emitted when `module` is imported by SOFT7's own
     OTEAPI-related modules, so that importing one deprecated module does not result in
     a cascade of warnings from the deprecated modules it imports in turn.
+
+    Note:
+        As for any import-time warning, the warning is only emitted for the first
+        import of `module`. If `module` was first imported silently by SOFT7 itself,
+        e.g., through `s7.factories.create_datasource`, a subsequent import does not
+        warn. Calling `create_datasource()` still warns.
 
     Important:
         This must be called from the top level of the module being deprecated.
@@ -73,15 +97,26 @@ def warn_oteapi_deprecated_module(module: str) -> None:
 
     """
     # Frame 0 is this function and frame 1 the body of the deprecated module.
-    # Skip the import machinery to find the module importing the deprecated module.
-    frame = sys._getframe(2)
-    while frame is not None and _is_import_machinery(frame.f_code.co_filename):
+    # Relative to this function, the module body has stack level 2.
+    frame = sys._getframe(1).f_back
+    stacklevel = 2
+
+    # Skip `importlib` to find the code importing the deprecated module.
+    # Keep track of the stack level as counted by `warnings`, which only skips some of
+    # the `importlib` frames.
+    while frame is not None and _is_importlib(frame.f_code.co_filename):
+        if not _is_skipped_by_warnings(frame.f_code.co_filename):
+            stacklevel += 1
         frame = frame.f_back
 
-    importer = frame.f_globals.get("__name__", "") if frame is not None else ""
+    if frame is None:  # pragma: no cover
+        importer = ""
+    else:
+        importer = frame.f_globals.get("__name__", "")
+        if not _is_skipped_by_warnings(frame.f_code.co_filename):
+            stacklevel += 1
+
     if importer in _OTEAPI_IMPORTERS or importer.startswith("s7.oteapi_plugin."):
         return
 
-    # Relative to this function, stack level 2 is the deprecated module's body and 3
-    # the importing code, since `warnings` also skips the import machinery.
-    warn_oteapi_deprecated(f"The {module!r} module", stacklevel=3)
+    warn_oteapi_deprecated(f"The {module!r} module", stacklevel=stacklevel)

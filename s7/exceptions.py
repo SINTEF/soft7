@@ -7,6 +7,30 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Any
 
+    # Deprecated OTEAPI-related exceptions, see `__getattr__()` below.
+    # Imported here so type checkers know them, without hiding typos in attribute
+    # names, as a module-level `__getattr__()` would.
+    from s7._oteapi_exceptions import ConfigsNotFound as ConfigsNotFound
+    from s7._oteapi_exceptions import InsufficientData as InsufficientData
+    from s7._oteapi_exceptions import InvalidMapping as InvalidMapping
+    from s7._oteapi_exceptions import S7OTEAPIPluginError as S7OTEAPIPluginError
+    from s7._oteapi_exceptions import SOFT7FunctionError as SOFT7FunctionError
+
+__all__ = (
+    "EntityNotFound",
+    "MissingExtra",
+    "OTEAPIDeprecationWarning",
+    "S7EntityError",
+    "S7Error",
+    "raise_if_extra_missing",
+)
+"""The public, non-deprecated names.
+
+The deprecated OTEAPI-related exceptions are intentionally not included, so that
+`from s7.exceptions import *` does not emit deprecation warnings for code that does
+not use them.
+"""
+
 
 class S7Error(Exception):
     """Base class for all SOFT7 exceptions."""
@@ -39,17 +63,19 @@ _DEPRECATED_OTEAPI_EXCEPTIONS = (
 They live in `s7._oteapi_exceptions` and are lazily retrieved by `__getattr__()`.
 """
 
+if not TYPE_CHECKING:
 
-def __getattr__(name: str) -> Any:
-    """Retrieve the deprecated OTEAPI-related exceptions with a deprecation warning."""
-    if name in _DEPRECATED_OTEAPI_EXCEPTIONS:
-        from s7 import _oteapi_exceptions
-        from s7._oteapi_deprecation import warn_oteapi_deprecated
+    def __getattr__(name: str) -> Any:
+        """Retrieve the deprecated OTEAPI-related exceptions with a deprecation
+        warning."""
+        if name in _DEPRECATED_OTEAPI_EXCEPTIONS:
+            from s7 import _oteapi_exceptions
+            from s7._oteapi_deprecation import warn_oteapi_deprecated
 
-        warn_oteapi_deprecated(f"`s7.exceptions.{name}`")
-        return getattr(_oteapi_exceptions, name)
+            warn_oteapi_deprecated(f"`s7.exceptions.{name}`")
+            return getattr(_oteapi_exceptions, name)
 
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class MissingExtra(S7Error, ImportError):

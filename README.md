@@ -29,6 +29,8 @@ If you use `oteapi` functionality without the extra installed, an `ImportError` 
 > The SOFT7 OTEAPI plugin, SOFT7 data sources, and the Docker Compose setup for the OTEAPI Service are deprecated.
 > They will be removed in a future version, together with all other OTEAPI-related functionality, see [#222](https://github.com/SINTEF/soft7/issues/222).
 > Using them emits an `s7.exceptions.OTEAPIDeprecationWarning`.
+> This is a `DeprecationWarning`, which Python hides by default, unless it is triggered directly by code in `__main__`, e.g., a script or a notebook.
+> To show it in all cases, e.g., in an OTEAPI Service, run Python with `-W default::DeprecationWarning` or set the environment variable `PYTHONWARNINGS=default::DeprecationWarning`.
 
 The `soft7` packages comes with an [OTEAPI](https://github.com/EMMC-ASBL/oteapi-core) plugin that allows one to convert any core parser data to a SOFT7 Entity instance.
 The plugin requires the `oteapi` extra (see [Installation](#installation)).
