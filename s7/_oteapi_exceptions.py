@@ -10,7 +10,8 @@ works, but emits an `s7.exceptions.OTEAPIDeprecationWarning`.
 Their `__module__` is set to `s7.exceptions`, i.e., where they were originally defined
 and are still publicly available. This keeps reprs and tracebacks unchanged, and
 pickles compatible with previous versions of SOFT7. Note, (un)pickling them therefore
-also emits a deprecation warning.
+also emits a deprecation warning, and `inspect.getsource()` cannot find their
+definitions.
 """
 
 from __future__ import annotations

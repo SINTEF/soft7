@@ -14,6 +14,7 @@ import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+    from pathlib import Path
     from typing import Any
 
 
@@ -108,6 +109,150 @@ def test_oteapi_plugin_strategy_import(
     oteapi_warnings = _oteapi_warnings(records, category)
     assert len(oteapi_warnings) == 1, [str(record.message) for record in records]
     assert "'s7.oteapi_plugin' module is deprecated" in str(oteapi_warnings[0].message)
+
+
+STANDIN_MODULE = "_s7_deprecated_standin"
+"""A stand-in for a deprecated module, which does not require the `oteapi` extra."""
+
+
+@pytest.fixture
+def standin_module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Path]:
+    """Create a stand-in deprecated module on `sys.path`, and unload it afterwards.
+
+    The stand-in calls `warn_oteapi_deprecated_module()` at its top level, like the
+    deprecated SOFT7 modules do. It allows testing the warning attribution on all
+    Python versions, also without the `oteapi` extra.
+    """
+    path = tmp_path / f"{STANDIN_MODULE}.py"
+    path.write_text(
+        "from s7._oteapi_deprecation import warn_oteapi_deprecated_module\n"
+        "\n"
+        "warn_oteapi_deprecated_module(__name__)\n"
+        "\n"
+        "VALUE = 42\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    try:
+        yield path
+    finally:
+        sys.modules.pop(STANDIN_MODULE, None)
+        sys.modules.pop(f"{STANDIN_MODULE}_importer", None)
+
+
+def _current_lineno() -> int:
+    """Return the line number of the caller's next line."""
+    import inspect
+
+    return inspect.stack()[1].lineno + 1
+
+
+def _load_with_import_statement(_: Path) -> int:
+    lineno = _current_lineno()
+    import _s7_deprecated_standin  # type: ignore[import-not-found] # noqa: F401
+
+    return lineno
+
+
+def _load_with_dunder_import(_: Path) -> int:
+    lineno = _current_lineno()
+    __import__(STANDIN_MODULE)
+    return lineno
+
+
+def _load_with_import_module(_: Path) -> int:
+    lineno = _current_lineno()
+    importlib.import_module(STANDIN_MODULE)
+    return lineno
+
+
+def _load_with_reload(_: Path) -> int:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        module = importlib.import_module(STANDIN_MODULE)
+
+    lineno = _current_lineno()
+    importlib.reload(module)
+    return lineno
+
+
+def _load_with_exec_module(path: Path) -> int:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(STANDIN_MODULE, path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+
+    lineno = _current_lineno()
+    spec.loader.exec_module(module)
+    return lineno
+
+
+def _load_with_entry_point(_: Path) -> int:
+    from importlib.metadata import EntryPoint
+
+    entry_point = EntryPoint(
+        name="standin", value=f"{STANDIN_MODULE}:VALUE", group="soft7.test"
+    )
+
+    lineno = _current_lineno()
+    assert entry_point.load() == 42
+    return lineno
+
+
+@pytest.mark.parametrize(
+    "load",
+    [
+        _load_with_import_statement,
+        _load_with_dunder_import,
+        _load_with_import_module,
+        _load_with_reload,
+        _load_with_exec_module,
+        _load_with_entry_point,
+    ],
+    ids=lambda load: load.__name__.removeprefix("_load_with_"),
+)
+def test_import_warning_attribution(
+    load: Callable[[Path], int], standin_module: Path
+) -> None:
+    """Ensure the import deprecation warning is attributed to the line loading the
+    deprecated module, however it is loaded.
+
+    This uses a stand-in module, i.e., it runs on all Python versions, also without
+    the `oteapi` extra. The frame handling in `warn_oteapi_deprecated_module()`
+    mirrors how `warnings` skips `importlib` frames, which may change between Python
+    versions.
+    """
+    from s7.exceptions import OTEAPIDeprecationWarning
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        lineno = load(standin_module)
+
+    [record] = _oteapi_warnings(records, OTEAPIDeprecationWarning)
+    assert f"{STANDIN_MODULE!r} module is deprecated" in str(record.message)
+    assert (record.filename, record.lineno) == (__file__, lineno)
+
+
+def test_import_warning_attribution_library_module(standin_module: Path) -> None:
+    """Ensure the import deprecation warning is attributed to the line in a library
+    module importing the deprecated module."""
+    from s7.exceptions import OTEAPIDeprecationWarning
+
+    importer = standin_module.with_name(f"{STANDIN_MODULE}_importer.py")
+    importer.write_text(
+        f'"""A library module."""\n\nimport {STANDIN_MODULE}  # line 3\n',
+        encoding="utf-8",
+    )
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        importlib.import_module(f"{STANDIN_MODULE}_importer")
+
+    [record] = _oteapi_warnings(records, OTEAPIDeprecationWarning)
+    assert (record.filename, record.lineno) == (str(importer), 3)
 
 
 def test_import_warning_attributed_to_importer(
